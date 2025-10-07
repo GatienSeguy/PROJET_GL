@@ -12,7 +12,7 @@ label.pack()
 
 # Ajouter un bouton
 def clic():
-    label.config(text="Tu as cliqué fdp de feuj!")
+    label.config(text="Tu as cliqué!")
 
 bouton = tk.Button(fenetre, text="Clique-moi", command=clic)
 bouton.pack()
