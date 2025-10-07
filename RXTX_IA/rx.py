@@ -18,9 +18,9 @@ def envoyer_configuration(config_dict):
     et affiche la réponse
     """
     print("\n" + "="*70)
-    print("📤 ENVOI DE LA CONFIGURATION AU SERVEUR IA")
+    print(" ENVOI DE LA CONFIGURATION AU SERVEUR IA")
     print("="*70)
-    print("\n📦 Configuration envoyée :")
+    print("\n Configuration envoyée :")
     print(json.dumps(config_dict, indent=2, ensure_ascii=False))
     
     try:
