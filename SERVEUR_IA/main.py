@@ -92,7 +92,7 @@ class ConfigEntrainement(BaseModel):
 def accueil():
     return {
         "message": "Serveur IA actif !",
-        "version": "0.4.5",
+        "version": "0",
         "endpoints": ["/", "/train", "/docs"]
     }
 
