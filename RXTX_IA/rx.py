@@ -32,11 +32,12 @@ payload2 = {
         "fonction_activation": "ReLU"
     },
     "loss": {"fonction_perte": "MAE",
-                                  "params" : None},
+            "params" : None},
+
     "optim": {"optimisateur": "Adam", "learning_rate": 0.001, "decroissance" : None, "scheduler" : None, "patience": None},
     "entrainement": {"nb_epochs": 10, "batch_size": 64, "clip_gradient" : 1},
     "visu": {"metriques": ["MAE", "MSE"]}
-}
+} 
 
 
 r = requests.post(f"{URL}/train_full", json=payload2)
