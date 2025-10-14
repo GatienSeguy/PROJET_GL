@@ -6,7 +6,8 @@ from datetime import date,datetime
 # uvicorn main:app --reload   
 app = FastAPI()
 
-last_config = None
+last_config_tempo = None
+last_config_TimeSeries = None
 # ====================================
 # MODÈLES PYDANTIC - Classes
 # ====================================
@@ -69,32 +70,29 @@ class ConfigTempo(BaseModel):
 
 
 
-# Wrapper
-
-
-
 # ====================================
 # ROUTES
 # ====================================
 
 
 
-@app.post("/train")
+@app.post("/tempoconfig")
 def recevoir_TempoConfig(config: ConfigTempo):
     """
     Reçoit uniquement la configuration temporelle
     """
-    global last_config
-    last_config = config
+    global last_config_tempo
+    last_config_tempo = config
     print("\n" + "="*70)
-    print(" CONFIGURATION REÇUE")
+    print(f" CONFIGURATION REÇUE \n")
     print("="*70)
     print("\n TEMPO :")
-    print(f"   - Horizon : {config.horizon}")
-    print(f"   - Dates   : {config.dates}")
-    print(f"   - Pas     : {config.pas_temporel}")
-    print(f"   - Split train : {config.split_train}")
-    print(f"   - Freq    : {config.freq}")
+    print(f"   - Horizon : {config.horizon} \n")
+    print(f"   - Dates   : {config.dates} \n")
+    print(f"   - Pas     : {config.pas_temporel} \n")
+    print(f"   - Split train : {config.split_train} \n")
+    print(f"   - Freq    : {config.freq} \n")
+    print(f"################ FIN ############  \n")
 
 
     return {
@@ -104,19 +102,61 @@ def recevoir_TempoConfig(config: ConfigTempo):
         }
     }
 
+@app.post("/timeseries")
+def recevoir_SeriesData(series: TimeSeriesData):
+    """
+    Reçoit les données de séries temporelles
+    """
+    global last_config_series
+    last_config_series = series
+
+    n = len(series.values)
+    print("\n" + "="*70)
+    print(" DONNÉES SÉRIE TEMPORELLE REÇUES")
+    print("="*70)
+    print(f"   - Nombre de points : {n}")
+    if n > 0:
+        print(f"   - Premier timestamp : {series.timestamps[0]} \n")
+        print(f"   - Dernier timestamp : {series.timestamps[-1]} \n")
+        print(f"   - Première valeur   : {series.values[0]}\n")
+        print(f"   - Dernière valeur   : {series.values[-1]} \n")
+    print("="*70 + "\n")
+
+    print(f"################ FIN ############  \n")
+    return {"status": "OK", "nb_points": n}
+
+
 @app.get("/")
 def accueil():
     """
-    Retourne les dernières données reçues via /train
+    Retourne les dernières données reçues via /tempoconfig et /timeseries
     """
-    if last_config is None:
-        return {"message": "Aucune configuration reçue pour l’instant."}
-    
-    return {
-        "message": "Dernière configuration reçue :",
-        "horizon": last_config.horizon,
-        "dates": last_config.dates,
-        "pas_temporel": last_config.pas_temporel,
-        "split_train": last_config.split_train,
-        "freq": last_config.freq
-    }
+    response = {"message": "Serveur IA actif !"}
+
+    if last_config_tempo:
+        response["tempo"] = {
+            "horizon": last_config_tempo.horizon,
+            "dates": last_config_tempo.dates,
+            "pas_temporel": last_config_tempo.pas_temporel,
+            "split_train": last_config_tempo.split_train,
+            "freq": last_config_tempo.freq
+        }
+    else:
+        response["tempo"] = "Aucune configuration temporelle reçue."
+
+    if last_config_series:
+        response["series"] = {
+            "nb_points": len(last_config_series.values),
+            "first": {
+                "timestamp": last_config_series.timestamps[0],
+                "value": last_config_series.values[0]
+            },
+            "last": {
+                "timestamp": last_config_series.timestamps[-1],
+                "value": last_config_series.values[-1]
+            }
+        }
+    else:
+        response["series"] = "Aucune série reçue."
+
+    return response
