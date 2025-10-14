@@ -1,155 +1,122 @@
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
-from typing import Literal, Optional, List
+from typing import Optional, Tuple, Literal, List
+from pydantic import BaseModel, Field, conint, confloat
+from datetime import date,datetime
 
+# uvicorn main:app --reload   
 app = FastAPI()
 
-
+last_config = None
 # ====================================
-# MODÈLES PYDANTIC - CONFIGURATION
+# MODÈLES PYDANTIC - Classes
 # ====================================
 
-class HyperparametersArchitecture(BaseModel):
-    """Configuration de l'architecture du modèle"""
-    model_type: Literal["lstm", "gru", "transformer", "rnn"] = Field(
-        description="Type de modèle de réseau de neurones"
+class TimeSeriesData(BaseModel):
+    """
+    Une unique série temporelle : timestamps et valeurs alignés (même longueur).
+    """
+    timestamps: List[datetime] = Field(
+        ..., description="Liste UTC triée croissante (ISO 8601)"
     )
-    batch_size: int = Field(
-        ge=1, le=512,
-        description="Taille du batch pour l'entraînement"
+    values: List[Optional[float]] = Field(
+        ..., description="Valeurs numériques (Null si manquante), même longueur que timestamps"
     )
-    num_layers: int = Field(
-        ge=1, le=10,
-        description="Nombre de couches dans le réseau"
+
+     # Mini garde-fou : même taille
+    def model_post_init(self, __context) -> None:
+        if len(self.timestamps) != len(self.values):
+            raise ValueError("timestamps et values doivent avoir la même longueur")
+
+
+
+
+class ConfigTempo(BaseModel):
+    """
+    Configuration des paramètres temporels et découpage des données
+    (transmise entre serveurs)
+    coint(gt = 0) c'est un entier qui vérifie int >0, coint(lt=0) : int < 0
+    """
+
+    # --- 1) Horizon de prédiction : H >0 ---
+    horizon: conint(gt=0) = Field(
+        ...,
+        description="Nombre de pas temporels à prédire (ex: 24 pour 24h)"
+    )
+
+    # --- 2) Bornes temporelles : vect(date_debut, date_fin)---
+    dates: Optional[Tuple[date, date]] = Field(
+        None,
+        description="Période temporelle utilisée, format (AAAA-MM-JJ, AAAA-MM-JJ)"
+    )
+
+    # --- 3) Pas temporel (résolution) : pas_tempo >0---
+    pas_temporel: conint(gt=0) = Field(
+        1,
+        description="Extraction de données tous les p pas temporels"
+    )
+
+    # --- 4) Découpage train/test : 0 < pourcentage_train <1---
+    split_train: confloat(gt=0, lt=1) = Field(
+        0.9,
+        description="Proportion des données utilisée pour l'entraînement (ex: 0.9 = 90%)"
+    )
+
+    # --- 5) Fréquence temporelle : min, jour , heure, semaine, mois (option) ---
+    freq: Optional[Literal["T","H","D","W","M"]] = Field(
+        None,
+        description="Pas temporel du dataset (T=min, H=heure, D=jour, etc.)"
     )
 
 
-class ConfigurationOptimisation(BaseModel):
-    """Configuration de l'optimisation"""
-    optimizer: Literal["adam", "sgd", "rmsprop", "adamw"] = Field(
-        default="adam",
-        description="Type d'optimiseur"
-    )
-    loss_function: Literal["mse", "mae", "huber", "cross_entropy"] = Field(
-        default="mse",
-        description="Fonction de perte"
-    )
-    learning_rate: float = Field(
-        gt=0, lt=1,
-        description="Taux d'apprentissage (0 < lr < 1)"
-    )
-    epochs: int = Field(
-        ge=1, le=1000,
-        description="Nombre d'époques d'entraînement"
-    )
-    # Paramètres optionnels additionnels
-    weight_decay: Optional[float] = Field(
-        default=0.0, ge=0,
-        description="Régularisation L2 (weight decay)"
-    )
-    momentum: Optional[float] = Field(
-        default=0.9, ge=0, lt=1,
-        description="Momentum pour SGD"
-    )
 
+# Wrapper
 
-class ConfigEntrainement(BaseModel):
-    """Configuration complète pour l'entraînement"""
-    action: Literal["start", "stop"] = Field(
-        description="Commande : start ou stop"
-    )
-    architecture: HyperparametersArchitecture = Field(
-        description="Configuration de l'architecture du modèle"
-    )
-    optimisation: ConfigurationOptimisation = Field(
-        description="Configuration de l'optimisation"
-    )
-    horizon: int = Field(
-        gt=0, le=365,
-        description="Horizon de prédiction (1-365)"
-    )
-    data: List[float] = Field(
-        min_length=10,
-        description="Données d'entraînement (min 10 points)"
-    )
-    
-    # Paramètres optionnels
-    send_weights_every: Optional[int] = Field(
-        default=10, ge=1,
-        description="Envoyer poids toutes les K itérations"
-    )
-    test_size: Optional[float] = Field(
-        default=0.1, gt=0, lt=1,
-        description="Proportion pour le test (défaut 10%)"
-    )
 
 
 # ====================================
 # ROUTES
 # ====================================
 
-@app.get("/")
-def accueil():
-    return {
-        "message": "Serveur IA actif !",
-        "version": "0",
-        "endpoints": ["/", "/train", "/docs"]
-    }
 
 
 @app.post("/train")
-def recevoir_config(config: ConfigEntrainement):
+def recevoir_TempoConfig(config: ConfigTempo):
     """
-    Reçoit la configuration complète pour l'entraînement
+    Reçoit uniquement la configuration temporelle
     """
+    global last_config
+    last_config = config
     print("\n" + "="*70)
     print(" CONFIGURATION REÇUE")
     print("="*70)
-    print(f"🎬 Action : {config.action}")
-    print(f"\n ARCHITECTURE :")
-    print(f"   - Type de modèle : {config.architecture.model_type}")
-    print(f"   - Batch size : {config.architecture.batch_size}")
-    print(f"   - Nombre de couches : {config.architecture.num_layers}")
-    print(f"\n OPTIMISATION :")
-    print(f"   - Optimiseur : {config.optimisation.optimizer}")
-    print(f"   - Fonction de perte : {config.optimisation.loss_function}")
-    print(f"   - Learning rate : {config.optimisation.learning_rate}")
-    print(f"   - Epochs : {config.optimisation.epochs}")
-    print(f"   - Weight decay : {config.optimisation.weight_decay}")
-    print(f"   - Momentum : {config.optimisation.momentum}")
-    print(f"\n DONNÉES :")
+    print("\n TEMPO :")
     print(f"   - Horizon : {config.horizon}")
-    print(f"   - Nombre de points : {len(config.data)}")
-    print(f"   - Premier point : {config.data[0]}")
-    print(f"   - Dernier point : {config.data[-1]}")
-    print(f"\n PARAMÈTRES :")
-    print(f"   - Envoyer poids toutes les {config.send_weights_every} itérations")
-    print(f"   - Taille du test : {config.test_size * 100}%")
-    print("="*70 + "\n")
+    print(f"   - Dates   : {config.dates}")
+    print(f"   - Pas     : {config.pas_temporel}")
+    print(f"   - Split train : {config.split_train}")
+    print(f"   - Freq    : {config.freq}")
+
+
+    return {
+        "status": "OK",
+        "resume": {
+            "horizon": config.horizon,
+        }
+    }
+
+@app.get("/")
+def accueil():
+    """
+    Retourne les dernières données reçues via /train
+    """
+    if last_config is None:
+        return {"message": "Aucune configuration reçue pour l’instant."}
     
-    if config.action == "start":
-        return {
-            "status": "Configuration reçue - Prêt à démarrer l'entraînement",
-            "config_resume": {
-                "architecture": {
-                    "model_type": config.architecture.model_type,
-                    "batch_size": config.architecture.batch_size,
-                    "num_layers": config.architecture.num_layers
-                },
-                "optimisation": {
-                    "optimizer": config.optimisation.optimizer,
-                    "loss": config.optimisation.loss_function,
-                    "learning_rate": config.optimisation.learning_rate,
-                    "epochs": config.optimisation.epochs
-                },
-                "data": {
-                    "horizon": config.horizon,
-                    "nb_points": len(config.data)
-                }
-            }
-        }
-    else:
-        return {
-            "status": "Commande STOP reçue",
-            "message": "L'entraînement sera arrêté"
-        }
+    return {
+        "message": "Dernière configuration reçue :",
+        "horizon": last_config.horizon,
+        "dates": last_config.dates,
+        "pas_temporel": last_config.pas_temporel,
+        "split_train": last_config.split_train,
+        "freq": last_config.freq
+    }
