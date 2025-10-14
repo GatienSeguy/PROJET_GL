@@ -3,7 +3,7 @@ import requests, json
 URL = "http://138.231.149.81:8000" 
 
 payload = {
-    "horizon": 8,
+    "horizon": 88,
     "dates": ["2025-01-01", "2025-01-31"],
     "pas_temporel": 1,
     "split_train": 0.9,
