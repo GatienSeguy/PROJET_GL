@@ -99,13 +99,13 @@ class Parametres_visualisation_suivi(BaseModel):
 
 
 class PaquetComplet(BaseModel):
-    temporel: Optional[Parametres_temporels]
-    reseau: Optional[Parametres_choix_reseau_neurones]
-    archi: Optional[Parametres_temporels]
-    loss: Optional[Parametres_choix_loss_fct]
-    optim: Optional[Parametres_optimisateur]
-    entrainement: Optional[Parametres_entrainement]
-    visu: Optional[Parametres_visualisation_suivi]
+    Parametres_temporels: Optional[Parametres_temporels]
+    Parametres_choix_reseau_neurones: Optional[Parametres_choix_reseau_neurones]
+    Parametres_archi_reseau: Optional[Parametres_archi_reseau]
+    Parametres_choix_loss_fct: Optional[Parametres_choix_loss_fct]
+    Parametres_optimisateur: Optional[Parametres_optimisateur]
+    Parametres_entrainement: Optional[Parametres_entrainement]
+    Parametres_visualisation_suivi: Optional[Parametres_visualisation_suivi]
 
 # ====================================
 # ROUTES
