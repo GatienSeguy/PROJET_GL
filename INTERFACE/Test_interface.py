@@ -1,14 +1,19 @@
 import tkinter as tk
 
-class Fenetre(tk.Tk):
-    def __init__(self):
-        super().__init__()  # initialise tk.Tk
-        self.title("Ma fenêtre perso")
-        self.geometry("400x300")
+import tkinter as tk
 
-        label = tk.Label(self, text="Hello Maxime 👋")
-        label.pack(pady=20)
+# Créer la fenêtre principale
+fenetre = tk.Tk()
+fenetre.title("Fenêtre Tkinter")
+fenetre.geometry("300x200")  # largeur x hauteur
 
-# Création et lancement
-app = Fenetre()
-app.mainloop()
+# Ajouter un label
+label = tk.Label(fenetre, text="Bonjour, Maxime !")
+label.pack(pady=20)
+
+# Ajouter un bouton pour fermer
+bouton_quitter = tk.Button(fenetre, text="Quitter", command=fenetre.quit)
+bouton_quitter.pack()
+
+# Lancer la boucle principale
+fenetre.mainloop()

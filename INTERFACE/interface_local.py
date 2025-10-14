@@ -17,9 +17,9 @@ class Fenetre(tk.Tk):
         self.title("Paramétrage du Réseau de Neuronnes")
         self.geometry("500x700")  # largeur x hauteur
         #self.cadre = tk.Frame(self, borderwidth=50)
-        self.cadre = tk.Frame(self, borderwidth=50)
+        self.cadre = tk.Frame(self, borderwidth=30)
         self.cadre.pack(fill="both", expand="yes")
-        self.CadreParams = tk.LabelFrame(self.cadre, text="Paramètres", borderwidth=2)
+        self.CadreParams = tk.LabelFrame(self.cadre, text="Paramètres", borderwidth=3)
         self.CadreParams.pack(fill="both", expand="yes")
         tk.Button(self.CadreParams, text='Paramètres temporels et de découpage de données', height=3,command=self.Params_temporels).pack(fill="both",pady=10,padx=20)
         tk.Button(self.CadreParams, text='Choix du modèle de réseau de neurones', height=3,command=self.Params_choix_reseau_neurones).pack(fill="both",pady=10,padx=20)
@@ -32,6 +32,20 @@ class Fenetre(tk.Tk):
 
 
     def Params_temporels(self):
+        self.fenetre_params_temporels = tk.Tk()
+        self.fenetre_params_temporels.title("Paramètres temporels et de découpage de données")
+        self.fenetre_params_temporels.geometry("300x200")  # largeur x hauteur
+
+        # Ajouter un label
+        label = tk.Label(self.fenetre_params_temporels, text="Bonjour, Maxime !")
+        label.pack(pady=20)
+
+        # Ajouter un bouton pour fermer
+        bouton_quitter = tk.Button(self.fenetre_params_temporels, text="Quitter", command=self.fenetre_params_temporels.destroy)
+        bouton_quitter.pack()
+
+        # Lancer la boucle principale
+        self.fenetre_params_temporels.mainloop()
         pass
     def Params_choix_reseau_neurones(self):
         pass
@@ -63,5 +77,5 @@ class Fenetre_Params(tk.Tk):
 # bouton.pack()
 
 # Lancer la boucle principale
-fenetre = Fenetre()
-fenetre.mainloop()
+fenetree = Fenetre()
+fenetree.mainloop()
