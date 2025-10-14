@@ -8,6 +8,7 @@ app = FastAPI()
 
 last_config_tempo = None
 last_config_TimeSeries = None
+
 # ====================================
 # MODÈLES PYDANTIC - Classes
 # ====================================
@@ -31,49 +32,117 @@ class TimeSeriesData(BaseModel):
 
 
 
-class ConfigTempo(BaseModel):
+class ParametresTemporels(BaseModel):
+    horizon: Optional[int] = Field(None, description="Nombre de pas temporels à prédire")
+    dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
+    pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
+    portion_decoupage: Optional[confloat(gt=0, lt=1)] = Field(None, description="Proportion de découpage train/test")
+
+
+
+
+class ConfigNN(BaseModel):
     """
-    Configuration des paramètres temporels et découpage des données
-    (transmise entre serveurs)
-    coint(gt = 0) c'est un entier qui vérifie int >0, coint(lt=0) : int < 0
+    Paramétrage du réseau de neurones
+    (structure interne du modèle)
     """
 
-    # --- 1) Horizon de prédiction : H >0 ---
-    horizon: conint(gt=0) = Field(
+    # --- 1) Nombre de couches (profondeur) ---
+    num_layers: conint(ge=1, le=100) = Field(
         ...,
-        description="Nombre de pas temporels à prédire (ex: 24 pour 24h)"
+        description="Profondeur du réseau (ex: 2 à 6)"
     )
 
-    # --- 2) Bornes temporelles : vect(date_debut, date_fin)---
-    dates: Optional[Tuple[date, date]] = Field(
-        None,
-        description="Période temporelle utilisée, format (AAAA-MM-JJ, AAAA-MM-JJ)"
+    # --- 2) Taille cachée / latente ---
+    hidden_size: conint(gt=0) = Field(
+        ...,
+        description="Dimension des représentations internes (ex: 128)"
     )
 
-    # --- 3) Pas temporel (résolution) : pas_tempo >0---
-    pas_temporel: conint(gt=0) = Field(
-        1,
-        description="Extraction de données tous les p pas temporels"
+    # --- 3) Taux de dropout ---
+    dropout_rate: confloat(ge=0.0, le=1.0) = Field(
+        0.0,
+        description="Fraction de neurones désactivés pendant l'entraînement (ex: 0.1)"
     )
 
-    # --- 4) Découpage train/test : 0 < pourcentage_train <1---
-    split_train: confloat(gt=0, lt=1) = Field(
-        0.9,
-        description="Proportion des données utilisée pour l'entraînement (ex: 0.9 = 90%)"
-    )
-
-    # --- 5) Fréquence temporelle : min, jour , heure, semaine, mois (option) ---
-    freq: Optional[Literal["T","H","D","W","M"]] = Field(
-        None,
-        description="Pas temporel du dataset (T=min, H=heure, D=jour, etc.)"
+    # --- 4) Fonction d’activation ---
+    activation: Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"] = Field(
+        "ReLU",
+        description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
     )
 
 
+##### Nouvelles calsses
+class ParametresChoixReseau(BaseModel):
+    modele: Optional[Literal["RNN", "LSTM", "GRU", "CNN"]] = Field(None, description="Type de modèle choisi")
+
+
+class ParametresLoss(BaseModel):
+    fonction_perte: Optional[Literal["MSE", "MAE", "Huber"]] = Field(None, description="Fonction de perte")
+    params: Optional[dict] = Field(None, description="Paramètres spécifiques de la fonction de perte")
+
+class ParametresOptimiseur(BaseModel):
+    optimisateur: Optional[Literal["Adam", "SGD", "RMSprop", "Adagrad", "Adadelta"]] = Field(None)
+    learning_rate: Optional[float] = Field(None)
+    decroissance: Optional[float] = Field(None)
+    scheduler: Optional[Literal["Plateau", "Cosine", "OneCycle", "None"]] = Field(None)
+    patience: Optional[int] = Field(None)
+
+class ParametresEntrainement(BaseModel):
+    nb_epochs: Optional[int] = Field(None)
+    batch_size: Optional[int] = Field(None)
+    nb_workers: Optional[int] = Field(None)
+    clip_gradient: Optional[float] = Field(None)
+    seed: Optional[int] = Field(None)
+    device: Optional[Literal["cpu", "cuda", "auto"]] = Field("auto")
+    sauvegarde_checkpoints: Optional[Literal["best", "last", "all"]] = Field(None)
+    early_stopping: Optional[dict] = Field(None, description="Paramètres de l’early stopping")
+
+class ParametresVisualisation(BaseModel):
+    metriques: Optional[List[str]] = Field(None, description="Liste des métriques suivies pendant l’entraînement")
+
+
+
+class PaquetComplet(BaseModel):
+    temporel: Optional[ParametresTemporels]
+    reseau: Optional[ParametresChoixReseau]
+    archi: Optional[ParametresTemporels]
+    loss: Optional[ParametresLoss]
+    optim: Optional[ParametresOptimiseur]
+    entrainement: Optional[ParametresEntrainement]
+    visu: Optional[ParametresVisualisation]
 
 # ====================================
 # ROUTES
 # ====================================
+@app.post("/train_full")
+def recevoir_paquet(paquet: PaquetComplet):
+    """
+    Reçoit le paquet complet envoyé depuis l'interface Tkinter.
+    """
 
+    print("\n" + "="*80)
+    print("📦 PAQUET COMPLET REÇU")
+    print("="*80)
+
+    if paquet.temporel:
+        print("🔹 Paramètres temporels :", paquet.temporel.model_dump())
+    if paquet.reseau:
+        print("🔹 Choix du modèle :", paquet.reseau.modele)
+    if paquet.archi:
+        print("🔹 Architecture :", paquet.archi.model_dump())
+    if paquet.loss:
+        print("🔹 Fonction de perte :", paquet.loss.model_dump())
+    if paquet.optim:
+        print("🔹 Optimisateur :", paquet.optim.model_dump())
+    if paquet.entrainement:
+        print("🔹 Entraînement :", paquet.entrainement.model_dump())
+    if paquet.visu:
+        print("🔹 Visualisation :", paquet.visu.model_dump())
+
+    print("="*80 + "\n")
+
+    return {"status": "OK", "message": "Paquet complet reçu et validé ✅"}
 
 
 @app.post("/tempoconfig")
@@ -124,6 +193,8 @@ def recevoir_SeriesData(series: TimeSeriesData):
 
     print(f"################ FIN ############  \n")
     return {"status": "OK", "nb_points": n}
+
+
 
 
 @app.get("/")
