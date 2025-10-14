@@ -38,14 +38,7 @@ payload2 = {
     "visu": {"metriques": ["MAE", "MSE"]}
 }
 
-<<<<<<< HEAD
-r = requests.post(f"{URL}/timeseries", json=payload_series)
-print("POST /timeseries ->", r.status_code)
-print(json.dumps(r.json(), indent=2))
-
-=======
 
 r = requests.post(f"{URL}/train_full", json=payload2)
 print("POST /train_full ->", r.status_code)
 print(json.dumps(r.json(), indent=2))
->>>>>>> 8a230275a4cd97e6827b13ce7173994e417a584d
