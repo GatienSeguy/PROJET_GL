@@ -48,7 +48,7 @@ class Parametres_archi_reseau(BaseModel):
     """
 
     # --- 1) Nombre de couches (profondeur) ---
-    num_layers: conint(ge=1, le=100) = Field(
+    nb_couches: conint(ge=1, le=100) = Field(
         ...,
         description="Profondeur du réseau (ex: 2 à 6)"
     )
@@ -66,7 +66,7 @@ class Parametres_archi_reseau(BaseModel):
     )
 
     # --- 4) Fonction d’activation ---
-    activation: Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"] = Field(
+    fonction_activation : Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"] = Field(
         "ReLU",
         description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
     )
@@ -91,13 +91,8 @@ class Parametres_optimisateur(BaseModel):
 class Parametres_entrainement(BaseModel):
     nb_epochs: Optional[int] = Field(None)
     batch_size: Optional[int] = Field(None)
-    nb_workers: Optional[int] = Field(None)
     clip_gradient: Optional[float] = Field(None)
-    seed: Optional[int] = Field(None)
-    device: Optional[Literal["cpu", "cuda", "auto"]] = Field("auto")
-    sauvegarde_checkpoints: Optional[Literal["best", "last", "all"]] = Field(None)
-    early_stopping: Optional[dict] = Field(None, description="Paramètres de l’early stopping")
-
+    
 class Parametres_visualisation_suivi(BaseModel):
     metriques: Optional[List[str]] = Field(None, description="Liste des métriques suivies pendant l’entraînement")
 
@@ -159,8 +154,7 @@ def recevoir_TempoConfig(config: Parametres_temporels):
     print(f"   - Horizon : {config.horizon} \n")
     print(f"   - Dates   : {config.dates} \n")
     print(f"   - Pas     : {config.pas_temporel} \n")
-    print(f"   - Split train : {config.split_train} \n")
-    print(f"   - Freq    : {config.freq} \n")
+    print(f"   - Split train : {config.portion_decoupage} \n")
     print(f"################ FIN ############  \n")
 
 
@@ -209,8 +203,7 @@ def accueil():
             "horizon": last_config_tempo.horizon,
             "dates": last_config_tempo.dates,
             "pas_temporel": last_config_tempo.pas_temporel,
-            "split_train": last_config_tempo.split_train,
-            "freq": last_config_tempo.freq
+            "split_train": last_config_tempo.portion_decoupage,
         }
     else:
         response["tempo"] = "Aucune configuration temporelle reçue."
