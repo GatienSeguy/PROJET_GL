@@ -3,7 +3,19 @@ from typing import Optional, Tuple, Literal, List
 from pydantic import BaseModel, Field, conint, confloat
 from datetime import date,datetime
 
+## EN LOCAL :
 # uvicorn main:app --reload   
+
+
+## EN SERVEUR SUR WIFI :
+# 1- Faire sur terminal de mon mac :
+#  ipconfig getifaddr en0  
+
+# 2- Faire pour lancer le serveur
+# cd /Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_IA
+#  uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+#3 - à la txrx : mettre : URL = ""http:// IP DE L'ORDI HOST DU SERVEUR :8000" "
 app = FastAPI()
 
 last_config_tempo = None
@@ -137,7 +149,7 @@ def recevoir_paquet(paquet: PaquetComplet):
 
     print("="*80 + "\n")
 
-    return {"status": "OK", "message": "Paquet complet reçu et validé "}
+    return {"status": "OK", "message": "Paquet complet recu et valide "}
 
 
 @app.post("/tempoconfig")
