@@ -4,10 +4,50 @@ from tkinter import ttk
 
 # Paramètres et variables
 
-
-
-
-
+class Parametres_teporels():
+    def __init__(self):
+        self.horizon=None # int
+        self.dates=None # variable datetime
+        self.pas_temporel=None # int
+        self.portion_découpage=None# float entre 0 et 1
+class Parametres_choix_reseau_neurones():
+    def __init__(self):
+        self.Modele=None # str ['RNN','LSTM','GRU','CNN']
+class Parametres_archi_reseau():
+    def __init__(self):
+        self.Nb_couches=None # int
+        self.taille_latente=None # int
+        self.Dropout=None # float entre 0.0 et 0.9
+        self.Nb_neurones_par_couche=None # list d'int
+        self.Fonction_activation=None # fontion ReLU/GELU/tanh
+class Parametres_choix_loss_fct():
+    def __init__(self):
+        self.Fonction_perte=None # fonction MSE/MAE/Huber
+        self.Params=None # paramètres de la fonction perte (dépend de la fonction)
+class Parametres_optimisateur():
+    def __init__(self):
+        self.Optimisateur=None # fonction Adam/SGD/RMSprop/Adagrad/Adadelta
+        self.Learning_rate=None # float
+        self.Decroissance=None # float
+        self.Scheduler=None # fonction Plateau/Cosine/OneCycle/None
+        self.Patience=None # int
+class Parametres_entrainement():
+    def __init__(self):
+        self.Nb_epochs=None # int
+        self.Batch_size=None # int
+        self.Nb_workers=None # int
+        self.Clip_grandient=None # float
+        self.Seed=None # int
+        self.Device=None # CPU/CUDA/AUTO
+        self.Sauvegarde_checkpoints=None # best/last/all
+        self.Early_stopping=None # metric/mode/patience
+class Parametres_visualisation_suivi():
+    def __init__(self):
+        self.Metriques=None # list de fonctions ['MSE','MAE'...]
+        # self.Frequence_affichage=None # int
+        # self.Visualisation_predictions=None # bool
+        # self.Frequence_visualisation_predictions=None # int
+        # self.Nb_exemples_visualises=None # int
 
 # Créer la fenêtre principale
 class Fenetre(tk.Tk):
