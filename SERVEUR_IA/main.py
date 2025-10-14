@@ -121,23 +121,23 @@ def recevoir_paquet(paquet: PaquetComplet):
     print("="*80)
 
     if paquet.Parametres_temporels:
-        print(" Paramètres temporels :", paquet.temporel.model_dump())
+        print(" Paramètres temporels :", paquet.Parametres_temporels.model_dump())
     if paquet.Parametres_choix_reseau_neurones:
-        print("Choix du modèle :", paquet.reseau.modele)
+        print("Choix du modèle :", paquet.Parametres_choix_reseau_neurones.modele)
     if paquet.Parametres_archi_reseau:
-        print("Architecture :", paquet.archi.model_dump())
+        print("Architecture :", paquet.Parametres_archi_reseau.model_dump())
     if paquet.Parametres_choix_loss_fct:
-        print(" Fonction de perte :", paquet.loss.model_dump())
+        print(" Fonction de perte :", paquet.Parametres_choix_loss_fct.model_dump())
     if paquet.Parametres_optimisateur:
-        print(" Optimisateur :", paquet.optim.model_dump())
+        print(" Optimisateur :", paquet.Parametres_optimisateur.model_dump())
     if paquet.Parametres_entrainement:
-        print(" Entraînement :", paquet.entrainement.model_dump())
+        print(" Entraînement :", paquet.Parametres_entrainement.model_dump())
     if paquet.Parametres_visualisation_suivi:
-        print(" Visualisation :", paquet.visu.model_dump())
+        print(" Visualisation :", paquet.Parametres_visualisation_suivi.model_dump())
 
     print("="*80 + "\n")
 
-    return {"status": "OK", "message": "Paquet complet reçu et validé ✅"}
+    return {"status": "OK", "message": "Paquet complet reçu et validé "}
 
 
 @app.post("/tempoconfig")
