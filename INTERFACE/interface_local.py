@@ -105,7 +105,18 @@ class Fenetre(tk.Tk):
 
 
 def Formatter_JSON():
-    pass
+    config_totale={}
+    config_totale["Parametres_teporels"]=Parametres_teporels().__dict__
+    config_totale["Parametres_choix_reseau_neurones"]=Parametres_choix_reseau_neurones().__dict__
+    config_totale["Parametres_archi_reseau"]=Parametres_archi_reseau().__dict__
+    config_totale["Parametres_choix_loss_fct"]=Parametres_choix_loss_fct().__dict__
+    config_totale["Parametres_optimisateur"]=Parametres_optimisateur().__dict__
+    config_totale["Parametres_entrainement"]=Parametres_entrainement().__dict__
+    config_totale["Parametres_visualisation_suivi"]=Parametres_visualisation_suivi().__dict__
+    return config_totale
+
+c=Formatter_JSON()
+print(c)
 
 
 # Lancer la boucle principale
