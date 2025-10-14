@@ -27,14 +27,14 @@ payload2 = {
     },
     "Parametres_archi_reseau": {
         "nb_couches": 4,
-        "taille_latente": 128,
-        "dropout": 0.2,
-        "nb_neurones_par_couche": [64, 64, 32, 16],
+        "hidden_size": 128,
+        "dropout_rate": 0.2,
         "fonction_activation": "ReLU"
     },
-    "Parametres_choix_loss_fct": {"fonction_perte": "MAE"},
-    "Parametres_optimisateur": {"optimisateur": "Adam", "learning_rate": 0.001},
-    "Parametres_entrainement": {"nb_epochs": 10, "batch_size": 64, "device": "auto"},
+    "Parametres_choix_loss_fct": {"fonction_perte": "MAE",
+                                  "params" : None},
+    "Parametres_optimisateur": {"optimisateur": "Adam", "learning_rate": 0.001, "decroissance" : None, "scheduler" : None, "patience": None},
+    "Parametres_entrainement": {"nb_epochs": 10, "batch_size": 64, "clip_gradient" : 1},
     "Parametres_visualisation_suivi": {"metriques": ["MAE", "MSE"]}
 }
 
