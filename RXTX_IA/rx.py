@@ -16,26 +16,26 @@ print(json.dumps(r.json(), indent=2))
 
 
 payload2 = {
-    "temporel": {
+    "Parametres_temporels": {
         "horizon": 24,
         "dates": ["2025-01-01", "2025-02-01"],
         "pas_temporel": 1,
         "portion_decoupage": 0.9
     },
-    "reseau": {
+    "Parametres_choix_reseau_neurones": {
         "modele": "LSTM"
     },
-    "archi": {
+    "Parametres_archi_reseau": {
         "nb_couches": 4,
         "taille_latente": 128,
         "dropout": 0.2,
         "nb_neurones_par_couche": [64, 64, 32, 16],
         "fonction_activation": "ReLU"
     },
-    "loss": {"fonction_perte": "MAE"},
-    "optim": {"optimisateur": "Adam", "learning_rate": 0.001},
-    "entrainement": {"nb_epochs": 10, "batch_size": 64, "device": "auto"},
-    "visu": {"metriques": ["MAE", "MSE"]}
+    "Parametres_choix_loss_fct": {"fonction_perte": "MAE"},
+    "Parametres_optimisateur": {"optimisateur": "Adam", "learning_rate": 0.001},
+    "Parametres_entrainement": {"nb_epochs": 10, "batch_size": 64, "device": "auto"},
+    "Parametres_visualisation_suivi": {"metriques": ["MAE", "MSE"]}
 }
 
 

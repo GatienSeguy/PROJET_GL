@@ -32,7 +32,7 @@ class TimeSeriesData(BaseModel):
 
 
 
-class ParametresTemporels(BaseModel):
+class Parametres_temporels(BaseModel):
     horizon: Optional[int] = Field(None, description="Nombre de pas temporels à prédire")
     dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
     pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
@@ -41,7 +41,7 @@ class ParametresTemporels(BaseModel):
 
 
 
-class ConfigNN(BaseModel):
+class Parametres_archi_reseau(BaseModel):
     """
     Paramétrage du réseau de neurones
     (structure interne du modèle)
@@ -73,22 +73,22 @@ class ConfigNN(BaseModel):
 
 
 ##### Nouvelles calsses
-class ParametresChoixReseau(BaseModel):
+class Parametres_choix_reseau_neurones(BaseModel):
     modele: Optional[Literal["RNN", "LSTM", "GRU", "CNN"]] = Field(None, description="Type de modèle choisi")
 
 
-class ParametresLoss(BaseModel):
+class Parametres_choix_loss_fct(BaseModel):
     fonction_perte: Optional[Literal["MSE", "MAE", "Huber"]] = Field(None, description="Fonction de perte")
     params: Optional[dict] = Field(None, description="Paramètres spécifiques de la fonction de perte")
 
-class ParametresOptimiseur(BaseModel):
+class Parametres_optimisateur(BaseModel):
     optimisateur: Optional[Literal["Adam", "SGD", "RMSprop", "Adagrad", "Adadelta"]] = Field(None)
     learning_rate: Optional[float] = Field(None)
     decroissance: Optional[float] = Field(None)
     scheduler: Optional[Literal["Plateau", "Cosine", "OneCycle", "None"]] = Field(None)
     patience: Optional[int] = Field(None)
 
-class ParametresEntrainement(BaseModel):
+class Parametres_entrainement(BaseModel):
     nb_epochs: Optional[int] = Field(None)
     batch_size: Optional[int] = Field(None)
     nb_workers: Optional[int] = Field(None)
@@ -98,19 +98,19 @@ class ParametresEntrainement(BaseModel):
     sauvegarde_checkpoints: Optional[Literal["best", "last", "all"]] = Field(None)
     early_stopping: Optional[dict] = Field(None, description="Paramètres de l’early stopping")
 
-class ParametresVisualisation(BaseModel):
+class Parametres_visualisation_suivi(BaseModel):
     metriques: Optional[List[str]] = Field(None, description="Liste des métriques suivies pendant l’entraînement")
 
 
 
 class PaquetComplet(BaseModel):
-    temporel: Optional[ParametresTemporels]
-    reseau: Optional[ParametresChoixReseau]
-    archi: Optional[ParametresTemporels]
-    loss: Optional[ParametresLoss]
-    optim: Optional[ParametresOptimiseur]
-    entrainement: Optional[ParametresEntrainement]
-    visu: Optional[ParametresVisualisation]
+    temporel: Optional[Parametres_temporels]
+    reseau: Optional[Parametres_choix_reseau_neurones]
+    archi: Optional[Parametres_temporels]
+    loss: Optional[Parametres_choix_loss_fct]
+    optim: Optional[Parametres_optimisateur]
+    entrainement: Optional[Parametres_entrainement]
+    visu: Optional[Parametres_visualisation_suivi]
 
 # ====================================
 # ROUTES
@@ -146,7 +146,7 @@ def recevoir_paquet(paquet: PaquetComplet):
 
 
 @app.post("/tempoconfig")
-def recevoir_TempoConfig(config: ConfigTempo):
+def recevoir_TempoConfig(config: Parametres_temporels):
     """
     Reçoit uniquement la configuration temporelle
     """
