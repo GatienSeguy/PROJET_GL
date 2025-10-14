@@ -36,7 +36,7 @@ payload2 = {
     "Parametres_optimisateur": {"optimisateur": "Adam", "learning_rate": 0.001},
     "Parametres_entrainement": {"nb_epochs": 10, "batch_size": 64, "device": "auto"},
     "Parametres_visualisation_suivi": {"metriques": ["MAE", "MSE"]}
-}
+} 
 
 
 r = requests.post(f"{URL}/train_full", json=payload2)
