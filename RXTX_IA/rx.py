@@ -3,7 +3,7 @@ import requests, json
 URL = "http://138.231.149.81:8000" 
 
 payload = {
-    "horizon": 88,
+    "horizon": 8,
     "dates": ["2025-01-01", "2025-01-31"],
     "pas_temporel": 1,
     "split_train": 0.9,
@@ -14,16 +14,38 @@ r = requests.post(f"{URL}/tempoconfig", json=payload)
 print("POST /tempoconfig ->", r.status_code)
 print(json.dumps(r.json(), indent=2))
 
-payload_series = {
-    "timestamps": [
-        "2025-01-01T00:00:00Z",
-        "2025-01-01T01:00:00Z",
-        "2025-01-01T02:00:00Z"
-    ],
-    "values": [10.0, 12.5, 11.8]
+
+payload2 = {
+    "temporel": {
+        "horizon": 24,
+        "dates": ["2025-01-01", "2025-02-01"],
+        "pas_temporel": 1,
+        "portion_decoupage": 0.9
+    },
+    "reseau": {
+        "modele": "LSTM"
+    },
+    "archi": {
+        "nb_couches": 4,
+        "taille_latente": 128,
+        "dropout": 0.2,
+        "nb_neurones_par_couche": [64, 64, 32, 16],
+        "fonction_activation": "ReLU"
+    },
+    "loss": {"fonction_perte": "MAE"},
+    "optim": {"optimisateur": "Adam", "learning_rate": 0.001},
+    "entrainement": {"nb_epochs": 10, "batch_size": 64, "device": "auto"},
+    "visu": {"metriques": ["MAE", "MSE"]}
 }
 
+<<<<<<< HEAD
 r = requests.post(f"{URL}/timeseries", json=payload_series)
 print("POST /timeseries ->", r.status_code)
 print(json.dumps(r.json(), indent=2))
 
+=======
+
+r = requests.post(f"{URL}/train_full", json=payload2)
+print("POST /train_full ->", r.status_code)
+print(json.dumps(r.json(), indent=2))
+>>>>>>> 8a230275a4cd97e6827b13ce7173994e417a584d
