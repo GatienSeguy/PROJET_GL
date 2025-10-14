@@ -2,6 +2,7 @@ import tkinter as tk
 
 import tkinter as tk
 
+
 # Créer la fenêtre principale
 fenetre = tk.Tk()
 fenetre.title("Fenêtre Tkinter")
