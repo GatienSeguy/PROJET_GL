@@ -1,4 +1,7 @@
 import tkinter as tk
+import requests, json
+
+
 from tkinter import ttk
 
 
@@ -100,21 +103,10 @@ class Fenetre(tk.Tk):
     def Params_visualisation_suivi(self):
         pass
 
-class Fenetre_Params(tk.Tk):
+
+def Formatter_JSON():
     pass
 
-
-
-# # Ajouter un label
-# label = tk.Label(fenetre, text="Bonjour, Maxime !")
-# label.pack()
-
-# # Ajouter un bouton
-# def clic():
-#     label.config(text="Tu as cliqué!")
-
-# bouton = tk.Button(fenetre, text="Clique-moi", command=clic)
-# bouton.pack()
 
 # Lancer la boucle principale
 fenetree = Fenetre()
