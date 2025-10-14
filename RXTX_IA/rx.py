@@ -26,3 +26,4 @@ payload_series = {
 r = requests.post(f"{URL}/timeseries", json=payload_series)
 print("POST /timeseries ->", r.status_code)
 print(json.dumps(r.json(), indent=2))
+
