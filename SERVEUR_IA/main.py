@@ -117,23 +117,23 @@ def recevoir_paquet(paquet: PaquetComplet):
     """
 
     print("\n" + "="*80)
-    print("📦 PAQUET COMPLET REÇU")
+    print("PAQUET COMPLET REÇU")
     print("="*80)
 
-    if paquet.temporel:
-        print("🔹 Paramètres temporels :", paquet.temporel.model_dump())
-    if paquet.reseau:
-        print("🔹 Choix du modèle :", paquet.reseau.modele)
-    if paquet.archi:
-        print("🔹 Architecture :", paquet.archi.model_dump())
-    if paquet.loss:
-        print("🔹 Fonction de perte :", paquet.loss.model_dump())
-    if paquet.optim:
-        print("🔹 Optimisateur :", paquet.optim.model_dump())
-    if paquet.entrainement:
-        print("🔹 Entraînement :", paquet.entrainement.model_dump())
-    if paquet.visu:
-        print("🔹 Visualisation :", paquet.visu.model_dump())
+    if paquet.Parametres_temporels:
+        print(" Paramètres temporels :", paquet.temporel.model_dump())
+    if paquet.Parametres_choix_reseau_neurones:
+        print("Choix du modèle :", paquet.reseau.modele)
+    if paquet.Parametres_archi_reseau:
+        print("Architecture :", paquet.archi.model_dump())
+    if paquet.Parametres_choix_loss_fct:
+        print(" Fonction de perte :", paquet.loss.model_dump())
+    if paquet.Parametres_optimisateur:
+        print(" Optimisateur :", paquet.optim.model_dump())
+    if paquet.Parametres_entrainement:
+        print(" Entraînement :", paquet.entrainement.model_dump())
+    if paquet.Parametres_visualisation_suivi:
+        print(" Visualisation :", paquet.visu.model_dump())
 
     print("="*80 + "\n")
 
