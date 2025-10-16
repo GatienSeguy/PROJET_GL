@@ -110,6 +110,11 @@ def train_simple(
             total += loss.item() * xb.size(0)
             n += xb.size(0)
         last_avg = total / max(1, n)
+        k=10
+        if epoch%k==0:
+            yield {"epoch": epoch, "avg_loss": float(last_avg)}
+
         print(f"[{epoch:03d}/{epochs}] loss={last_avg:.6f}")
+    yield {"done": True, "final_loss": float(last_avg)}
 
     return model, last_avg
