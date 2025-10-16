@@ -105,7 +105,7 @@ def train_simple(
             optimizer.zero_grad()
             pred = model(xb)
             loss = criterion(pred, yb)
-            loss.backward()
+            loss.backward() 
             optimizer.step()
             total += loss.item() * xb.size(0)
             n += xb.size(0)
