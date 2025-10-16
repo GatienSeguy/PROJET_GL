@@ -40,26 +40,26 @@ class Parametres_archi_reseau(BaseModel):
     """
 
     # --- 1) Nombre de couches (profondeur) ---
-    nb_couches: conint(ge=1, le=100) = Field(
-        ...,
+    nb_couches: Optional[conint(ge=1, le=100)] = Field(
+        None,
         description="Profondeur du réseau (ex: 2 à 6)"
     )
 
     # --- 2) Taille cachée / latente ---
-    hidden_size: conint(gt=0) = Field(
-        ...,
+    hidden_size: Optional[conint(gt=0)] = Field(
+        None,
         description="Dimension des représentations internes (ex: 128)"
     )
 
     # --- 3) Taux de dropout ---
-    dropout_rate: confloat(ge=0.0, le=1.0) = Field(
-        0.0,
+    dropout_rate: Optional[confloat(ge=0.0, le=1.0)] = Field(
+        None,
         description="Fraction de neurones désactivés pendant l'entraînement (ex: 0.1)"
     )
 
     # --- 4) Fonction d’activation ---
-    fonction_activation : Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"] = Field(
-        "ReLU",
+    fonction_activation: Optional[Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"]] = Field(
+        None,
         description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
     )
 
@@ -98,3 +98,9 @@ class PaquetComplet(BaseModel):
     Parametres_optimisateur: Optional[Parametres_optimisateur]
     Parametres_entrainement: Optional[Parametres_entrainement]
     Parametres_visualisation_suivi: Optional[Parametres_visualisation_suivi]
+
+
+# Reçoit la série + toute la config en une seule requête
+class TrainingPayload(BaseModel):
+    series: TimeSeriesData
+    config: PaquetComplet
