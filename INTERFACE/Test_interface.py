@@ -1,24 +1,72 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-from tkcalendar import Calendar
 
-class CalendarPicker(tk.Tk):
+class Fenetre(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Datepicker with tkcalendar")
-        self.geometry("300x300")
 
-        # Create calendar widget
-        self.cal = Calendar(self, selectmode='day', date_pattern='dd/mm/yyyy')
-        self.cal.pack(pady=20)
+        self.title("🧠 Paramétrage du Réseau de Neuronnes")
+        self.configure(bg="#f2f2f2")
+        self.geometry("520x1")  # largeur fixe, hauteur minimale
 
-        # Button to get selected date
-        ttk.Button(self, text="Get Date", command=self.get_date).pack(pady=10)
+        # Définir une police personnalisée
+        self.font_titre = ("Helvetica", 14, "bold")
+        self.font_bouton = ("Helvetica", 11)
 
-    def get_date(self):
-        selected_date = self.cal.get_date()
-        messagebox.showinfo("Selected Date", f"You selected: {selected_date}")
+        # Cadre principal
+        self.cadre = tk.Frame(self, bg="#f2f2f2", padx=20, pady=20)
+        self.cadre.pack(fill="both", expand=True)
+
+        # Cadre des paramètres
+        self.CadreParams = tk.LabelFrame(
+            self.cadre, text="Paramètres", font=self.font_titre,
+            bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
+        )
+        self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
+
+        # Liste des boutons
+        boutons = [
+            ("Paramètres temporels et de découpage de données", self.Params_temporels),
+            ("Choix du modèle de réseau de neurones", self.Params_choix_reseau_neurones),
+            ("Paramétrage de l'architecture réseau", self.Params_archi_reseau),
+            ("Choix de la fonction perte (loss)", self.Params_choix_loss_fct),
+            ("Choix et paramétrage de l'optimisateur", self.Params_optimisateur),
+            ("Paramètres d'entraînement", self.Params_entrainement),
+            ("Paramétrage des métriques et visualisations de suivi", self.Params_visualisation_suivi),
+        ]
+
+        for texte, commande in boutons:
+            tk.Button(
+                self.CadreParams, text=texte, font=self.font_bouton,
+                height=2, bg="#e6e6e6", fg="#000000", relief="groove", bd=2,
+                command=commande
+            ).pack(fill="x", pady=6)
+
+        # Boutons d'action
+        tk.Button(
+            self.cadre, text="🚀 Envoyer la configuration au serveur", font=self.font_bouton,
+            height=2, bg="#d1e7dd", fg="#0f5132", relief="raised", bd=3,
+            command=self.EnvoyerConfig
+        ).pack(fill="x", pady=10)
+
+        tk.Button(
+            self.cadre, text="❌ Quitter", font=self.font_bouton,
+            height=2, bg="#f8d7da", fg="#842029", relief="raised", bd=3,
+            command=self.destroy
+        ).pack(fill="x", pady=(0, 10))
+
+        # Ajuster la hauteur automatiquement
+        self.update_idletasks()
+        self.geometry(f"520x{self.winfo_reqheight()}")
+
+    # Méthodes fictives à définir
+    def Params_temporels(self): pass
+    def Params_choix_reseau_neurones(self): pass
+    def Params_archi_reseau(self): pass
+    def Params_choix_loss_fct(self): pass
+    def Params_optimisateur(self): pass
+    def Params_entrainement(self): pass
+    def Params_visualisation_suivi(self): pass
+    def EnvoyerConfig(self): pass
 
 if __name__ == "__main__":
-    app = CalendarPicker()
-    app.mainloop()
+    Fenetre().mainloop()
