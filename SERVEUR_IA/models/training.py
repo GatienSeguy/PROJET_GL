@@ -5,11 +5,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from models.optim import make_loss, make_optimizer
 from models.model_MLP import MLP
 
-
-# models/training.py
-import inspect
-from models.model_MLP import MLP
-
+ 
 def _build_mlp_safely(in_dim: int, out_dim: int, **kwargs):
     """
     Crée un MLP en détectant la signature réelle et en mappant les alias :
@@ -44,6 +40,7 @@ def _build_mlp_safely(in_dim: int, out_dim: int, **kwargs):
 
     # map aliases from kwargs (our internal names)
     put(kwargs.get("hidden_size", 128), "hidden_size", "hidden_dim", "width")
+    # put(kwargs.get("hidden_size", 128), "hidden_size", "hidden_dim", "width", "n_hidden", "units")
     put(kwargs.get("num_layers", 2), "num_layers", "n_layers", "depth", "layers")
     put(kwargs.get("dropout_rate", 0.0), "dropout_rate", "dropout", "p_dropout")
     put(kwargs.get("activation", "relu"), "activation", "act", "activation_name")
