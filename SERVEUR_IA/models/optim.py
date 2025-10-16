@@ -7,6 +7,7 @@ def make_loss(loss_cfg: dict):
         loss_cfg = {}
     name = str(loss_cfg.get("name", "mse")).lower()
     reduction = str(loss_cfg.get("reduction", "mean")).lower()
+    print(str(loss_cfg.get("name", "mse")).lower())
     if name in ["mse", "mse_loss"]:
         return nn.MSELoss(reduction=reduction)
     if name in ["mae", "l1", "l1_loss"]:
@@ -26,6 +27,9 @@ def make_optimizer(model, opt_cfg: dict):
     name = str(opt_cfg.get("name", "adam")).lower()
     lr = float(opt_cfg.get("lr", 1e-3))
     wd = float(opt_cfg.get("weight_decay", 0.0))
+    
+    print( str(opt_cfg.get("name", "adam")).lower())
+    
     if name == "adam":
         betas = opt_cfg.get("betas", (0.9, 0.999))
         return optim.Adam(model.parameters(), lr=lr, weight_decay=wd, betas=tuple(betas))
