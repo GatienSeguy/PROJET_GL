@@ -449,7 +449,6 @@ class Fenetre(tk.Tk):
 
         fenetre_params_visualisation_suivi.mainloop()
 
-
     # Fonctions utilitaires
 
     def validate_int_fct(self, text):
