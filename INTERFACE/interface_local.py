@@ -41,7 +41,7 @@ class Parametres_entrainement_class():
         self.nb_epochs=1000 # int
         self.batch_size=4 # int
         #self.nb_workers=None # int
-        self.clip_grandient=None # float
+        self.clip_gradient=None # float
         #self.seed=None # int
         #self.Device=None # CPU/CUDA/AUTO
         #self.sauvegarde_checkpoints=None # best/last/all
@@ -371,18 +371,18 @@ class Fenetre(tk.Tk):
         # Variables pour les paramètres
         Params_entrainement_nb_epochs = tk.IntVar(value=Parametres_entrainement.nb_epochs) # int
         Params_entrainement_batch_size = tk.IntVar(value=Parametres_entrainement.batch_size) # int
-        Params_entrainement_clip_grandient = tk.DoubleVar(value=Parametres_entrainement.clip_grandient if Parametres_entrainement.clip_grandient is not None else 0.0) # float
+        Params_entrainement_clip_gradient = tk.DoubleVar(value=Parametres_entrainement.clip_gradient if Parametres_entrainement.clip_gradient is not None else 0.0) # float
 
         def Save_quit():
             Parametres_entrainement.nb_epochs = Params_entrainement_nb_epochs.get()
             Parametres_entrainement.batch_size = Params_entrainement_batch_size.get()
-            Parametres_entrainement.clip_grandient = Params_entrainement_clip_grandient.get() if Params_entrainement_clip_grandient.get() != 0.0 else None
+            Parametres_entrainement.clip_gradient = Params_entrainement_clip_gradient.get() if Params_entrainement_clip_gradient.get() != 0.0 else None
             fenetre_params_entrainement.destroy()
         
         def Quit():
             Params_entrainement_nb_epochs.set(Parametres_entrainement.nb_epochs)
             Params_entrainement_batch_size.set(Parametres_entrainement.batch_size)
-            Params_entrainement_clip_grandient.set(Parametres_entrainement.clip_grandient if Parametres_entrainement.clip_grandient is not None else 0.0)
+            Params_entrainement_clip_gradient.set(Parametres_entrainement.clip_gradient if Parametres_entrainement.clip_gradient is not None else 0.0)
             fenetre_params_entrainement.destroy()
 
         # Fenêtre secondaire
@@ -407,7 +407,7 @@ class Fenetre(tk.Tk):
 
         # Ligne 3 : Clip des gradients
         tk.Label(cadre, text="Clip des gradients (0.0 pour None):").grid(row=2, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_entrainement_clip_grandient).grid(row=2, column=1, pady=5)
+        tk.Entry(cadre, textvariable=Params_entrainement_clip_gradient).grid(row=2, column=1, pady=5)
 
         # Boutons
         bouton_frame = tk.Frame(fenetre_params_entrainement)
