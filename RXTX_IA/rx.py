@@ -139,6 +139,15 @@ payload4={
     }
 }
 
-r = requests.post(f"{URL}/train_full", json=payload4)
-print("POST /training ->", r.status_code)
-print(json.dumps(r.json(), indent=2))
+with requests.post(f"{URL}/train_full", json=payload4, stream=True) as r:
+    r.raise_for_status()
+    print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
+    for line in r.iter_lines():
+        if not line:
+            continue
+        if line.startswith(b"data: "):
+            msg = json.loads(line[6:].decode("utf-8"))
+            # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
+            print("EVENT:", msg)
+            if msg.get("done"):
+                break
