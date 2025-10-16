@@ -66,9 +66,8 @@ Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 class Fenetre(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
-
+        couleur_fond = "#d9d9d9"
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
-        self.configure(bg="#ffffff")
 
         # Définir une police personnalisée
         self.font_titre = ("Helvetica", 14, "bold")
@@ -77,12 +76,15 @@ class Fenetre(tk.Tk):
         self.geometry("500x1")  # largeur fixe, hauteur minimale
 
         self.cadre = tk.Frame(self, borderwidth=30)
-        self.cadre.configure(bg="#ffffff")
+        self.cadre.configure(bg=couleur_fond)
         self.cadre.pack(fill="both", expand="yes")
         
+        # Titre simulé
+        tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=couleur_fond).pack(anchor="w", pady=(0, 10))
+
         # Cadre des paramètres
         self.CadreParams = tk.LabelFrame(
-            self.cadre, text="Paramètres", font=self.font_titre,
+            self.cadre, text="", font=self.font_titre,
             bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
         )
         self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
@@ -107,13 +109,13 @@ class Fenetre(tk.Tk):
 
         tk.Button(
             self.cadre, text="🚀 Envoyer la configuration au serveur", font=self.font_bouton,
-            height=2, bg="#d1e7dd", fg="#0f5132", relief="raised", bd=3,
+            height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
             command=self.EnvoyerConfig
         ).pack(fill="x", pady=10)
 
         tk.Button(
             self.cadre, text="❌ Quitter", font=self.font_bouton,
-            height=2, bg="#f8d7da", fg="#842029", relief="raised", bd=3,
+            height=2, bg="#f7b2b2", fg="#842029", relief="raised", bd=3,
             command=self.destroy
         ).pack(fill="x", pady=(0, 10))
 
