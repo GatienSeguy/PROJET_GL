@@ -5,7 +5,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from models.optim import make_loss, make_optimizer
 from models.model_MLP import MLP
 
- 
+
+
 def _build_mlp_safely(in_dim: int, out_dim: int, **kwargs):
     """
     Crée un MLP en détectant la signature réelle et en mappant les alias :
@@ -110,7 +111,7 @@ def train_simple(
             total += loss.item() * xb.size(0)
             n += xb.size(0)
         last_avg = total / max(1, n)
-        k=1
+        k=100
         if epoch%k==0:
             yield {"epochs": epoch, "avg_loss": float(last_avg)}
 
