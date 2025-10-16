@@ -4,7 +4,7 @@ from datetime import datetime
 import requests, json
 from tkinter import ttk, messagebox
 
-URL = "http://138.231.149.81:8000" 
+URL = "http://192.168.1.94:8000" 
 
 # Paramètres et variables
 
@@ -16,7 +16,7 @@ class Parametres_temporels_class():
         self.portion_decoupage=0.8# float entre 0 et 1
 class Parametres_choix_reseau_neurones_class():
     def __init__(self):
-        self.modele="RNN" # str ['RNN','LSTM','GRU','CNN']
+        self.modele="MLP" # str ['MLP','LSTM','GRU','CNN']
 class Parametres_archi_reseau_class():
     def __init__(self):
         self.nb_couches=2 #None # int
@@ -180,7 +180,7 @@ class Fenetre(tk.Tk):
 
     def Params_choix_reseau_neurones(self):
         # Variables pour les paramètres
-        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele) # str ['RNN','LSTM','GRU','CNN']
+        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele) # str ['MLP','LSTM','GRU','CNN']
 
         def Save_quit():
             Parametres_choix_reseau_neurones.modele = Params_choix_reseau_neurones_modele.get()
@@ -201,7 +201,7 @@ class Fenetre(tk.Tk):
 
         # Ligne 1 : Horizon temporel
         tk.Label(cadre, text="Choix du modèle :").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values =["RNN","LSTM","GRU","CNN"],textvariable=Params_choix_reseau_neurones_modele,state="readonly").grid(row=0, column=1, pady=5)
+        ttk.Combobox(cadre, values =["MLP","LSTM","GRU","CNN"],textvariable=Params_choix_reseau_neurones_modele,state="readonly").grid(row=0, column=1, pady=5)
 
         # Boutons
         bouton_frame = tk.Frame(fenetre_params_choix_reseau_neurones)
@@ -484,3 +484,4 @@ class Fenetre(tk.Tk):
 # Lancer la boucle principale
 fenetree = Fenetre()
 fenetree.mainloop()
+fenetree.EnvoyerConfig()

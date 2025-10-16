@@ -1,6 +1,6 @@
 import requests, json
 
-URL = "http://138.231.149.81:8000" 
+URL = "http://192.168.1.94:8000" 
 
 payload = {
     "horizon": 8,
@@ -23,7 +23,7 @@ payload2 = {
         "portion_decoupage": 0.9
     },
     "Parametres_choix_reseau_neurones": {
-        "modele": "LSTM"
+        "modele": "MLP"
     },
     "Parametres_archi_reseau": {
         "nb_couches": 4,
@@ -71,7 +71,7 @@ payload3={
       "portion_decoupage": 0.8
     },
     "Parametres_choix_reseau_neurones": {
-      "modele": "RNN"
+      "modele": "MLP"
     },
     "Parametres_archi_reseau": {
       "nb_couches": 2,
