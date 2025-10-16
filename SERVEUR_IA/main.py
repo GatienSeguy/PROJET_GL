@@ -1,4 +1,8 @@
 from fastapi import FastAPI
+
+# from fastapi.responses import StreamingResponse
+# import json
+
 from typing import Optional, Tuple, Literal, List
 from pydantic import BaseModel, Field, conint, confloat
 from datetime import date,datetime
@@ -91,35 +95,35 @@ last_config_series = None
 # ====================================
 # ROUTES
 # ====================================
-@app.post("/train_full")
-def recevoir_paquet(paquet: PaquetComplet):
-    """
-    Reçoit le paquet complet envoyé depuis l'interface Tkinter.
-    """
+# @app.post("/train_full")
+# def recevoir_paquet(paquet: PaquetComplet):
+#     """
+#     Reçoit le paquet complet envoyé depuis l'interface Tkinter.
+#     """
 
-    print("\n" + "="*80)
-    print("PAQUET COMPLET REÇU")
-    print("="*80)
+#     print("\n" + "="*80)
+#     print("PAQUET COMPLET REÇU")
+#     print("="*80)
 
-    if paquet.Parametres_temporels:
-        print(" Paramètres temporels :", paquet.Parametres_temporels.model_dump())
-    if paquet.Parametres_choix_reseau_neurones:
-        print("Choix du modèle :", paquet.Parametres_choix_reseau_neurones.modele)
-    if paquet.Parametres_archi_reseau:
-        print("Architecture :", paquet.Parametres_archi_reseau.model_dump())
-    if paquet.Parametres_choix_loss_fct:
-        print(" Fonction de perte :", paquet.Parametres_choix_loss_fct.model_dump())
-    if paquet.Parametres_optimisateur:
-        print(" Optimisateur :", paquet.Parametres_optimisateur.model_dump())
-    if paquet.Parametres_entrainement:
-        print(" Entraînement :", paquet.Parametres_entrainement.model_dump())
-    if paquet.Parametres_visualisation_suivi:
-        print(" Visualisation :", paquet.Parametres_visualisation_suivi.model_dump())
+#     if paquet.Parametres_temporels:
+#         print(" Paramètres temporels :", paquet.Parametres_temporels.model_dump())
+#     if paquet.Parametres_choix_reseau_neurones:
+#         print("Choix du modèle :", paquet.Parametres_choix_reseau_neurones.modele)
+#     if paquet.Parametres_archi_reseau:
+#         print("Architecture :", paquet.Parametres_archi_reseau.model_dump())
+#     if paquet.Parametres_choix_loss_fct:
+#         print(" Fonction de perte :", paquet.Parametres_choix_loss_fct.model_dump())
+#     if paquet.Parametres_optimisateur:
+#         print(" Optimisateur :", paquet.Parametres_optimisateur.model_dump())
+#     if paquet.Parametres_entrainement:
+#         print(" Entraînement :", paquet.Parametres_entrainement.model_dump())
+#     if paquet.Parametres_visualisation_suivi:
+#         print(" Visualisation :", paquet.Parametres_visualisation_suivi.model_dump())
 
-    print("="*80 + "\n")
+#     print("="*80 + "\n")
 
 
-    return {"status": "OK", "message": "Paquet complet recu et valide "}
+#     return {"status": "OK", "message": "Paquet complet recu et valide "}
 
 
 @app.post("/tempoconfig")
@@ -171,10 +175,31 @@ def recevoir_SeriesData(series: TimeSeriesData):
 
 
 
-@app.post("/training")
-def training(payload: TrainingPayload):
-    series: TimeSeriesData = payload.series
-    cfg: PaquetComplet = payload.config
+@app.post("/train_full")
+def training(payload: PaquetComplet):
+#     series: TimeSeriesData = 
+# En attendant la requête entre serveur de data on implémente en dur dans le code la serie temporelle
+    series = TimeSeriesData(
+    timestamps=[
+        datetime.fromisoformat("2025-01-01T00:00:00"),
+        datetime.fromisoformat("2025-01-01T01:00:00"),
+        datetime.fromisoformat("2025-01-01T02:00:00"),
+        datetime.fromisoformat("2025-01-01T03:00:00"),
+        datetime.fromisoformat("2025-01-01T04:00:00"),
+        datetime.fromisoformat("2025-01-01T05:00:00"),
+        datetime.fromisoformat("2025-01-01T06:00:00"),
+        datetime.fromisoformat("2025-01-01T07:00:00"),
+        datetime.fromisoformat("2025-01-01T08:00:00"),
+        datetime.fromisoformat("2025-01-01T09:00:00"),
+        datetime.fromisoformat("2025-01-01T10:00:00"),
+        datetime.fromisoformat("2025-01-01T11:00:00"),
+    ],
+    values=[12.4, 12.7, 13.0, 12.9, 13.2, 13.5, 13.4, 13.7, 14.0, 13.9, 14.2, 14.5]
+)
+    
+
+
+    cfg: PaquetComplet = payload
 
     # ----- TEMPO (mêmes noms) -----
     horizon = 1
@@ -192,7 +217,8 @@ def training(payload: TrainingPayload):
     nb_couches = 2
     dropout_rate = 0.0
     activation = "relu"
-    use_batchnorm = False  # pas dans tes classes actuellement
+    use_batchnorm = False
+    
 
     if cfg and cfg.Parametres_archi_reseau:
         if cfg.Parametres_archi_reseau.hidden_size is not None:
