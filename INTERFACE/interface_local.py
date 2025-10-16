@@ -63,16 +63,12 @@ Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 
 # Créer la fenêtre principale
 class Fenetre(tk.Tk):
-    # bouton: tk.Button(self.fenetre, text="Texte du bouton", command=self.fct_bouton)
-    # entrée int: tk.Entry(self.fenetre, validate="key", validatecommand=(self.fenetre.register(self.validate_int), "%P"))
     def __init__(self):
         tk.Tk.__init__(self)
-
 
         self.title("Paramétrage du Réseau de Neuronnes")
         self.geometry("500x1")  # largeur fixe, hauteur minimale
 
-        
         self.cadre = tk.Frame(self, borderwidth=30)
         self.cadre.pack(fill="both", expand="yes")
         self.CadreParams = tk.LabelFrame(self.cadre, text="Paramètres", borderwidth=3)
@@ -146,9 +142,6 @@ class Fenetre(tk.Tk):
         fenetre_params_temporels = tk.Toplevel(self)
         fenetre_params_temporels.title("Paramètres temporels et de découpage de données")
         fenetre_params_temporels.geometry("")
-
-        # Message d'accueil
-        # tk.Label(self.fenetre_params_temporels, text="Bonjour, Maxime !", font=("Helvetica", 12, "bold")).pack(pady=10)
 
         # Cadre principal
         cadre = tk.LabelFrame(fenetre_params_temporels, text="Configuration", padx=10, pady=10)
@@ -279,16 +272,13 @@ class Fenetre(tk.Tk):
     def Params_choix_loss_fct(self):
         # Variables pour les paramètres
         Params_choix_loss_fct_fonction_perte = tk.StringVar(value=Parametres_choix_loss_fct.fonction_perte) # fonction MSE/MAE/Huber
-        #Params_choix_loss_fct_params = tk.StringVar(value=Parametres_choix_loss_fct.params) # paramètres de la fonction perte (dépend de la fonction)
 
         def Save_quit():
             Parametres_choix_loss_fct.fonction_perte = Params_choix_loss_fct_fonction_perte.get()
-            #Parametres_choix_loss_fct.params = Params_choix_loss_fct_params.get()
             fenetre_params_choix_loss_fct.destroy()
         
         def Quit():
             Params_choix_loss_fct_fonction_perte.set(Parametres_choix_loss_fct.fonction_perte)
-            #Params_choix_loss_fct_params.set(Parametres_choix_loss_fct.params)
             fenetre_params_choix_loss_fct.destroy()
         
         # Fenêtre secondaire
@@ -303,11 +293,6 @@ class Fenetre(tk.Tk):
         # Ligne 1 : Choix de la fonction perte
         tk.Label(cadre, text="Choix de la fonction perte :").grid(row=0, column=0, sticky="w", pady=5)
         ttk.Combobox(cadre, values =["MSE","MAE","Huber"],textvariable=Params_choix_loss_fct_fonction_perte,state="readonly").grid(row=0, column=1, pady=5)
-
-        # Ligne 2 : Paramètres de la fonction perte (si applicable)
-        # tk.Label(cadre, text="Paramètres de la fonction perte :").grid(row=1, column=0, sticky="w", pady=5)
-        # tk.Entry(cadre, textvariable=Params_choix_loss_fct_params).grid(row=1, column=1, pady=5)
-
 
         # Boutons
         bouton_frame = tk.Frame(fenetre_params_choix_loss_fct)
@@ -461,21 +446,8 @@ class Fenetre(tk.Tk):
         bouton_frame.pack(pady=10)
         tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
         tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-        
+
         fenetre_params_visualisation_suivi.mainloop()
-
-    
-
-
-
-
-
-
-
-
-
-
-
 
 
     # Fonctions utilitaires
@@ -513,5 +485,3 @@ class Fenetre(tk.Tk):
 # Lancer la boucle principale
 fenetree = Fenetre()
 fenetree.mainloop()
-
-#print(Parametres_temporels.__dict__)
