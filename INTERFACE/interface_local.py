@@ -2,6 +2,7 @@ import tkinter as tk
 from tkcalendar import Calendar
 from datetime import datetime
 import requests, json
+from tkinter import ttk, messagebox
 
 URL = "http://138.231.149.81:8000" 
 
@@ -89,8 +90,6 @@ class Fenetre(tk.Tk):
         self.update_idletasks()
         self.geometry(f"500x{self.winfo_reqheight()}")
 
-
-    
     # Fonctions des fenêtres de paramétrage
     
     def Params_temporels(self):
@@ -187,23 +186,298 @@ class Fenetre(tk.Tk):
         fenetre_params_temporels.mainloop()
 
     def Params_choix_reseau_neurones(self):
-        pass
+        # Variables pour les paramètres
+        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele) # str ['RNN','LSTM','GRU','CNN']
+
+        def Save_quit():
+            Parametres_choix_reseau_neurones.modele = Params_choix_reseau_neurones_modele.get()
+            fenetre_params_choix_reseau_neurones.destroy()
+        
+        def Quit():
+            Params_choix_reseau_neurones_modele.set(Parametres_choix_reseau_neurones.modele)
+            fenetre_params_choix_reseau_neurones.destroy()
+
+        # Fenêtre secondaire
+        fenetre_params_choix_reseau_neurones = tk.Toplevel(self)
+        fenetre_params_choix_reseau_neurones.title("Paramètres de Choix du réseau de neurones")
+        fenetre_params_choix_reseau_neurones.geometry("")
+        
+        # Cadre principal
+        cadre = tk.LabelFrame(fenetre_params_choix_reseau_neurones, text="Configuration", padx=10, pady=10)
+        cadre.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Ligne 1 : Horizon temporel
+        tk.Label(cadre, text="Choix du modèle :").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Combobox(cadre, values =["RNN","LSTM","GRU","CNN"],textvariable=Params_choix_reseau_neurones_modele,state="readonly").grid(row=0, column=1, pady=5)
+
+        # Boutons
+        bouton_frame = tk.Frame(fenetre_params_choix_reseau_neurones)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+        
+        fenetre_params_choix_reseau_neurones.mainloop()
     
     def Params_archi_reseau(self):
-        pass
+        # Variables pour les paramètres
+        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
+        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
+        Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
+        Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
+
+        def Save_quit():
+            Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
+            Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
+            Parametres_archi_reseau.dropout_rate = Params_archi_reseau_dropout_rate.get()
+            Parametres_archi_reseau.fonction_activation = Params_archi_reseau_fonction_activation.get()
+            fenetre_params_archi_reseau.destroy()
+        
+        def Quit():
+            Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
+            Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
+            Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau.dropout_rate)
+            Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau.fonction_activation)
+            fenetre_params_archi_reseau.destroy()
+
+        # Fenêtre secondaire
+        fenetre_params_archi_reseau = tk.Toplevel(self)
+        fenetre_params_archi_reseau.title("Paramètres de l'architechture du réseau de neurones")
+        fenetre_params_archi_reseau.geometry("")
+        
+        # Cadre principal
+        cadre = tk.LabelFrame(fenetre_params_archi_reseau, text="Configuration", padx=10, pady=10)
+        cadre.pack(padx=10, pady=10, fill="both", expand=True)
+
+
+        # Validation d'entiers
+        vcmd = (fenetre_params_archi_reseau.register(self.validate_int_fct), "%P")
+
+        # Ligne 1 : Nombre de couches de neurones
+        tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
+
+        # Ligne 2 : Taille des couches cachées
+        tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
+
+        # Ligne 3 : Taux de dropout
+        tk.Label(cadre, text="Taux de dropout (0.0 - 0.9) :").grid(row=2, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_archi_reseau_dropout_rate).grid(row=2, column=1, pady=5)
+
+        # Ligne 4 : Fonction d'activation
+        tk.Label(cadre, text="Fonction d'activation :").grid(row=3, column=0, sticky="w", pady=5)
+        ttk.Combobox(cadre, values =["ReLU","GELU","tanh"],textvariable=Params_archi_reseau_fonction_activation,state="readonly").grid(row=3, column=1, pady=5)
+
+        # Boutons
+        bouton_frame = tk.Frame(fenetre_params_archi_reseau)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+        
+        fenetre_params_archi_reseau.mainloop()
     
     def Params_choix_loss_fct(self):
-        pass
+        # Variables pour les paramètres
+        Params_choix_loss_fct_fonction_perte = tk.StringVar(value=Parametres_choix_loss_fct.fonction_perte) # fonction MSE/MAE/Huber
+        #Params_choix_loss_fct_params = tk.StringVar(value=Parametres_choix_loss_fct.params) # paramètres de la fonction perte (dépend de la fonction)
+
+        def Save_quit():
+            Parametres_choix_loss_fct.fonction_perte = Params_choix_loss_fct_fonction_perte.get()
+            #Parametres_choix_loss_fct.params = Params_choix_loss_fct_params.get()
+            fenetre_params_choix_loss_fct.destroy()
+        
+        def Quit():
+            Params_choix_loss_fct_fonction_perte.set(Parametres_choix_loss_fct.fonction_perte)
+            #Params_choix_loss_fct_params.set(Parametres_choix_loss_fct.params)
+            fenetre_params_choix_loss_fct.destroy()
+        
+        # Fenêtre secondaire
+        fenetre_params_choix_loss_fct = tk.Toplevel(self)
+        fenetre_params_choix_loss_fct.title("Paramètres de Choix de la fonction perte (loss)")
+        fenetre_params_choix_loss_fct.geometry("")
+
+        # Cadre principal
+        cadre = tk.LabelFrame(fenetre_params_choix_loss_fct, text="Configuration", padx=10, pady=10)
+        cadre.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Ligne 1 : Choix de la fonction perte
+        tk.Label(cadre, text="Choix de la fonction perte :").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Combobox(cadre, values =["MSE","MAE","Huber"],textvariable=Params_choix_loss_fct_fonction_perte,state="readonly").grid(row=0, column=1, pady=5)
+
+        # Ligne 2 : Paramètres de la fonction perte (si applicable)
+        # tk.Label(cadre, text="Paramètres de la fonction perte :").grid(row=1, column=0, sticky="w", pady=5)
+        # tk.Entry(cadre, textvariable=Params_choix_loss_fct_params).grid(row=1, column=1, pady=5)
+
+
+        # Boutons
+        bouton_frame = tk.Frame(fenetre_params_choix_loss_fct)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+
+        fenetre_params_choix_loss_fct.mainloop()
     
     def Params_optimisateur(self):
-        pass
+        # Variables pour les paramètres
+        Params_optimisateur_optimisateur = tk.StringVar(value=Parametres_optimisateur.optimisateur) # fonction Adam/SGD/RMSprop/Adagrad/Adadelta
+        Params_optimisateur_learning_rate = tk.DoubleVar(value=Parametres_optimisateur.learning_rate) # float
+        Params_optimisateur_decroissance = tk.DoubleVar(value=Parametres_optimisateur.decroissance) # float
+        Params_optimisateur_scheduler = tk.StringVar(value=Parametres_optimisateur.scheduler) # fonction Plateau/Cosine/OneCycle/None
+        Params_optimisateur_patience = tk.IntVar(value=Parametres_optimisateur.patience) # int
+
+        def Save_quit():
+            Parametres_optimisateur.optimisateur = Params_optimisateur_optimisateur.get()
+            Parametres_optimisateur.learning_rate = Params_optimisateur_learning_rate.get()
+            Parametres_optimisateur.decroissance = Params_optimisateur_decroissance.get()
+            Parametres_optimisateur.scheduler = Params_optimisateur_scheduler.get()
+            Parametres_optimisateur.patience = Params_optimisateur_patience.get()
+            fenetre_params_optimisateur.destroy()
+        
+        def Quit():
+            Params_optimisateur_optimisateur.set(Parametres_optimisateur.optimisateur)
+            Params_optimisateur_learning_rate.set(Parametres_optimisateur.learning_rate)
+            Params_optimisateur_decroissance.set(Parametres_optimisateur.decroissance)
+            Params_optimisateur_scheduler.set(Parametres_optimisateur.scheduler)
+            Params_optimisateur_patience.set(Parametres_optimisateur.patience)
+            fenetre_params_optimisateur.destroy()
+
+        # Fenêtre secondaire
+        fenetre_params_optimisateur = tk.Toplevel(self)
+        fenetre_params_optimisateur.title("Paramètres de l'Optimisation")
+        fenetre_params_optimisateur.geometry("")
+        
+        # Cadre principal
+        cadre = tk.LabelFrame(fenetre_params_optimisateur, text="Configuration", padx=10, pady=10)
+        cadre.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Validation d'entiers
+        vcmd_int = (fenetre_params_optimisateur.register(self.validate_int_fct), "%P")
+
+        # Ligne 1 : Choix de l'optimisateur
+        tk.Label(cadre, text="Choix de l'optimisateur :").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Combobox(cadre, values =["Adam","SGD","RMSprop","Adagrad","Adadelta"],textvariable=Params_optimisateur_optimisateur,state="readonly").grid(row=0, column=1, pady=5)
+
+        # Ligne 2 : Taux d'apprentissage
+        tk.Label(cadre, text="Taux d'apprentissage :").grid(row=1, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_optimisateur_learning_rate).grid(row=1, column=1, pady=5)
+
+        # Ligne 3 : Décroissance
+        tk.Label(cadre, text="Décroissance :").grid(row=2, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_optimisateur_decroissance).grid(row=2, column=1, pady=5)
+
+        # Ligne 4 : Scheduler
+        tk.Label(cadre, text="Scheduler :").grid(row=3, column=0, sticky="w", pady=5)
+        ttk.Combobox(cadre, values =["Plateau","Cosine","OneCycle","None"],textvariable=Params_optimisateur_scheduler,state="readonly").grid(row=3, column=1, pady=5)
+
+        # Ligne 5 : Patience
+        tk.Label(cadre, text="Patience (int) :").grid(row=4, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_optimisateur_patience, validate="key", validatecommand=vcmd_int).grid(row=4, column=1, pady=5)
+
+        # Boutons
+        bouton_frame = tk.Frame(fenetre_params_optimisateur)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+
+        fenetre_params_optimisateur.mainloop()
     
     def Params_entrainement(self):
-        pass
+        # Variables pour les paramètres
+        Params_entrainement_nb_epochs = tk.IntVar(value=Parametres_entrainement.nb_epochs) # int
+        Params_entrainement_batch_size = tk.IntVar(value=Parametres_entrainement.batch_size) # int
+        Params_entrainement_clip_grandient = tk.DoubleVar(value=Parametres_entrainement.clip_grandient if Parametres_entrainement.clip_grandient is not None else 0.0) # float
+
+        def Save_quit():
+            Parametres_entrainement.nb_epochs = Params_entrainement_nb_epochs.get()
+            Parametres_entrainement.batch_size = Params_entrainement_batch_size.get()
+            Parametres_entrainement.clip_grandient = Params_entrainement_clip_grandient.get() if Params_entrainement_clip_grandient.get() != 0.0 else None
+            fenetre_params_entrainement.destroy()
+        
+        def Quit():
+            Params_entrainement_nb_epochs.set(Parametres_entrainement.nb_epochs)
+            Params_entrainement_batch_size.set(Parametres_entrainement.batch_size)
+            Params_entrainement_clip_grandient.set(Parametres_entrainement.clip_grandient if Parametres_entrainement.clip_grandient is not None else 0.0)
+            fenetre_params_entrainement.destroy()
+
+        # Fenêtre secondaire
+        fenetre_params_entrainement = tk.Toplevel(self)
+        fenetre_params_entrainement.title("Paramètres d'Entrainement")
+        fenetre_params_entrainement.geometry("")
+        
+        # Cadre principal
+        cadre = tk.LabelFrame(fenetre_params_entrainement, text="Configuration", padx=10, pady=10)
+        cadre.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Validation d'entiers
+        vcmd_int = (fenetre_params_entrainement.register(self.validate_int_fct), "%P")
+
+        # Ligne 1 : Nombre d'epochs
+        tk.Label(cadre, text="Nombre d'epochs:").grid(row=0, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_entrainement_nb_epochs, validate="key", validatecommand=vcmd_int).grid(row=0, column=1, pady=5)
+
+        # Ligne 2 : Taille du batch
+        tk.Label(cadre, text="Taille du batch:").grid(row=1, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_entrainement_batch_size, validate="key", validatecommand=vcmd_int).grid(row=1, column=1, pady=5)
+
+        # Ligne 3 : Clip des gradients
+        tk.Label(cadre, text="Clip des gradients (0.0 pour None):").grid(row=2, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_entrainement_clip_grandient).grid(row=2, column=1, pady=5)
+
+        # Boutons
+        bouton_frame = tk.Frame(fenetre_params_entrainement)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+
+        fenetre_params_entrainement.mainloop()
     
     def Params_visualisation_suivi(self):
-        pass
+        # Variables pour les paramètres
+        Params_visualisation_suivi_metriques = tk.StringVar(value=",".join(Parametres_visualisation_suivi.metriques)) # list de fonctions ['MSE','MAE'...]
+
+        def Save_quit():
+            Parametres_visualisation_suivi.metriques = [m.strip() for m in Params_visualisation_suivi_metriques.get().split(",") if m.strip()]
+            fenetre_params_visualisation_suivi.destroy()
+        
+        def Quit():
+            Params_visualisation_suivi_metriques.set(",".join(Parametres_visualisation_suivi.metriques))
+            fenetre_params_visualisation_suivi.destroy()
+        
+        # Fenêtre secondaire
+        fenetre_params_visualisation_suivi = tk.Toplevel(self)
+        fenetre_params_visualisation_suivi.title("Paramètres de Visualisation et Suivi")
+        fenetre_params_visualisation_suivi.geometry("")
+        
+        # Cadre principal
+        cadre = tk.LabelFrame(fenetre_params_visualisation_suivi, text="Configuration", padx=10, pady=10)
+        cadre.pack(padx=10, pady=10, fill="both", expand=True)
+        
+        # Ligne 1 : Choix des métriques
+        tk.Label(cadre, text="Choix des métriques (séparées par des virgules) :").grid(row=0, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_visualisation_suivi_metriques).grid(row=0, column=1, pady=5)
+        
+        # Boutons
+        bouton_frame = tk.Frame(fenetre_params_visualisation_suivi)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+        
+        fenetre_params_visualisation_suivi.mainloop()
+
     
+
+
+
+
+
+
+
+
+
+
+
+
+
     # Fonctions utilitaires
 
     def validate_int_fct(self, text):
