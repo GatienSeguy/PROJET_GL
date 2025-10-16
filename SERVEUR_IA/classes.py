@@ -66,7 +66,7 @@ class Parametres_archi_reseau(BaseModel):
 
 ##### Nouvelles calsses
 class Parametres_choix_reseau_neurones(BaseModel):
-    modele: Optional[Literal["RNN", "LSTM", "GRU", "CNN"]] = Field(None, description="Type de modèle choisi")
+    modele: Optional[Literal["MLP", "LSTM", "GRU", "CNN"]] = Field(None, description="Type de modèle choisi")
 
 
 class Parametres_choix_loss_fct(BaseModel):
@@ -77,7 +77,7 @@ class Parametres_optimisateur(BaseModel):
     optimisateur: Optional[Literal["Adam", "SGD", "RMSprop", "Adagrad", "Adadelta"]] = Field(None)
     learning_rate: Optional[float] = Field(None)
     decroissance: Optional[float] = Field(None)
-    scheduler: Optional[Literal["Plateau", "Cosine", "OneCycle", "None"]] = Field(None)
+    scheduler: Optional[Literal["Plateau", "Cosine", "OneCycle"]] = Field(None)
     patience: Optional[int] = Field(None)
 
 class Parametres_entrainement(BaseModel):
