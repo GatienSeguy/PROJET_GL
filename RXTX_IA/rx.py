@@ -112,7 +112,7 @@ payload4={
       "portion_decoupage": 0.8
     },
     "Parametres_choix_reseau_neurones": {
-      "modele": "RNN"
+      "modele": "MLP"
     },
     "Parametres_archi_reseau": {
       "nb_couches": 2,
