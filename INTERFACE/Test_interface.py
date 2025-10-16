@@ -1,20 +1,7 @@
-import tkinter as tk
+class FFF():
+    def __init__(self):
+        self.a=1
+        self._a=2
 
-import tkinter as tk
-
-
-# Créer la fenêtre principale
-fenetre = tk.Tk()
-fenetre.title("Fenêtre Tkinter")
-fenetre.geometry("300x200")  # largeur x hauteur
-
-# Ajouter un label
-label = tk.Label(fenetre, text="Bonjour, Maxime !")
-label.pack(pady=20)
-
-# Ajouter un bouton pour fermer
-bouton_quitter = tk.Button(fenetre, text="Quitter", command=fenetre.quit)
-bouton_quitter.pack()
-
-# Lancer la boucle principale
-fenetre.mainloop()
+f=FFF()
+print(f.__dict__)
