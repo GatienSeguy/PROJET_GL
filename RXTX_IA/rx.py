@@ -10,9 +10,9 @@ payload = {
     "freq": "H"
 }
 
-r = requests.post(f"{URL}/tempoconfig", json=payload)
-print("POST /tempoconfig ->", r.status_code)
-print(json.dumps(r.json(), indent=2))
+# r = requests.post(f"{URL}/tempoconfig", json=payload)
+# print("POST /tempoconfig ->", r.status_code)
+# print(json.dumps(r.json(), indent=2))
 
 
 payload2 = {
@@ -40,6 +40,105 @@ payload2 = {
 } 
 
 
-r = requests.post(f"{URL}/train_full", json=payload2)
-print("POST /train_full ->", r.status_code)
+# r = requests.post(f"{URL}/train_full", json=payload2)
+# print("POST /train_full ->", r.status_code)
+# print(json.dumps(r.json(), indent=2))
+
+
+payload3={
+  "series": {
+    "timestamps": [
+      "2025-01-01T00:00:00",
+      "2025-01-01T01:00:00",
+      "2025-01-01T02:00:00",
+      "2025-01-01T03:00:00",
+      "2025-01-01T04:00:00",
+      "2025-01-01T05:00:00",
+      "2025-01-01T06:00:00",
+      "2025-01-01T07:00:00",
+      "2025-01-01T08:00:00",
+      "2025-01-01T09:00:00",
+      "2025-01-01T10:00:00",
+      "2025-01-01T11:00:00"
+    ],
+    "values": [12.4, 12.7, 13.0, 12.9, 13.2, 13.5, 13.4, 13.7, 14.0, 13.9, 14.2, 14.5]
+  },
+  "config": {
+    "Parametres_temporels": {
+      "horizon": 1,
+      "dates": ["2025-01-01", "2025-01-01"],
+      "pas_temporel": 60,
+      "portion_decoupage": 0.8
+    },
+    "Parametres_choix_reseau_neurones": {
+      "modele": "RNN"
+    },
+    "Parametres_archi_reseau": {
+      "nb_couches": 2,
+      "hidden_size": 64,
+      "dropout_rate": 0.0,
+      "fonction_activation": "ReLU"
+    },
+    "Parametres_choix_loss_fct": {
+      "fonction_perte": "MSE"
+    },
+    "Parametres_optimisateur": {
+      "optimisateur": "Adam",
+      "learning_rate": 0.001,
+      "decroissance": 0.0,
+      "scheduler": "None",
+      "patience": 5
+    },
+    "Parametres_entrainement": {
+      "nb_epochs": 1000,
+      "batch_size": 4
+    },
+    "Parametres_visualisation_suivi": {
+      "metriques": ["loss"]
+    }
+  }
+}
+
+# r = requests.post(f"{URL}/training", json=payload3)
+# print("POST /training ->", r.status_code)
+# print(json.dumps(r.json(), indent=2))
+
+
+payload4={
+    "Parametres_temporels": {
+      "horizon": 1,
+      "dates": ["2025-01-01", "2025-01-01"],
+      "pas_temporel": 60,
+      "portion_decoupage": 0.8
+    },
+    "Parametres_choix_reseau_neurones": {
+      "modele": "RNN"
+    },
+    "Parametres_archi_reseau": {
+      "nb_couches": 2,
+      "hidden_size": 64,
+      "dropout_rate": 0.0,
+      "fonction_activation": "ReLU"
+    },
+    "Parametres_choix_loss_fct": {
+      "fonction_perte": "MSE"
+    },
+    "Parametres_optimisateur": {
+      "optimisateur": "Adam",
+      "learning_rate": 0.001,
+      "decroissance": 0.0,
+      "scheduler": "None",
+      "patience": 5
+    },
+    "Parametres_entrainement": {
+      "nb_epochs": 1000,
+      "batch_size": 4
+    },
+    "Parametres_visualisation_suivi": {
+      "metriques": ["loss"]
+    }
+}
+
+r = requests.post(f"{URL}/train_full", json=payload4)
+print("POST /training ->", r.status_code)
 print(json.dumps(r.json(), indent=2))
