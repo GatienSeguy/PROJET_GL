@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-# from fastapi.responses import StreamingResponse
-# import json
+from fastapi.responses import StreamingResponse
+import json
 
 from typing import Optional, Tuple, Literal, List
 from pydantic import BaseModel, Field, conint, confloat
@@ -210,7 +210,9 @@ def training(payload: PaquetComplet):
     # ----- (X,y) -----
     X, y = build_supervised_tensors(series.values, window_len=window_len, horizon=horizon)
     if X.numel() == 0:
-        return {"status": "ERROR", "message": "Impossible de construire (X,y) (série trop courte ou valeurs manquantes)."}
+        def err():
+            yield f"data: {json.dumps({'type':'error','message':'(X,y) vide'})}\n\n"
+        return StreamingResponse(err(), media_type="text/event-stream")
 
     # ----- ARCHI (mêmes noms que Parametres_archi_reseau) -----
     hidden_size = 128
@@ -267,49 +269,26 @@ def training(payload: PaquetComplet):
     device = "cpu"
 
     # ----- Entraînement -----
-    model, last_loss = train_simple(
-        X, y,
-        hidden_size=hidden_size,
-        num_layers=nb_couches,        # <- mapping direct du même nom logique
-        dropout_rate=dropout_rate,
-        activation=activation,
-        use_batchnorm=use_batchnorm,
-        loss_name=loss_name,
-        optimizer_name=optimizer_name,
-        learning_rate=learning_rate,
-        weight_decay=weight_decay,
-        batch_size=batch_size,
-        epochs=epochs,
-        device=device,
-    )
+    def event_gen():
+         for msg in train_simple(
+            X, y,
+            hidden_size=hidden_size,
+            num_layers=nb_couches,        # <- mapping direct du même nom logique
+            dropout_rate=dropout_rate,
+            activation=activation,
+            use_batchnorm=use_batchnorm,
+            loss_name=loss_name,
+            optimizer_name=optimizer_name,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            batch_size=batch_size,
+            epochs=epochs,
+            device=device,
+        ):
+            # chaque msg est un dict {"epoch": i, "avg_loss": ...} puis {"done": True, ...}
+            yield f"data: {json.dumps(msg)}\n\n"
 
-    # ----- Sauvegarde -----
-    run_dir = f"./mlp_simple_run_{int(time.time())}"
-    os.makedirs(run_dir, exist_ok=True)
-    save_path = f"{run_dir}/model.pt"
-    torch.save({"state_dict": model.state_dict()}, save_path)
-
-    return {
-        "status": "OK",
-        "message": "Entraînement terminé (boucle simple).",
-        "final_loss": float(last_loss) if last_loss is not None else None,
-        "saved_model": save_path,
-        "details": {
-            "X_shape": list(X.shape),
-            "y_shape": list(y.shape),
-            "window_len": window_len,
-            "horizon": horizon,
-            "hidden_size": hidden_size,
-            "nb_couches": nb_couches,
-            "dropout_rate": dropout_rate,
-            "fonction_activation": cfg.Parametres_archi_reseau.fonction_activation if (cfg and cfg.Parametres_archi_reseau and cfg.Parametres_archi_reseau.fonction_activation) else None,
-            "optimisateur": optimizer_name,
-            "learning_rate": learning_rate,
-            "decroissance": weight_decay,
-            "nb_epochs": epochs,
-            "batch_size": batch_size,
-        }
-    }
+    return StreamingResponse(event_gen(), media_type="text/event-stream")
 
 
 @app.get("/")
