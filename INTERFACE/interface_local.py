@@ -4,7 +4,8 @@ from datetime import datetime
 import requests, json
 from tkinter import ttk, messagebox
 
-URL = "http://138.231.149.81:8000" 
+#URL = "http://138.231.149.81:8000"
+URL = "http://192.168.27.66:8000" 
 
 # Paramètres et variables
 
