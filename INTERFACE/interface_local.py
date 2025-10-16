@@ -69,8 +69,9 @@ class Fenetre(tk.Tk):
 
 
         self.title("Paramétrage du Réseau de Neuronnes")
-        self.geometry("500x800")  # largeur x hauteur
-        #self.cadre = tk.Frame(self, borderwidth=50)
+        self.geometry("500x1")  # largeur fixe, hauteur minimale
+
+        
         self.cadre = tk.Frame(self, borderwidth=30)
         self.cadre.pack(fill="both", expand="yes")
         self.CadreParams = tk.LabelFrame(self.cadre, text="Paramètres", borderwidth=3)
@@ -85,33 +86,67 @@ class Fenetre(tk.Tk):
         tk.Button(self.cadre, text="Envoyer la configuration au serveur", height=3, command=self.EnvoyerConfig).pack(fill="both",pady=20,padx=50)
         tk.Button(self.cadre, text="Quitter", command=self.destroy).pack(fill="both",pady=20,padx=50)
 
+        self.update_idletasks()
+        self.geometry(f"500x{self.winfo_reqheight()}")
 
 
-
-        # Variables pour les paramètres temporels
-        self.Params_temporels_horizon = tk.IntVar()
-        self.Params_temporels_horizon.set(Parametres_temporels.horizon if Parametres_temporels.horizon is not None else 0)
-
-        self.Params_temporels_dates = tk.StringVar()
-        self.Params_temporels_dates.set(Parametres_temporels.dates)
-
-        self.date_debut_str = tk.StringVar(value=Parametres_temporels.dates[0])
-        self.date_fin_str = tk.StringVar(value=Parametres_temporels.dates[1])
-
-
-        self.Params_temporels_pas_temporel = tk.IntVar()
-        self.Params_temporels_pas_temporel.set(Parametres_temporels.pas_temporel if Parametres_temporels.pas_temporel is not None else 0)
-        self.Params_temporels_portion_decoupage = tk.IntVar()
-        self.Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100 if Parametres_temporels.portion_decoupage is not None else 0)
     
     # Fonctions des fenêtres de paramétrage
     
     def Params_temporels(self):
+        # Variables pour les paramètres temporels
+        Params_temporels_horizon = tk.IntVar(value=Parametres_temporels.horizon)
+        date_debut_str = tk.StringVar(value=Parametres_temporels.dates[0])
+        date_fin_str = tk.StringVar(value=Parametres_temporels.dates[1])
+        Params_temporels_pas_temporel = tk.IntVar(value=Parametres_temporels.pas_temporel)
+        Params_temporels_portion_decoupage = tk.IntVar(value=Parametres_temporels.portion_decoupage*100)
+
+        def ouvrir_calendrier_debut():
+            top = tk.Toplevel(self)
+            top.title("Sélectionner la date de début")
+            try:
+                date_obj = datetime.strptime(date_debut_str.get(), "%Y-%m-%d")
+            except ValueError:
+                date_obj = datetime.today()
+            cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',
+                        year=date_obj.year, month=date_obj.month, day=date_obj.day)
+            cal.pack(padx=10, pady=10)
+            tk.Button(top, text="Valider", command=lambda: (date_debut_str.set(cal.get_date()), top.destroy())).pack(pady=10)
+
+        # Fonction locale : ouvrir calendrier fin
+        def ouvrir_calendrier_fin():
+            top = tk.Toplevel(self)
+            top.title("Sélectionner la date de fin")
+            try:
+                date_obj = datetime.strptime(date_fin_str.get(), "%Y-%m-%d")
+            except ValueError:
+                date_obj = datetime.today()
+            cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',
+                        year=date_obj.year, month=date_obj.month, day=date_obj.day)
+            cal.pack(padx=10, pady=10)
+            tk.Button(top, text="Valider", command=lambda: (date_fin_str.set(cal.get_date()), top.destroy())).pack(pady=10)
+
+        def Save_quit():
+            Parametres_temporels.horizon = Params_temporels_horizon.get()
+            Parametres_temporels.pas_temporel = Params_temporels_pas_temporel.get()
+            Parametres_temporels.portion_decoupage = Params_temporels_portion_decoupage.get() / 100
+            Parametres_temporels.dates = [date_debut_str.get(), date_fin_str.get()]
+            fenetre_params_temporels.destroy()
+        
+        def Quit():
+            Params_temporels_horizon.set(Parametres_temporels.horizon)
+            date_debut_str.set(Parametres_temporels.dates[0])
+            date_fin_str.set(value=Parametres_temporels.dates[1])
+            Params_temporels_pas_temporel.set(Parametres_temporels.pas_temporel)
+            Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100)
+        
+            fenetre_params_temporels.destroy()
+
 
         # Fenêtre secondaire
         fenetre_params_temporels = tk.Toplevel(self)
         fenetre_params_temporels.title("Paramètres temporels et de découpage de données")
-        fenetre_params_temporels.geometry("360x300")
+        fenetre_params_temporels.geometry("")
 
         # Message d'accueil
         # tk.Label(self.fenetre_params_temporels, text="Bonjour, Maxime !", font=("Helvetica", 12, "bold")).pack(pady=10)
@@ -125,79 +160,31 @@ class Fenetre(tk.Tk):
 
         # Ligne 1 : Horizon temporel
         tk.Label(cadre, text="Horizon temporel (int) :").grid(row=0, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=self.Params_temporels_horizon, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
+        tk.Entry(cadre, textvariable=Params_temporels_horizon, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
 
         # Ligne 2 : Pas temporel
         tk.Label(cadre, text="Pas temporel (int) :").grid(row=1, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=self.Params_temporels_pas_temporel, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
+        tk.Entry(cadre, textvariable=Params_temporels_pas_temporel, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
 
         # Ligne 3 : Portion découpage
         tk.Label(cadre, text="Portion découpage (%) :").grid(row=2, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=self.Params_temporels_portion_decoupage, validate="key", validatecommand=vcmd).grid(row=2, column=1, pady=5)
+        tk.Entry(cadre, textvariable=Params_temporels_portion_decoupage, validate="key", validatecommand=vcmd).grid(row=2, column=1, pady=5)
 
         # Ligne 4 : Boutons pour sélectionner les dates
         tk.Label(cadre, text="Date de début :").grid(row=3, column=0, sticky="w", pady=5)
-        tk.Button(cadre, textvariable=self.date_debut_str, command=self.ouvrir_calendrier_debut).grid(row=3, column=1, pady=5)
+        tk.Button(cadre, textvariable=date_debut_str, command=ouvrir_calendrier_debut).grid(row=3, column=1, pady=5)
 
         tk.Label(cadre, text="Date de fin :").grid(row=4, column=0, sticky="w", pady=5)
-        tk.Button(cadre, textvariable=self.date_fin_str, command=self.ouvrir_calendrier_fin).grid(row=4, column=1, pady=5)
+        tk.Button(cadre, textvariable=date_fin_str, command=ouvrir_calendrier_fin).grid(row=4, column=1, pady=5)
 
 
         # Boutons
         bouton_frame = tk.Frame(fenetre_params_temporels)
         bouton_frame.pack(pady=10)
-
-        def afficher():
-            Parametres_temporels.horizon = self.Params_temporels_horizon.get()
-            Parametres_temporels.pas_temporel = self.Params_temporels_pas_temporel.get()
-            Parametres_temporels.portion_decoupage = self.Params_temporels_portion_decoupage.get() / 100
-            Parametres_temporels.dates = [self.date_debut_str.get(), self.date_fin_str.get()]
-            fenetre_params_temporels.destroy()
-
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=afficher).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=fenetre_params_temporels.destroy).grid(row=0, column=1, padx=10)
-
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+        
         fenetre_params_temporels.mainloop()
-    
-
-
-    def ouvrir_calendrier_debut(self):
-        top = tk.Toplevel(self)
-        top.title("Sélectionner la date de début")
-        try:
-            date_obj = datetime.strptime(self.date_fin_str.get(), "%Y-%m-%d")
-        except ValueError:
-            date_obj = datetime.today()
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',year=date_obj.year,month=date_obj.month,day=date_obj.day)
-        cal.pack(padx=10, pady=10)
-
-        def valider():
-            self.date_debut_str.set(cal.get_date())
-            top.destroy()
-
-        tk.Button(top, text="Valider", command=valider).pack(pady=10)
-
-    def ouvrir_calendrier_fin(self):
-        top = tk.Toplevel(self)
-        top.title("Sélectionner la date de fin")
-        try:
-            date_obj = datetime.strptime(self.date_fin_str.get(), "%Y-%m-%d")
-        except ValueError:
-            date_obj = datetime.today()
-
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',year=date_obj.year,month=date_obj.month,day=date_obj.day)
-        cal.pack(padx=10, pady=10)
-
-        def valider():
-            self.date_fin_str.set(cal.get_date())
-            top.destroy()
-
-        tk.Button(top, text="Valider", command=valider).pack(pady=10)
-
-
-
-
-
 
     def Params_choix_reseau_neurones(self):
         pass
@@ -231,13 +218,23 @@ class Fenetre(tk.Tk):
         self.config_totale["Parametres_optimisateur"]=Parametres_optimisateur.__dict__
         self.config_totale["Parametres_entrainement"]=Parametres_entrainement.__dict__
         self.config_totale["Parametres_visualisation_suivi"]=Parametres_visualisation_suivi.__dict__
+        print(self.config_totale)
         return self.config_totale
     
     def EnvoyerConfig(self):
         self.payload=self.Formatter_JSON()
-        r = requests.post(f"{URL}/train_full", json=self.payload)
-        print("POST /train_full ->", r.status_code)
-        print(json.dumps(r.json(), indent=2))
+        with requests.post(f"{URL}/train_full", json=self.payload, stream=True) as r:
+            r.raise_for_status()
+            print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
+            for line in r.iter_lines():
+                if not line:
+                    continue
+                if line.startswith(b"data: "):
+                    msg = json.loads(line[6:].decode("utf-8"))
+                    # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
+                    print("EVENT:", msg)
+                    if msg.get("done"):
+                        break
 
 # Lancer la boucle principale
 fenetree = Fenetre()
