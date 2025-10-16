@@ -67,22 +67,55 @@ class Fenetre(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
 
-        self.title("Paramétrage du Réseau de Neuronnes")
+        self.title("🧠 Paramétrage du Réseau de Neuronnes")
+        self.configure(bg="#ffffff")
+
+        # Définir une police personnalisée
+        self.font_titre = ("Helvetica", 14, "bold")
+        self.font_bouton = ("Helvetica", 11)
+
         self.geometry("500x1")  # largeur fixe, hauteur minimale
 
         self.cadre = tk.Frame(self, borderwidth=30)
+        self.cadre.configure(bg="#ffffff")
         self.cadre.pack(fill="both", expand="yes")
-        self.CadreParams = tk.LabelFrame(self.cadre, text="Paramètres", borderwidth=3)
-        self.CadreParams.pack(fill="both", expand="yes")
-        tk.Button(self.CadreParams, text='Paramètres temporels et de découpage de données', height=3,command=self.Params_temporels).pack(fill="both",pady=10,padx=20)
-        tk.Button(self.CadreParams, text='Choix du modèle de réseau de neurones', height=3,command=self.Params_choix_reseau_neurones).pack(fill="both",pady=10,padx=20)
-        tk.Button(self.CadreParams, text="Paramétrage de l'architechture réseau", height=3,command=self.Params_archi_reseau).pack(fill="both",pady=10,padx=20)
-        tk.Button(self.CadreParams, text="Choix de la fonction perte (loss)", height=3,command=self.Params_choix_loss_fct).pack(fill="both",pady=10,padx=20)
-        tk.Button(self.CadreParams, text="Choix et paramétrage de l'optimisateur", height=3,command=self.Params_optimisateur).pack(fill="both",pady=10,padx=20)
-        tk.Button(self.CadreParams, text="Paramètres d'entrainement", height=3,command=self.Params_entrainement).pack(fill="both",pady=10,padx=20)
-        tk.Button(self.CadreParams, text="Paramétrage des métriques et visualisations de suivi", height=3,command=self.Params_visualisation_suivi).pack(fill="both",pady=10,padx=20)
-        tk.Button(self.cadre, text="Envoyer la configuration au serveur", height=3, command=self.EnvoyerConfig).pack(fill="both",pady=20,padx=50)
-        tk.Button(self.cadre, text="Quitter", command=self.destroy).pack(fill="both",pady=20,padx=50)
+        
+        # Cadre des paramètres
+        self.CadreParams = tk.LabelFrame(
+            self.cadre, text="Paramètres", font=self.font_titre,
+            bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
+        )
+        self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
+
+        # Liste des boutons
+        boutons = [
+            ("Paramètres temporels et de découpage de données", self.Params_temporels),
+            ("Choix du modèle de réseau de neurones", self.Params_choix_reseau_neurones),
+            ("Paramétrage de l'architecture réseau", self.Params_archi_reseau),
+            ("Choix de la fonction perte (loss)", self.Params_choix_loss_fct),
+            ("Choix et paramétrage de l'optimisateur", self.Params_optimisateur),
+            ("Paramètres d'entraînement", self.Params_entrainement),
+            ("Paramétrage des métriques et visualisations de suivi", self.Params_visualisation_suivi),
+        ]
+
+        for texte, commande in boutons:
+            tk.Button(
+                self.CadreParams, text=texte, font=self.font_bouton,
+                height=2, bg="#e6e6e6", fg="#000000", relief="groove", bd=2,
+                command=commande
+            ).pack(fill="x", pady=6, padx=12)
+
+        tk.Button(
+            self.cadre, text="🚀 Envoyer la configuration au serveur", font=self.font_bouton,
+            height=2, bg="#d1e7dd", fg="#0f5132", relief="raised", bd=3,
+            command=self.EnvoyerConfig
+        ).pack(fill="x", pady=10)
+
+        tk.Button(
+            self.cadre, text="❌ Quitter", font=self.font_bouton,
+            height=2, bg="#f8d7da", fg="#842029", relief="raised", bd=3,
+            command=self.destroy
+        ).pack(fill="x", pady=(0, 10))
 
         self.update_idletasks()
         self.geometry(f"500x{self.winfo_reqheight()}")
