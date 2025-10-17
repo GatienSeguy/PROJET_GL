@@ -46,7 +46,7 @@ def build_supervised_tensors(
     n = len(clean_vals)
     if n < window_len + horizon:
         return torch.empty(0, window_len), torch.empty(0, 1)
-
+ 
     for i in range(0, n - window_len - horizon + 1):
         seq = clean_vals[i : i + window_len]
         tgt = clean_vals[i + window_len + horizon - 1]
