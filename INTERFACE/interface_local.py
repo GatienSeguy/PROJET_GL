@@ -2,10 +2,11 @@ import tkinter as tk
 from tkcalendar import Calendar
 from datetime import datetime
 import requests, json
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 #URL = "http://138.231.149.81:8000" 
 URL = "http://192.168.27.66:8000"
+
 
 # Paramètres et variables
 
