@@ -63,10 +63,89 @@ Parametres_optimisateur=Parametres_optimisateur_class()
 Parametres_entrainement=Parametres_entrainement_class()
 Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 
-# Créer la fenêtre principale
-class Fenetre(tk.Tk):
+
+
+class Fenetre_Acceuil(tk.Tk):
     def __init__(self):
+        self.Payload={}
         tk.Tk.__init__(self)
+        self.title("🧠 Paramétrage du Réseau de Neuronnes")
+        self.configure(bg="#f0f4f8")
+        self.geometry("520x1")
+
+        # Polices
+        self.font_titre = ("Helvetica", 20, "bold")
+        self.font_section = ("Helvetica", 18, "bold")
+        self.font_bouton = ("Helvetica", 14)
+
+        # Cadre principal
+        self.cadre = tk.Frame(self, bg="#f0f4f8", padx=20, pady=20)
+        self.cadre.pack(fill="both", expand=True)
+
+        # Titre
+        tk.Label(self.cadre, text="Bienvenue 👋", font=self.font_titre, bg="#f0f4f8", fg="#2c3e50").pack(pady=(0, 20))
+
+        # Section 1 : Modèle
+        section_modele = tk.LabelFrame(self.cadre, text="🧬 Modèle", font=self.font_section, bg="#eaf2f8", fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
+        section_modele.pack(fill="x", pady=10)
+
+        self.bouton(section_modele, "📂 Charger Modèle", self.test)
+        self.bouton(section_modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele)
+
+        # Section 2 : Données
+        section_data = tk.LabelFrame(self.cadre, text="📊 Données", font=self.font_section, bg="#eaf2f8", fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
+        section_data.pack(fill="x", pady=10)
+
+        self.bouton(section_data, "📁 Choix Dataset", self.test)
+        self.bouton(section_data, "📅 Paramétrer Horizon", self.test)
+
+        # Section 3 : Actions
+        section_actions = tk.Frame(self.cadre, bg="#f0f4f8")
+        section_actions.pack(fill="x", pady=(20, 0))
+
+        self.bouton(section_actions, "🚀 Envoyer la configuration au serveur", self.EnvoyerConfig, bg="#d4efdf", fg="#145a32")
+        self.bouton(section_actions, "❌ Quitter", self.destroy, bg="#f5b7b1", fg="#641e16")
+
+        self.update_idletasks()
+        self.geometry(f"520x{self.winfo_reqheight()}")
+
+    def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
+        bouton = tk.Button(
+            parent, text=texte, font=self.font_bouton, command=commande,
+            bg=bg, fg=fg, relief="raised", bd=2, height=2
+        )
+        bouton.pack(fill="x", pady=5)
+
+        # Effet de survol
+        bouton.bind("<Enter>", lambda e: bouton.config(bg="#d6eaf8"))
+        bouton.bind("<Leave>", lambda e: bouton.config(bg=bg))
+
+    def test(self):
+        print("test")
+    def Parametrer_modele(self):
+        Fenetre_Params(self)
+    
+    def EnvoyerConfig(self):
+        print(self.Payload)
+        with requests.post(f"{URL}/train_full", json=self.Payload, stream=True) as r:
+            r.raise_for_status()
+            print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
+            for line in r.iter_lines():
+                if not line:
+                    continue
+                if line.startswith(b"data: "):
+                    msg = json.loads(line[6:].decode("utf-8"))
+                    # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
+                    print("EVENT:", msg)
+                    if msg.get("done"):
+                        break
+
+
+
+# Créer la fenêtre principale
+class Fenetre_Params(tk.Toplevel):
+    def __init__(self, master=None):
+        super().__init__(master)
         couleur_fond = "#d9d9d9"
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
 
@@ -108,10 +187,16 @@ class Fenetre(tk.Tk):
                 command=commande
             ).pack(fill="x", pady=6, padx=12)
 
+        # tk.Button(
+        #     self.cadre, text="🚀 Envoyer la configuration au serveur", font=self.font_bouton,
+        #     height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
+        #     command=self.EnvoyerConfig
+        # ).pack(fill="x", pady=10)
+
         tk.Button(
-            self.cadre, text="🚀 Envoyer la configuration au serveur", font=self.font_bouton,
+            self.cadre, text="💾 Sauvegarder la configuration", font=self.font_bouton,
             height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
-            command=self.EnvoyerConfig
+            command=self.Sauvegarder_Config
         ).pack(fill="x", pady=10)
 
         tk.Button(
@@ -503,6 +588,11 @@ class Fenetre(tk.Tk):
         print(self.config_totale)
         return self.config_totale
     
+    def Sauvegarder_Config(self):
+        app.Payload=self.Formatter_JSON()
+        self.destroy()
+
+
     def EnvoyerConfig(self):
         self.payload=self.Formatter_JSON()
         with requests.post(f"{URL}/train_full", json=self.payload, stream=True) as r:
@@ -518,6 +608,12 @@ class Fenetre(tk.Tk):
                     if msg.get("done"):
                         break
 
+
+def Parametrer_modele():
+        Fenetre_Params()
+        #fenetre_parametres.mainloop()
+
 # Lancer la boucle principale
-fenetree = Fenetre()
-fenetree.mainloop()
+if __name__ == "__main__":
+    app = Fenetre_Acceuil()
+    app.mainloop()
