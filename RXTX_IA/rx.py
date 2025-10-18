@@ -1,6 +1,6 @@
 import requests, json
 
-URL = "http://192.168.1.94:8000" 
+URL = "http://138.231.149.81:8000" 
 
 payload = {
     "horizon": 8,
