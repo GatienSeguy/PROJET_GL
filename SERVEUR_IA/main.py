@@ -8,122 +8,36 @@ from pydantic import BaseModel, Field, conint, confloat
 from datetime import date,datetime
 import torch
 import os, time
-from models.training import train_simple
+
 from models.model_MLP import MLP
 from models.optim import make_loss,make_optimizer
+
+#Train Modele
+from models.training_MLP import train_MLP
+from models.training_CNN import train_CNN
+
 
 from classes import (
     TimeSeriesData,
     Parametres_temporels,
-    Parametres_archi_reseau,
     Parametres_choix_reseau_neurones,
     Parametres_choix_loss_fct,
     Parametres_optimisateur,
     Parametres_entrainement,
     Parametres_visualisation_suivi,
-    PaquetComplet,
-    TrainingPayload,
+    Parametres_archi_reseau_MLP,
+    Parametres_archi_reseau_CNN,
+    PaquetComplet
 )
 
-
+from fonctions_pour_main import(
+    build_supervised_tensors,
+    _parse_any_datetime,
+    filter_series_by_dates,
+    build_supervised_tensors_with_step,
+    split_train_test
+)
 ##### EN attendant c'est ici :
-from typing import List, Optional, Tuple
-import numpy as np
-import torch
-
-def build_supervised_tensors(
-    values: List[Optional[float]],
-    window_len: int = 1,
-    horizon: int = 1,
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Construit (X, y) à partir d'une liste 'values' possiblement avec des None.
-    X: [N, window_len], y: [N, 1]
-    Stratégie: on ne garde que les fenêtres 100% valides (sans None) et une cible valide.
-    """
-    clean_vals = values  # on travaille direct, mais on filtre fenêtre par fenêtre
-    X_list, y_list = [], []
-    n = len(clean_vals)
-    if n < window_len + horizon:
-        return torch.empty(0, window_len), torch.empty(0, 1)
- 
-    for i in range(0, n - window_len - horizon + 1):
-        seq = clean_vals[i : i + window_len]
-        tgt = clean_vals[i + window_len + horizon - 1]
-        # fenêtre valide ?
-        if any(v is None for v in seq) or tgt is None:
-            continue
-        X_list.append(seq)
-        y_list.append([tgt])
-
-    if not X_list:
-        return torch.empty(0, window_len), torch.empty(0, 1)
-
-    X = torch.tensor(np.array(X_list, dtype=np.float32))
-    y = torch.tensor(np.array(y_list, dtype=np.float32))
-    return X, y
-
-
-
-
-
-
-
-def _parse_any_datetime(s: str) -> datetime:
-    try:
-        return datetime.fromisoformat(s)
-    except Exception:
-        return datetime.strptime(s, "%Y-%m-%d")
-
-def filter_series_by_dates(timestamps, values, dates):
-    if not dates or len(dates) < 2 or dates[0] is None or dates[1] is None:
-        return timestamps, values
-    start = _parse_any_datetime(dates[0])
-    end   = _parse_any_datetime(dates[1])
-    if start > end:
-        start, end = end, start
-    ts_out, val_out = [], []
-    for t, v in zip(timestamps, values):
-        if start <= t <= end:
-            ts_out.append(t)
-            val_out.append(v)
-    return ts_out, val_out
-
-def build_supervised_tensors_with_step(values, window_len=1, horizon=1, step=1):
-    if step <= 0: step = 1
-    n = len(values)
-    if n == 0:
-        return torch.empty(0, window_len), torch.empty(0, 1)
-    max_start = n - (window_len + horizon - 1)*step
-    if max_start <= 0:
-        return torch.empty(0, window_len), torch.empty(0, 1)
-
-    X_list, y_list = [], []
-    for i in range(0, max_start):
-        seq_idx = [i + k*step for k in range(window_len)]
-        tgt_idx = i + (window_len + horizon - 1)*step
-        seq = [values[j] for j in seq_idx]
-        tgt = values[tgt_idx]
-        if any(v is None for v in seq) or tgt is None:
-            continue
-        X_list.append(seq)
-        y_list.append([tgt])
-
-    if not X_list:
-        return torch.empty(0, window_len), torch.empty(0, 1)
-
-    X = torch.tensor(np.array(X_list, dtype=np.float32))
-    y = torch.tensor(np.array(y_list, dtype=np.float32))
-    return X, y
-
-def split_train_test(X, y, portion_train):
-    p = portion_train if (portion_train is not None and 0.0 < portion_train < 1.0) else 0.8
-    n = X.shape[0]
-    if n == 0:
-        return X, y, X, y
-    n_train = max(1, min(n-1, int(n * p))) if n >= 2 else n
-    return X[:n_train], y[:n_train], X[n_train:], y[n_train:]
-
 
 
 ## EN LOCAL :
@@ -155,85 +69,6 @@ last_config_series = None
 # ====================================
 # ROUTES
 # ====================================
-# @app.post("/train_full")
-# def recevoir_paquet(paquet: PaquetComplet):
-#     """
-#     Reçoit le paquet complet envoyé depuis l'interface Tkinter.
-#     """
-
-#     print("\n" + "="*80)
-#     print("PAQUET COMPLET REÇU")
-#     print("="*80)
-
-#     if paquet.Parametres_temporels:
-#         print(" Paramètres temporels :", paquet.Parametres_temporels.model_dump())
-#     if paquet.Parametres_choix_reseau_neurones:
-#         print("Choix du modèle :", paquet.Parametres_choix_reseau_neurones.modele)
-#     if paquet.Parametres_archi_reseau:
-#         print("Architecture :", paquet.Parametres_archi_reseau.model_dump())
-#     if paquet.Parametres_choix_loss_fct:
-#         print(" Fonction de perte :", paquet.Parametres_choix_loss_fct.model_dump())
-#     if paquet.Parametres_optimisateur:
-#         print(" Optimisateur :", paquet.Parametres_optimisateur.model_dump())
-#     if paquet.Parametres_entrainement:
-#         print(" Entraînement :", paquet.Parametres_entrainement.model_dump())
-#     if paquet.Parametres_visualisation_suivi:
-#         print(" Visualisation :", paquet.Parametres_visualisation_suivi.model_dump())
-
-#     print("="*80 + "\n")
-
-
-#     return {"status": "OK", "message": "Paquet complet recu et valide "}
-
-
-@app.post("/tempoconfig")
-def recevoir_TempoConfig(config: Parametres_temporels):
-    """
-    Reçoit uniquement la configuration temporelle
-    """
-    global last_config_tempo
-    last_config_tempo = config
-    print("\n" + "="*70)
-    print(f" CONFIGURATION REÇUE \n")
-    print("="*70)
-    print("\n TEMPO :")
-    print(f"   - Horizon : {config.horizon} \n")
-    print(f"   - Dates   : {config.dates} \n")
-    print(f"   - Pas     : {config.pas_temporel} \n")
-    print(f"   - Split train : {config.portion_decoupage} \n")
-    print(f"################ FIN ############  \n")
-    return {"status": "OK", "message": "Paquet complet recu et valide "}
-
-
-
-
-@app.post("/timeseries")
-def recevoir_SeriesData(series: TimeSeriesData):
-    """
-    Reçoit les données de séries temporelles
-    """
-    global last_config_series
-    last_config_series = series
-
-    n = len(series.values)
-    print("\n" + "="*70)
-    print(" DONNÉES SÉRIE TEMPORELLE REÇUES")
-    print("="*70)
-    print(f"   - Nombre de points : {n}")
-    if n > 0:
-        print(f"   - Premier timestamp : {series.timestamps[0]} \n")
-        print(f"   - Dernier timestamp : {series.timestamps[-1]} \n")
-        print(f"   - Première valeur   : {series.values[0]}\n")
-        print(f"   - Dernière valeur   : {series.values[-1]} \n")
-    print("="*70 + "\n")
-
-    print(f"################ FIN ############  \n")
-    return {"status": "OK", "message": "Paquet complet recu et valide "}
-
-
-
-
-
 
 @app.post("/train_full")
 def training(payload: PaquetComplet):
@@ -257,26 +92,33 @@ def training(payload: PaquetComplet):
     values=[12.4, 12.7, 13.0, 12.9, 13.2, 13.5, 13.4, 13.7, 14.0, 13.9, 14.2, 14.5]
 )
     
-
-
+    
+    #Récupération des données
     cfg: PaquetComplet = payload
 
-    # ----- TEMPO (mêmes noms) -----
+    #-------------------------------
+    # ----- TEMPO  -----------------
+    # ------------------------------
     horizon = 1
     if cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.horizon:
         horizon = max(1, int(cfg.Parametres_temporels.horizon))
-    window_len = 1  # simple: one-step input; tu peux l’exposer plus tard
+    
 
-    # ----- (X,y) -----
+
+    #-------------------------
+    # ----- (X,y) ------------
+    #-------------------------
+    #Récupération des paramètres
     dates = cfg.Parametres_temporels.dates if (cfg and cfg.Parametres_temporels) else None
     pas_temporel = int(cfg.Parametres_temporels.pas_temporel) if (cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.pas_temporel is not None) else 1
     portion_decoupage = float(cfg.Parametres_temporels.portion_decoupage) if (cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.portion_decoupage is not None) else 0.8
 
+    #Split sur les dates début et fin
     ts_filt, vals_filt = filter_series_by_dates(series.timestamps, series.values, dates)
 
+    #On build X,y en tenseur pour toch
     X, y = build_supervised_tensors_with_step(
         vals_filt,
-        window_len=window_len,
         horizon=horizon,
         step=pas_temporel,
     )
@@ -286,43 +128,97 @@ def training(payload: PaquetComplet):
             yield f"data: {json.dumps({'type':'error','message':'(X,y) vide après filtrage/découpage'})}\n\n"
         return StreamingResponse(err(), media_type="text/event-stream")
 
-    # >>> AJOUT: split séquentiel train/test via 'portion_decoupage'
+    # split séquentiel train/test via 'portion_decoupage'
     X_train, y_train, X_test, y_test = split_train_test(X, y, portion_train=portion_decoupage)
 
-    # >>> AJOUT: on entraîne sur le split train (garde X_test/y_test pour logs/éval plus tard)
+    # on entraîne sur le split train (garde X_test/y_test pour logs/éval plus tard)
     X, y = X_train, y_train
 
-    # ----- ARCHI (mêmes noms que Parametres_archi_reseau) -----
-    hidden_size = 128
-    nb_couches = 2
-    dropout_rate = 0.0
-    activation = "relu"
-    use_batchnorm = False
+
+
+    #---------------------------------
+    # ----- ARCHI --------------------
+    #---------------------------------
+   
     
+    if cfg and cfg.Parametres_choix_reseau_neurones:
+            if cfg.Parametres_choix_reseau_neurones.modele:
+                model= cfg.Parametres_choix_reseau_neurones.modele.lower()
+    
+    #CLASS MODEL MLP
+    if model =='mlp':
+        hidden_size = 128
+        nb_couches = 2
+        dropout_rate = 0.0
+        activation = "relu"
+        use_batchnorm = False
+        kernel_size = None
+        stride = None
+        padding = None
+        if cfg and cfg.Parametres_archi_reseau_MLP:
+            if cfg.Parametres_archi_reseau_MLP.hidden_size is not None:
+                hidden_size = int(cfg.Parametres_archi_reseau_MLP.hidden_size)
+            if cfg.Parametres_archi_reseau_MLP.nb_couches is not None:
+                nb_couches = int(cfg.Parametres_archi_reseau_MLP.nb_couches)
+            if cfg.Parametres_archi_reseau_MLP.dropout_rate is not None:
+                dropout_rate = float(cfg.Parametres_archi_reseau_MLP.dropout_rate)
+            if cfg.Parametres_archi_reseau_MLP.fonction_activation is not None:
+                act_map = {
+                    "ReLU": "relu",
+                    "GELU": "gelu",
+                    "tanh": "tanh",
+                    "sigmoid": "sigmoid",
+                    "leaky_relu": "leaky_relu",
+                }
+                activation = act_map.get(cfg.Parametres_archi_reseau_MLP.fonction_activation, "relu")
 
-    if cfg and cfg.Parametres_archi_reseau:
-        if cfg.Parametres_archi_reseau.hidden_size is not None:
-            hidden_size = int(cfg.Parametres_archi_reseau.hidden_size)
-        if cfg.Parametres_archi_reseau.nb_couches is not None:
-            nb_couches = int(cfg.Parametres_archi_reseau.nb_couches)
-        if cfg.Parametres_archi_reseau.dropout_rate is not None:
-            dropout_rate = float(cfg.Parametres_archi_reseau.dropout_rate)
-        if cfg.Parametres_archi_reseau.fonction_activation is not None:
-            act_map = {
-                "ReLU": "relu",
-                "GELU": "gelu",
-                "tanh": "tanh",
-                "sigmoid": "sigmoid",
-                "leaky_relu": "leaky_relu",
-            }
-            activation = act_map.get(cfg.Parametres_archi_reseau.fonction_activation, "relu")
+    #CLASS MODEL CNN
+    if model =='cnn':
+        hidden_size = 128
+        nb_couches = 2
+        dropout_rate = 0.0
+        activation = "relu"
+        use_batchnorm = False
+        kernel_size = 3
+        stride = 1
+        padding = 1
 
-    # ----- LOSS (mêmes noms que Parametres_choix_loss_fct) -----
+        if cfg and cfg.Parametres_archi_reseau_CNN:
+            if cfg.Parametres_archi_reseau_CNN.hidden_size is not None:
+                hidden_size = int(cfg.Parametres_archi_reseau_CNN.hidden_size)
+            
+            if cfg.Parametres_archi_reseau_CNN.nb_couches is not None:
+                nb_couches = int(cfg.Parametres_archi_reseau_CNN.nb_couches)
+
+            if cfg.Parametres_archi_reseau_CNN.fonction_activation is not None:
+                act_map = {
+                    "ReLU": "relu",
+                    "GELU": "gelu",
+                    "tanh": "tanh",
+                    "sigmoid": "sigmoid",
+                    "leaky_relu": "leaky_relu",
+                }
+                activation = act_map.get(cfg.Parametres_archi_reseau_CNN.fonction_activation, "relu")
+            
+            if cfg.Parametres_archi_reseau_CNN.kernel_size is not None:
+                kernel_size = int(cfg.Parametres_archi_reseau_CNN.kernel_size)
+            
+            if cfg.Parametres_archi_reseau_CNN.stride is not None:
+                stride = int(cfg.Parametres_archi_reseau_CNN.stride)
+            
+            if cfg.Parametres_archi_reseau_CNN.padding is not None:
+                padding = int(cfg.Parametres_archi_reseau_CNN.padding)
+    #---------------------------------
+    # ----- LOSS  --------------------
+    # ---------------------------------
     loss_name = "mse"
     if cfg and cfg.Parametres_choix_loss_fct and cfg.Parametres_choix_loss_fct.fonction_perte:
         loss_name = cfg.Parametres_choix_loss_fct.fonction_perte.lower()
 
-    # ----- OPTIM (mêmes noms que Parametres_optimisateur) -----
+
+    # ----------------------------------
+    # ----- OPTIM  --------------------
+    # ----------------------------------
     optimizer_name = "adam"
     learning_rate = 1e-3
     weight_decay = 0.0
@@ -334,7 +230,10 @@ def training(payload: PaquetComplet):
         if cfg.Parametres_optimisateur.decroissance is not None:
             weight_decay = float(cfg.Parametres_optimisateur.decroissance)
 
-    # ----- TRAIN (mêmes noms que Parametres_entrainement) -----
+
+    #--------------------------------------
+    # ----- TRAIN -------------------------
+    #--------------------------------------
     epochs = 10
     batch_size = 64
     if cfg and cfg.Parametres_entrainement:
@@ -343,30 +242,83 @@ def training(payload: PaquetComplet):
         if cfg.Parametres_entrainement.batch_size is not None:
             batch_size = int(cfg.Parametres_entrainement.batch_size)
 
-    # ----- Device -----
+
+    # --------------------------------------
+    # ----- Device ------------------------
+    # --------------------------------------
     device = "cpu"
 
-    # ----- Entraînement -----
-    def event_gen():
-         for msg in train_simple(
-            X, y,
-            hidden_size=hidden_size,
-            num_layers=nb_couches,        # <- mapping direct du même nom logique
-            dropout_rate=dropout_rate,
-            activation=activation,
-            use_batchnorm=use_batchnorm,
-            loss_name=loss_name,
-            optimizer_name=optimizer_name,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
-            batch_size=batch_size,
-            epochs=epochs,
-            device=device,
-        ):
-            # chaque msg est un dict {"epoch": i, "avg_loss": ...} puis {"done": True, ...}
-            yield f"data: {json.dumps(msg)}\n\n"
 
+    #--------------------------------------
+    # ----- Lancement Entraînement --------
+    #--------------------------------------
+    def event_gen():
+
+        if cfg and cfg.Parametres_choix_reseau_neurones:
+            if cfg.Parametres_choix_reseau_neurones.modele:
+                model= cfg.Parametres_choix_reseau_neurones.modele.lower()
+        print(model)
+        if model == "mlp":
+            for msg in train_MLP(
+                X, y,
+                hidden_size=hidden_size,
+                nb_couches=nb_couches,        
+                dropout_rate=dropout_rate,
+                activation=activation,
+                use_batchnorm=use_batchnorm,
+                loss_name=loss_name,
+                optimizer_name=optimizer_name,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                batch_size=batch_size,
+                epochs=epochs,
+                device=device,
+            ):
+                yield f"data: {json.dumps(msg)}\n\n"
+
+
+
+        if model =="cnn":
+            print("CNN")
+
+            for msg in train_CNN(
+                X,y,
+                hidden_size=hidden_size,
+                nb_couches=nb_couches,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                activation=activation,
+                use_batchnorm=use_batchnorm,
+                loss_name=loss_name,
+                optimizer_name=optimizer_name,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                batch_size=batch_size,
+                epochs=epochs,
+                device=device
+            ):
+                yield f"data: {json.dumps(msg)}\n\n"
     return StreamingResponse(event_gen(), media_type="text/event-stream")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @app.get("/")

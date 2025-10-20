@@ -9,13 +9,9 @@ class TimeSeriesData(BaseModel):
     """
     Une unique série temporelle : timestamps et valeurs alignés (même longueur).
     """
-    timestamps: List[datetime] = Field(
-        ..., description="Liste UTC triée croissante (ISO 8601)"
-    )
-    values: List[Optional[float]] = Field(
-        ..., description="Valeurs numériques (Null si manquante), même longueur que timestamps"
-    )
-
+    timestamps: List[datetime] = Field(..., description="Liste UTC triée croissante (ISO 8601)")
+    values: List[Optional[float]] = Field(..., description="Valeurs numériques (Null si manquante), même longueur que timestamps")
+     
      # Mini garde-fou : même taille
     def model_post_init(self, __context) -> None:
         if len(self.timestamps) != len(self.values):
@@ -32,36 +28,6 @@ class Parametres_temporels(BaseModel):
 
 
 
-
-class Parametres_archi_reseau(BaseModel):
-    """
-    Paramétrage du réseau de neurones
-    (structure interne du modèle)
-    """
-
-    # --- 1) Nombre de couches (profondeur) ---
-    nb_couches: Optional[conint(ge=1, le=100)] = Field(
-        None,
-        description="Profondeur du réseau (ex: 2 à 6)"
-    )
-
-    # --- 2) Taille cachée / latente ---
-    hidden_size: Optional[conint(gt=0)] = Field(
-        None,
-        description="Dimension des représentations internes (ex: 128)"
-    )
-
-    # --- 3) Taux de dropout ---
-    dropout_rate: Optional[confloat(ge=0.0, le=1.0)] = Field(
-        None,
-        description="Fraction de neurones désactivés pendant l'entraînement (ex: 0.1)"
-    )
-
-    # --- 4) Fonction d’activation ---
-    fonction_activation: Optional[Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"]] = Field(
-        None,
-        description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
-    )
 
 
 ##### Nouvelles calsses
@@ -90,17 +56,126 @@ class Parametres_visualisation_suivi(BaseModel):
 
 
 
+
+
+
+class Parametres_archi_reseau_MLP(BaseModel):
+    """
+    Paramétrage du réseau de neurones de type MLP
+    (structure interne du modèle)
+    """
+
+    # --- 1) Nombre de couches (profondeur) ---
+    nb_couches: Optional[conint(ge=1, le=100)] = Field(
+        None,
+        description="Profondeur du réseau (ex: 2 à 6)"
+    )
+
+    # --- 2) Taille cachée / latente ---
+    hidden_size: Optional[conint(gt=0)] = Field(
+        None,
+        description="Dimension des représentations internes (ex: 128)"
+    )
+
+    # --- 3) Taux de dropout ---
+    dropout_rate: Optional[confloat(ge=0.0, le=1.0)] = Field(
+        None,
+        description="Fraction de neurones désactivés pendant l'entraînement (ex: 0.1)"
+    )
+
+    # --- 4) Fonction d’activation ---
+    fonction_activation: Optional[Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"]] = Field(
+        None,
+        description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
+    )
+
+
+
+class Parametres_archi_reseau_CNN(BaseModel):
+    """
+    Paramétrage du réseau de neurones de type CNN
+    (structure interne du modèle)
+    """
+
+    # --- 1) Nombre de couches (profondeur) ---
+    nb_couches: Optional[conint(ge=1, le=100)] = Field(
+        None,
+        description="Profondeur du réseau (ex: 2 à 6)"
+    )
+
+    # --- 2) Taille cachée / latente ---
+    hidden_size: Optional[conint(gt=0)] = Field(
+        None,
+        description="Dimension des représentations internes (ex: 128)"
+    )
+
+
+    # --- 4) Fonction d’activation ---
+    fonction_activation: Optional[Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"]] = Field(
+        None,
+        description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
+    )
+
+    kernel_size: Optional[conint(gt=0)] = Field(
+        None,
+        description="taille du noyau convolutif"
+    )
+
+    stride: Optional[conint(gt=0)] = Field(
+        None,
+        description="pas d'application du noyau"
+    )
+
+    padding: Optional[conint(gt=0)] = Field(
+        None,
+        description="Nombre de 0 dans noyau"
+    )
+
+
+
+class Parametres_archi_reseau_LSTM(BaseModel):
+    """
+    Paramétrage du réseau de neurones de type LSTM
+    (structure interne du modèle)
+    """
+
+    # --- 1) Nombre de couches (profondeur) ---
+    nb_couches: Optional[conint(ge=1, le=100)] = Field(
+        None,
+        description="Profondeur du réseau (ex: 2 à 6)"
+    )
+
+    # --- 2) Taille cachée / latente ---
+    hidden_size: Optional[conint(gt=0)] = Field(
+        None,
+        description="Dimension des représentations internes (ex: 128)"
+    )
+
+
+    bidirectional: Optional[bool] = Field(
+        None,
+        description="Choix de la bidirection : True, ou unidirection : Flase"
+    )
+
+    batch_first: Optional[bool] = Field(
+        None,
+        description="Batch first ?"
+    )
+
+
+
+
+
 class PaquetComplet(BaseModel):
     Parametres_temporels: Optional[Parametres_temporels]
     Parametres_choix_reseau_neurones: Optional[Parametres_choix_reseau_neurones]
-    Parametres_archi_reseau: Optional[Parametres_archi_reseau]
     Parametres_choix_loss_fct: Optional[Parametres_choix_loss_fct]
     Parametres_optimisateur: Optional[Parametres_optimisateur]
     Parametres_entrainement: Optional[Parametres_entrainement]
     Parametres_visualisation_suivi: Optional[Parametres_visualisation_suivi]
 
+    #MODELES :
+    Parametres_archi_reseau_MLP: Optional[Parametres_archi_reseau_MLP]
+    Parametres_archi_reseau_CNN: Optional[Parametres_archi_reseau_CNN]
+    Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
 
-# Reçoit la série + toute la config en une seule requête
-class TrainingPayload(BaseModel):
-    series: TimeSeriesData
-    config: PaquetComplet

@@ -358,13 +358,36 @@ class Fenetre_Params(tk.Toplevel):
 
         fenetre_params_choix_reseau_neurones.mainloop()
 
-
+#######################
+############################ Faut modif ici modele par modele c.f. le fichier classes.py
+############################
     def Params_archi_reseau(self):
-        # Variables pour les paramètres
+        # if : ...Variables pour les paramètres POUR MLP
         Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
         Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
         Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
         Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
+        
+
+        ## if : ...Variables pour les paramètres POUR CNN
+        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
+        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
+        Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
+        Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
+        # new CNN
+        Params_archi_reseau_kernel_size = tk.IntVar(value = Parametres_archi_reseau.kernel_size)
+        Params_archi_reseau_stride = tk.IntVar(value = Parametres_archi_reseau.stride)
+        Params_archi_reseau_padding = tk.IntVar(valeur = Parametres_archi_reseau.padding)
+
+
+
+        ## if : .... Variables pour les paramètres POUR LSTM
+        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
+        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
+        Params_archi_reseau_bidirectional = tk.BooleanVar(value = Parametres_archi_reseau.bidirectional) #bool
+        Params_archi_reseau_batch_first = tk.BooleanVar(value = Parametres_archi_reseau.batch_first) #bool
+
+
 
         def Save_quit():
             Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()

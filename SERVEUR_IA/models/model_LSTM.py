@@ -14,12 +14,11 @@ class LSTM(nn.Module):
     def __init__(
         self,
         in_dim: int,
-        hidden_dim: int,
+        hidden_dim: int,#
         out_dim: int,
-        num_blocks: int = 2,
-        bidirectional: bool = False,
-        dropout: float = 0.0,
-        batch_first: bool = True
+        num_blocks: int = 2,#
+        bidirectional: bool = False, #New
+        batch_first: bool = True #New
     ):
         super().__init__()
         assert in_dim > 0 and hidden_dim > 0 and out_dim > 0, "Dims > 0"

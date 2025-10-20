@@ -3,14 +3,14 @@ import inspect
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from models.optim import make_loss, make_optimizer
-from models.model_CNN import CNN1D  # Assure-toi d'avoir un CNN1D 
+from models.model_CNN import CNN 
 
 
 def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
     """
     Crée un CNN1D en détectant la signature réelle et en mappant les alias :
     - hidden_size -> hidden_dim | width
-    - num_layers  -> n_layers | depth | layers
+    - nb_couches  -> n_layers | depth | layers
     - kernel_size -> ksize
     - stride
     - padding
@@ -18,7 +18,7 @@ def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
     - use_batchnorm
     - in_dim / out_dim
     """
-    sig = inspect.signature(CNN1D.__init__)
+    sig = inspect.signature(CNN.__init__)
     params = set(sig.parameters.keys())
     resolved = {}
 
@@ -40,7 +40,7 @@ def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
 
     # map aliases from kwargs
     put(kwargs.get("hidden_size", 32), "hidden_dim", "hidden_size", "width")
-    put(kwargs.get("num_layers", 2), "num_layers", "n_layers", "depth", "layers")
+    put(kwargs.get("nb_couches", 2), "nb_couches", "n_layers", "depth", "layers")
     put(kwargs.get("activation", "relu"), "activation", "act", "activation_name")
     put(kwargs.get("use_batchnorm", False), "use_batchnorm", "batchnorm", "bn", "use_bn")
     put(kwargs.get("kernel_size", 3), "kernel_size", "ksize")
@@ -55,16 +55,16 @@ def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
     # debug
     print("[CNN kwargs résolus] ->", {k: resolved[k] for k in resolved if k not in ("in_dim", "out_dim")})
 
-    return CNN1D(**resolved)
+    return CNN(**resolved)
 
 
-def train_cnn1d(
+def train_CNN(
     X: torch.Tensor,
     y: torch.Tensor,
     *,
     # --- ARCHI ---
     hidden_size: int = 32,
-    num_layers: int = 2,
+    nb_couches: int = 2,
     kernel_size: int = 3,
     stride: int = 1,
     padding: int = 1,
@@ -75,7 +75,7 @@ def train_cnn1d(
     loss_name: str = "mse",
     optimizer_name: str = "adam",
     learning_rate: float = 1e-3,
-    weight_decay: float = 0.0,
+    weight_decay: float = 0.0, #Nouveau
 
     # --- TRAIN ---
     batch_size: int = 64,
@@ -86,12 +86,12 @@ def train_cnn1d(
         y = y.unsqueeze(1)
 
     loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True)
-
+    print("ZEBI AVANT MODEL")
     model = _build_cnn_safely(
         in_dim=X.shape[1],
         out_dim=y.shape[1],
         hidden_size=hidden_size,
-        num_layers=num_layers,
+        nb_couches=nb_couches,
         kernel_size=kernel_size,
         stride=stride,
         padding=padding,
@@ -99,15 +99,19 @@ def train_cnn1d(
         use_batchnorm=use_batchnorm,
     ).to(device)
 
+    print(" AVANT LOSS")
     criterion = make_loss({"name": loss_name})
+    print(" AVANT OPTI")
     optimizer = make_optimizer(model, {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay})
 
+    print("APRES OPTIM")
     last_avg = None
     for epoch in range(1, epochs + 1):
         total, n = 0.0, 0
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
             optimizer.zero_grad()
+            xb = xb.unsqueeze(1)
             pred = model(xb)
             loss = criterion(pred, yb)
             loss.backward()
@@ -116,8 +120,8 @@ def train_cnn1d(
             n += xb.size(0)
         last_avg = total / max(1, n)
 
-        # Progression tous les k epochs (optionnel)
-        k = 10
+        # Progression tous les k epochs
+        k = 100
         if epoch % k == 0:
             yield {"epoch": epoch, "avg_loss": float(last_avg)}
 

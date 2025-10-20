@@ -32,10 +32,10 @@ class MLP(nn.Module):
     def __init__(
         self,
         in_dim: int,
-        hidden_dim: int,
+        hidden_dim: int, #
         out_dim: int,
-        num_blocks: int = 2,
-        activation: str = "relu"
+        num_blocks: int = 2,#
+        activation: str = "relu"#
     ) -> None:
         super().__init__()
         assert in_dim > 0 and hidden_dim > 0 and out_dim > 0, "Dims > 0"

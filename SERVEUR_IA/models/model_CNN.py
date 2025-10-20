@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class MLP(nn.Module):
+class CNN(nn.Module):
     """
     MODELE IRMA (version Conv1D pour séries temporelles).
 
