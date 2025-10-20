@@ -19,12 +19,38 @@ class Parametres_temporels_class():
     def __init__(self):
         self.horizon=1 # int
         self.dates=["2025-01-01", "2025-01-01"] # variable datetime
-        self.pas_temporel=60 # int
+        self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
 class Parametres_choix_reseau_neurones_class():
     def __init__(self):
         self.modele="MLP" # str ['MLP','LSTM','GRU','CNN']
 class Parametres_archi_reseau_class():
+    class MLP_params():
+        def __init__(self):
+            self.nb_couches=2 #None # int
+            self.hidden_size=64 # int
+            self.dropout_rate=0.0 # float entre 0.0 et 0.9
+            #self.nb_neurones_par_couche=None # list d'int
+            self.fonction_activation="ReLU" # fontion ReLU/GELU/tanh
+    
+    class CNN_params():
+        def __init__(self):
+            self.nb_couches=2 #None # int
+            self.hidden_size=64 # int
+            self.dropout_rate=0.0 # float entre 0.0 et 0.9
+            #self.nb_neurones_par_couche=None # list d'int
+            self.fonction_activation="ReLU" # fontion ReLU/GELU/tanh
+            self.kernel_size=3 # int
+            self.stride=1 # int
+            self.padding=0 # int
+    
+    class LSTM_params():
+        def __init__(self):
+            self.nb_couches=2 #None # int
+            self.hidden_size=64 # int
+            self.bidirectional=False # bool
+            self.batch_first=False # bool
+
     def __init__(self):
         self.nb_couches=2 #None # int
         self.hidden_size=64 # int
@@ -69,7 +95,11 @@ class Parametres_visualisation_suivi_class():
 
 Parametres_temporels=Parametres_temporels_class()
 Parametres_choix_reseau_neurones=Parametres_choix_reseau_neurones_class()
-Parametres_archi_reseau=Parametres_archi_reseau_class()
+
+Parametres_archi_reseau_MLP=Parametres_archi_reseau_class.MLP_params()
+Parametres_archi_reseau_CNN=Parametres_archi_reseau_class.CNN_params()
+Parametres_archi_reseau_LSTM=Parametres_archi_reseau_class.LSTM_params()
+
 Parametres_choix_loss_fct=Parametres_choix_loss_fct_class()
 Parametres_optimisateur=Parametres_optimisateur_class()
 Parametres_entrainement=Parametres_entrainement_class()
@@ -141,20 +171,43 @@ class Fenetre_Acceuil(tk.Tk):
     def Parametrer_dataset(self):
         Fenetre_Choix_datasets(self)
     
+    def Formatter_JSON_global(self):
+        self.config_totale={}
+        self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
+        self.config_totale["Parametres_choix_reseau_neurones"]=Parametres_choix_reseau_neurones.__dict__
+        #self.config_totale["Parametres_archi_reseau"]=Parametres_archi_reseau.__dict__
+        self.config_totale["Parametres_choix_loss_fct"]=Parametres_choix_loss_fct.__dict__
+        self.config_totale["Parametres_optimisateur"]=Parametres_optimisateur.__dict__
+        self.config_totale["Parametres_entrainement"]=Parametres_entrainement.__dict__
+        self.config_totale["Parametres_visualisation_suivi"]=Parametres_visualisation_suivi.__dict__
+        return self.config_totale
+    
+    def Formatter_JSON_specif(self):
+        self.config_specifique={}
+        if Parametres_choix_reseau_neurones.modele=="MLP":
+            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_MLP.__dict__
+        elif Parametres_choix_reseau_neurones.modele=="LSTM":
+            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_LSTM.__dict__
+        elif Parametres_choix_reseau_neurones.modele=="CNN":
+            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_CNN.__dict__
+        return self.config_specifique
+
     def EnvoyerConfig(self):
-        print(self.Payload)
-        with requests.post(f"{URL}/train_full", json=self.Payload, stream=True) as r:
+        payload_global = self.Formatter_JSON_global()
+        payload_model = self.Formatter_JSON_specif()
+        print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
+        with requests.post(f"{URL}/train_full", json={"payload": payload_global, "payload_model": payload_model}, stream=True) as r:
             r.raise_for_status()
-            print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
+            print("Content-Type:", r.headers.get("content-type"))
             for line in r.iter_lines():
                 if not line:
                     continue
                 if line.startswith(b"data: "):
                     msg = json.loads(line[6:].decode("utf-8"))
-                    # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
                     print("EVENT:", msg)
                     if msg.get("done"):
                         break
+
 
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(tk.Toplevel):
@@ -373,46 +426,46 @@ class Fenetre_Params(tk.Toplevel):
     def Params_archi_reseau(self):
         def Save_quit():
             if( Parametres_choix_reseau_neurones.modele=="MLP"):
-                Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
-                Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
-                Parametres_archi_reseau.dropout_rate = Params_archi_reseau_dropout_rate.get()
-                Parametres_archi_reseau.fonction_activation = Params_archi_reseau_fonction_activation.get()
+                Parametres_archi_reseau_MLP.nb_couches = Params_archi_reseau_nb_couches.get()
+                Parametres_archi_reseau_MLP.hidden_size = Params_archi_reseau_hidden_size.get()
+                Parametres_archi_reseau_MLP.dropout_rate = Params_archi_reseau_dropout_rate.get()
+                Parametres_archi_reseau_MLP.fonction_activation = Params_archi_reseau_fonction_activation.get()
             elif( Parametres_choix_reseau_neurones.modele=="CNN"):
-                Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
-                Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
-                Parametres_archi_reseau.dropout_rate = Params_archi_reseau_dropout_rate.get()
-                Parametres_archi_reseau.fonction_activation = Params_archi_reseau_fonction_activation.get()
-                Parametres_archi_reseau.kernel_size = Params_archi_reseau_kernel_size.get()
-                Parametres_archi_reseau.stride = Params_archi_reseau_stride.get()
-                Parametres_archi_reseau.padding = Params_archi_reseau_padding.get()
+                Parametres_archi_reseau_CNN.nb_couches = Params_archi_reseau_nb_couches.get()
+                Parametres_archi_reseau_CNN.hidden_size = Params_archi_reseau_hidden_size.get()
+                Parametres_archi_reseau_CNN.dropout_rate = Params_archi_reseau_dropout_rate.get()
+                Parametres_archi_reseau_CNN.fonction_activation = Params_archi_reseau_fonction_activation.get()
+                Parametres_archi_reseau_CNN.kernel_size = Params_archi_reseau_kernel_size.get()
+                Parametres_archi_reseau_CNN.stride = Params_archi_reseau_stride.get()
+                Parametres_archi_reseau_CNN.padding = Params_archi_reseau_padding.get()
             elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
-                Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
-                Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
-                Parametres_archi_reseau.bidirectional = Params_archi_reseau_bidirectional.get()
-                Parametres_archi_reseau.batch_first = Params_archi_reseau_batch_first.get()
+                Parametres_archi_reseau_LSTM.nb_couches = Params_archi_reseau_nb_couches.get()
+                Parametres_archi_reseau_LSTM.hidden_size = Params_archi_reseau_hidden_size.get()
+                Parametres_archi_reseau_LSTM.bidirectional = Params_archi_reseau_bidirectional.get()
+                Parametres_archi_reseau_LSTM.batch_first = Params_archi_reseau_batch_first.get()
 
 
             fenetre_params_archi_reseau.destroy()
         
         def Quit():
             if( Parametres_choix_reseau_neurones.modele=="MLP"):
-                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
-                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
-                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau.dropout_rate)
-                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau.fonction_activation)
+                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau_MLP.nb_couches)
+                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau_MLP.hidden_size)
+                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau_MLP.dropout_rate)
+                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau_MLP.fonction_activation)
             elif( Parametres_choix_reseau_neurones.modele=="CNN"):
-                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
-                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
-                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau.dropout_rate)
-                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau.fonction_activation)
-                Params_archi_reseau_kernel_size.set(Parametres_archi_reseau.kernel_size)
-                Params_archi_reseau_stride.set(Parametres_archi_reseau.stride)
-                Params_archi_reseau_padding.set(Parametres_archi_reseau.padding)
+                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau_CNN.nb_couches)
+                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau_CNN.hidden_size)
+                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau_CNN.dropout_rate)
+                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau_CNN.fonction_activation)
+                Params_archi_reseau_kernel_size.set(Parametres_archi_reseau_CNN.kernel_size)
+                Params_archi_reseau_stride.set(Parametres_archi_reseau_CNN.stride)
+                Params_archi_reseau_padding.set(Parametres_archi_reseau_CNN.padding)
             elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
-                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
-                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
-                Params_archi_reseau_bidirectional.set(Parametres_archi_reseau.bidirectional)
-                Params_archi_reseau_batch_first.set(Parametres_archi_reseau.batch_first)
+                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau_LSTM.nb_couches)
+                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau_LSTM.hidden_size)
+                Params_archi_reseau_bidirectional.set(Parametres_archi_reseau_LSTM.bidirectional)
+                Params_archi_reseau_batch_first.set(Parametres_archi_reseau_LSTM.batch_first)
             fenetre_params_archi_reseau.destroy()
 
         # Fenêtre secondaire
@@ -430,10 +483,10 @@ class Fenetre_Params(tk.Toplevel):
 
         if( Parametres_choix_reseau_neurones.modele=="MLP"):
             # if : ...Variables pour les paramètres POUR MLP
-            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
-            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
+            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau_MLP.nb_couches) # int
+            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau_MLP.hidden_size) # int
+            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau_MLP.dropout_rate) # float entre 0.0 et 0.9
+            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau_MLP.fonction_activation) # fontion ReLU/GELU/tanh
             # Ligne 1 : Nombre de couches de neurones
             tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
             tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
@@ -452,14 +505,14 @@ class Fenetre_Params(tk.Toplevel):
 
         elif( Parametres_choix_reseau_neurones.modele=="CNN"):
             ## if : ...Variables pour les paramètres POUR CNN
-            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
-            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
+            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau_CNN.nb_couches) # int
+            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau_CNN.hidden_size) # int
+            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau_CNN.dropout_rate) # float entre 0.0 et 0.9
+            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau_CNN.fonction_activation) # fontion ReLU/GELU/tanh
             # new CNN
-            Params_archi_reseau_kernel_size = tk.IntVar(value = Parametres_archi_reseau.kernel_size)
-            Params_archi_reseau_stride = tk.IntVar(value = Parametres_archi_reseau.stride)
-            Params_archi_reseau_padding = tk.IntVar(value = Parametres_archi_reseau.padding)
+            Params_archi_reseau_kernel_size = tk.IntVar(value = Parametres_archi_reseau_CNN.kernel_size)
+            Params_archi_reseau_stride = tk.IntVar(value = Parametres_archi_reseau_CNN.stride)
+            Params_archi_reseau_padding = tk.IntVar(value = Parametres_archi_reseau_CNN.padding)
 
             # Ligne 1 : Nombre de couches de neurones
             tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
@@ -491,10 +544,10 @@ class Fenetre_Params(tk.Toplevel):
 
         elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
             ## if : .... Variables pour les paramètres POUR LSTM
-            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-            Params_archi_reseau_bidirectional = tk.BooleanVar(value = Parametres_archi_reseau.bidirectional) #bool
-            Params_archi_reseau_batch_first = tk.BooleanVar(value = Parametres_archi_reseau.batch_first) #bool
+            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau_LSTM.nb_couches) # int
+            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau_LSTM.hidden_size) # int
+            Params_archi_reseau_bidirectional = tk.BooleanVar(value = Parametres_archi_reseau_LSTM.bidirectional) #bool
+            Params_archi_reseau_batch_first = tk.BooleanVar(value = Parametres_archi_reseau_LSTM.batch_first) #bool
 
             # Ligne 1 : Nombre de couches de neurones
             tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
@@ -709,36 +762,8 @@ class Fenetre_Params(tk.Toplevel):
     def validate_int_fct(self, text):
         return text.isdigit() or text == ""
 
-    def Formatter_JSON(self):
-        self.config_totale={}
-        self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
-        self.config_totale["Parametres_choix_reseau_neurones"]=Parametres_choix_reseau_neurones.__dict__
-        self.config_totale["Parametres_archi_reseau"]=Parametres_archi_reseau.__dict__
-        self.config_totale["Parametres_choix_loss_fct"]=Parametres_choix_loss_fct.__dict__
-        self.config_totale["Parametres_optimisateur"]=Parametres_optimisateur.__dict__
-        self.config_totale["Parametres_entrainement"]=Parametres_entrainement.__dict__
-        self.config_totale["Parametres_visualisation_suivi"]=Parametres_visualisation_suivi.__dict__
-        print(self.config_totale)
-        return self.config_totale
-    
     def Sauvegarder_Config(self):
-        app.Payload=self.Formatter_JSON()
         self.destroy()
-
-    def EnvoyerConfig(self):
-        self.payload=self.Formatter_JSON()
-        with requests.post(f"{URL}/train_full", json=self.payload, stream=True) as r:
-            r.raise_for_status()
-            print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
-            for line in r.iter_lines():
-                if not line:
-                    continue
-                if line.startswith(b"data: "):
-                    msg = json.loads(line[6:].decode("utf-8"))
-                    # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
-                    print("EVENT:", msg)
-                    if msg.get("done"):
-                        break
 
 # Créer la fenêtre de paramétrage de l'horizon des données
 class Fenetre_Params_horizon(tk.Toplevel):
