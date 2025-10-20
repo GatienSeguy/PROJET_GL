@@ -100,7 +100,7 @@ class Fenetre_Acceuil(tk.Tk):
         section_data = tk.LabelFrame(self.cadre, text="📊 Données", font=self.font_section, bg="#eaf2f8", fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
         section_data.pack(fill="x", pady=10)
 
-        self.bouton(section_data, "📁 Choix Dataset", self.test)
+        self.bouton(section_data, "📁 Choix Dataset", self.Parametrer_dataset)
         self.bouton(section_data, "📅 Paramétrer Horizon", self.Parametrer_horizon)
 
         # Section 3 : Actions
@@ -130,6 +130,8 @@ class Fenetre_Acceuil(tk.Tk):
         Fenetre_Params(self)
     def Parametrer_horizon(self):
         Fenetre_Params_horizon(self)
+    def Parametrer_dataset(self):
+        Fenetre_Choix_datasets(self)
     
     def EnvoyerConfig(self):
         print(self.Payload)
@@ -747,6 +749,78 @@ class Fenetre_Params_horizon(tk.Toplevel):
         self.Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100)
             
         self.destroy()
+
+
+#Creer la fenetre de choix des datasets
+class Fenetre_Choix_datasets(tk.Toplevel):
+    def __init__(self, master=None):
+        super().__init__(master)
+        couleur_fond = "#d9d9d9"
+        self.title("📂 Choix des datasets")
+
+        # Définir une police personnalisée
+        self.font_titre = ("Helvetica", 14, "bold")
+        self.font_bouton = ("Helvetica", 11)
+
+        self.geometry("500x1")  # largeur fixe, hauteur minimale
+
+        self.cadre = tk.Frame(self, borderwidth=30)
+        self.cadre.configure(bg=couleur_fond)
+        self.cadre.pack(fill="both", expand="yes")
+
+        # Titre simulé
+        tk.Label(self.cadre, text="Choix des datasets", font=self.font_titre, bg=couleur_fond).pack(anchor="w", pady=(0, 10))
+
+        # Cadre des paramètres
+        self.CadreParams = tk.LabelFrame(
+            self.cadre, text="", font=self.font_titre,
+            bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
+        )
+        self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
+
+        # Variables
+        
+
+        # Liste des champs
+        # champs = [
+        #     ("Dataset d'entrainement :", self.dataset_entrainement_str),
+        #     ("Dataset de validation :", self.dataset_validation_str),
+        #     ("Dataset de test :", self.dataset_test_str),
+        # ]
+
+        # for i, (label, var) in enumerate(champs):
+        #     tk.Label(self.CadreParams, text=label, bg="#ffffff").grid(row=i, column=0, sticky="w", pady=5)
+        #     tk.Entry(self.CadreParams, textvariable=var).grid(row=i, column=1, pady=10,padx=50)
+
+        # Boutons d'action
+        tk.Button(
+            self.cadre, text="💾 Sauvegarder la configuration", font=self.font_bouton,
+            height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
+            command=self.Save_quit
+        ).pack(fill="x", pady=10)
+        tk.Button(
+            self.cadre, text="❌ Quitter", font=self.font_bouton,
+            height=2, bg="#f7b2b2", fg="#842029", relief="raised", bd=3,
+            command=self.Quit
+        ).pack(fill="x", pady=(0, 10))
+        self.update_idletasks()
+        self.geometry(f"500x{self.winfo_reqheight()}")
+    
+    def Save_quit(self):
+        # Sauvegarder les paramètres
+        self.destroy()
+    
+    def Quit(self):
+        # Reinitialiser les paramètres
+        self.destroy()
+
+    def Récupérer_datasets(self):
+        # Récupérer les datasets sélectionnés
+        pass
+
+    
+
+
 
 # Lancer la boucle principale
 if __name__ == "__main__":
