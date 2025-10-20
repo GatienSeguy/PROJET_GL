@@ -14,7 +14,7 @@ class MLP(nn.Module):
     -------------------
     in_dim : int
         Dimension d'entrée (ex. 2n).
-    hidden_dim : int
+    hidden_size : int
         Largeur des couches internes.
     out_dim : int
         Dimension de sortie (ex. logits ou réels).
@@ -32,13 +32,13 @@ class MLP(nn.Module):
     def __init__(
         self,
         in_dim: int,
-        hidden_dim: int, #
+        hidden_size: int, #
         out_dim: int,
         num_blocks: int = 2,#
         activation: str = "relu"#
     ) -> None:
         super().__init__()
-        assert in_dim > 0 and hidden_dim > 0 and out_dim > 0, "Dims > 0"
+        assert in_dim > 0 and hidden_size > 0 and out_dim > 0, "Dims > 0"
         assert num_blocks >= 1, "Au moins 1 bloc"
         assert activation in {"relu", "gelu", "tanh"}, "Activation non supportée"
 
@@ -49,16 +49,16 @@ class MLP(nn.Module):
                     "tanh": nn.Tanh()}[activation]
 
         # --- Couche d'entrée ---
-        self.fc_in = nn.Linear(in_dim, hidden_dim)
+        self.fc_in = nn.Linear(in_dim, hidden_size)
 
         # --- Blocs internes (ex. MLP résumés ici) ---
         blocks = []
         for _ in range(num_blocks - 1):
-            blocks += [nn.Linear(hidden_dim, hidden_dim), nn.BatchNorm1d(hidden_dim), self._new_act()]
+            blocks += [nn.Linear(hidden_size, hidden_size), nn.BatchNorm1d(hidden_size), self._new_act()]
         self.backbone = nn.Sequential(*blocks)  # peut être vide si num_blocks=1
 
         # --- Projection finale ---
-        self.fc_out = nn.Linear(hidden_dim, out_dim)
+        self.fc_out = nn.Linear(hidden_size, out_dim)
 
         # --- Initialisations (facultatif) ---
         self.reset_parameters()
