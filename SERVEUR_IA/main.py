@@ -66,6 +66,66 @@ def build_supervised_tensors(
 
 
 
+
+
+
+def _parse_any_datetime(s: str) -> datetime:
+    try:
+        return datetime.fromisoformat(s)
+    except Exception:
+        return datetime.strptime(s, "%Y-%m-%d")
+
+def filter_series_by_dates(timestamps, values, dates):
+    if not dates or len(dates) < 2 or dates[0] is None or dates[1] is None:
+        return timestamps, values
+    start = _parse_any_datetime(dates[0])
+    end   = _parse_any_datetime(dates[1])
+    if start > end:
+        start, end = end, start
+    ts_out, val_out = [], []
+    for t, v in zip(timestamps, values):
+        if start <= t <= end:
+            ts_out.append(t)
+            val_out.append(v)
+    return ts_out, val_out
+
+def build_supervised_tensors_with_step(values, window_len=1, horizon=1, step=1):
+    if step <= 0: step = 1
+    n = len(values)
+    if n == 0:
+        return torch.empty(0, window_len), torch.empty(0, 1)
+    max_start = n - (window_len + horizon - 1)*step
+    if max_start <= 0:
+        return torch.empty(0, window_len), torch.empty(0, 1)
+
+    X_list, y_list = [], []
+    for i in range(0, max_start):
+        seq_idx = [i + k*step for k in range(window_len)]
+        tgt_idx = i + (window_len + horizon - 1)*step
+        seq = [values[j] for j in seq_idx]
+        tgt = values[tgt_idx]
+        if any(v is None for v in seq) or tgt is None:
+            continue
+        X_list.append(seq)
+        y_list.append([tgt])
+
+    if not X_list:
+        return torch.empty(0, window_len), torch.empty(0, 1)
+
+    X = torch.tensor(np.array(X_list, dtype=np.float32))
+    y = torch.tensor(np.array(y_list, dtype=np.float32))
+    return X, y
+
+def split_train_test(X, y, portion_train):
+    p = portion_train if (portion_train is not None and 0.0 < portion_train < 1.0) else 0.8
+    n = X.shape[0]
+    if n == 0:
+        return X, y, X, y
+    n_train = max(1, min(n-1, int(n * p))) if n >= 2 else n
+    return X[:n_train], y[:n_train], X[n_train:], y[n_train:]
+
+
+
 ## EN LOCAL :
 # uvicorn main:app --reload   
 
@@ -208,11 +268,29 @@ def training(payload: PaquetComplet):
     window_len = 1  # simple: one-step input; tu peux l’exposer plus tard
 
     # ----- (X,y) -----
-    X, y = build_supervised_tensors(series.values, window_len=window_len, horizon=horizon)
+    dates = cfg.Parametres_temporels.dates if (cfg and cfg.Parametres_temporels) else None
+    pas_temporel = int(cfg.Parametres_temporels.pas_temporel) if (cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.pas_temporel is not None) else 1
+    portion_decoupage = float(cfg.Parametres_temporels.portion_decoupage) if (cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.portion_decoupage is not None) else 0.8
+
+    ts_filt, vals_filt = filter_series_by_dates(series.timestamps, series.values, dates)
+
+    X, y = build_supervised_tensors_with_step(
+        vals_filt,
+        window_len=window_len,
+        horizon=horizon,
+        step=pas_temporel,
+    )
+
     if X.numel() == 0:
         def err():
-            yield f"data: {json.dumps({'type':'error','message':'(X,y) vide'})}\n\n"
+            yield f"data: {json.dumps({'type':'error','message':'(X,y) vide après filtrage/découpage'})}\n\n"
         return StreamingResponse(err(), media_type="text/event-stream")
+
+    # >>> AJOUT: split séquentiel train/test via 'portion_decoupage'
+    X_train, y_train, X_test, y_test = split_train_test(X, y, portion_train=portion_decoupage)
+
+    # >>> AJOUT: on entraîne sur le split train (garde X_test/y_test pour logs/éval plus tard)
+    X, y = X_train, y_train
 
     # ----- ARCHI (mêmes noms que Parametres_archi_reseau) -----
     hidden_size = 128
@@ -324,3 +402,4 @@ def accueil():
         response["series"] = "Aucune série reçue."
 
     return response
+
