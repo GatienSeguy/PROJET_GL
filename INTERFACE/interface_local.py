@@ -146,7 +146,6 @@ class Fenetre_Acceuil(tk.Tk):
                     if msg.get("done"):
                         break
 
-
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(tk.Toplevel):
     def __init__(self, master=None):
@@ -633,7 +632,6 @@ class Fenetre_Params(tk.Toplevel):
                     if msg.get("done"):
                         break
 
-
 # Créer la fenêtre de paramétrage de l'horizon des données
 class Fenetre_Params_horizon(tk.Toplevel):
     def __init__(self, master=None):
@@ -749,7 +747,6 @@ class Fenetre_Params_horizon(tk.Toplevel):
         self.Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100)
             
         self.destroy()
-
 
 # Lancer la boucle principale
 if __name__ == "__main__":
