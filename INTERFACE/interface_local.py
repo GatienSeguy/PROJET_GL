@@ -778,19 +778,30 @@ class Fenetre_Choix_datasets(tk.Toplevel):
         )
         self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
 
-        # Variables
+        self.Liste_datasets=["A","B","C","D","E","F","G","H","I","J","K","L","M"]  # Exemple de liste de datasets
         
 
         # Liste des champs
-        # champs = [
-        #     ("Dataset d'entrainement :", self.dataset_entrainement_str),
-        #     ("Dataset de validation :", self.dataset_validation_str),
-        #     ("Dataset de test :", self.dataset_test_str),
-        # ]
+        tk.Label(self.CadreParams, text="Sélectionnez un dataset :", font=self.font_bouton, bg="#ffffff").pack(anchor="w")
 
-        # for i, (label, var) in enumerate(champs):
-        #     tk.Label(self.CadreParams, text=label, bg="#ffffff").grid(row=i, column=0, sticky="w", pady=5)
-        #     tk.Entry(self.CadreParams, textvariable=var).grid(row=i, column=1, pady=10,padx=50)
+        # Créer une variable pour stocker la sélection
+        self.dataset_selection = tk.StringVar()
+
+        # Créer la Listbox
+        self.listbox_datasets = tk.Listbox(
+            self.CadreParams,
+            listvariable=self.dataset_selection,
+            height=6,
+            selectmode="browse",
+            font=self.font_bouton,
+            bg="#f0f0f0",
+            activestyle="dotbox"
+        )
+        self.listbox_datasets.pack(fill="x", pady=(5, 10))
+
+        # Remplir la Listbox avec les noms des datasets
+        for nom in self.Liste_datasets:
+            self.listbox_datasets.insert(tk.END, nom)
 
         # Boutons d'action
         tk.Button(
