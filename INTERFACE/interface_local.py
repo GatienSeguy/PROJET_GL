@@ -170,9 +170,31 @@ class Fenetre_Acceuil(tk.Tk):
     def Parametrer_dataset(self):
         Fenetre_Choix_datasets(self)
     
+    def Formatter_JSON_global(self):
+        self.config_totale={}
+        self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
+        self.config_totale["Parametres_choix_reseau_neurones"]=Parametres_choix_reseau_neurones.__dict__
+        #self.config_totale["Parametres_archi_reseau"]=Parametres_archi_reseau.__dict__
+        self.config_totale["Parametres_choix_loss_fct"]=Parametres_choix_loss_fct.__dict__
+        self.config_totale["Parametres_optimisateur"]=Parametres_optimisateur.__dict__
+        self.config_totale["Parametres_entrainement"]=Parametres_entrainement.__dict__
+        self.config_totale["Parametres_visualisation_suivi"]=Parametres_visualisation_suivi.__dict__
+        return self.config_totale
+    
+    def Formatter_JSON_specif(self):
+        self.config_specifique={}
+        if Parametres_choix_reseau_neurones.modele=="MLP":
+            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_MLP.__dict__
+        elif Parametres_choix_reseau_neurones.modele=="LSTM":
+            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_LSTM.__dict__
+        elif Parametres_choix_reseau_neurones.modele=="CNN":
+            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_CNN.__dict__
+        return self.config_specifique
+
     def EnvoyerConfig(self):
-        print(self.Payload)
-        with requests.post(f"{URL}/train_full", json=self.Payload, stream=True) as r:
+        self.payload=(self.Formatter_JSON_global(),self.Formatter_JSON_specif())
+        print("Payload envoyé au serveur :", self.payload)
+        with requests.post(f"{URL}/train_full", json=self.payload, stream=True) as r:
             r.raise_for_status()
             print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
             for line in r.iter_lines():
@@ -738,61 +760,8 @@ class Fenetre_Params(tk.Toplevel):
     def validate_int_fct(self, text):
         return text.isdigit() or text == ""
 
-    def Formatter_JSON_global(self):
-        self.config_totale={}
-        self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
-        self.config_totale["Parametres_choix_reseau_neurones"]=Parametres_choix_reseau_neurones.__dict__
-        #self.config_totale["Parametres_archi_reseau"]=Parametres_archi_reseau.__dict__
-        self.config_totale["Parametres_choix_loss_fct"]=Parametres_choix_loss_fct.__dict__
-        self.config_totale["Parametres_optimisateur"]=Parametres_optimisateur.__dict__
-        self.config_totale["Parametres_entrainement"]=Parametres_entrainement.__dict__
-        self.config_totale["Parametres_visualisation_suivi"]=Parametres_visualisation_suivi.__dict__
-        print(self.config_totale)
-        return self.config_totale
-    
-    def Formatter_JSON_specif(self):
-        self.config_specifique={}
-        if Parametres_choix_reseau_neurones.modele=="MLP":
-            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_MLP.__dict__
-        elif Parametres_choix_reseau_neurones.modele=="LSTM":
-            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_LSTM.__dict__
-        elif Parametres_choix_reseau_neurones.modele=="CNN":
-            self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_CNN.__dict__
-
-        print(self.config_specifique)
-        return self.config_specifique
     def Sauvegarder_Config(self):
-        app.Payload=self.Formatter_JSON()
         self.destroy()
-
-    def EnvoyerConfig(self):
-        self.payload=self.Formatter_JSON_global()
-        with requests.post(f"{URL}/train_full", json=self.payload, stream=True) as r:
-            r.raise_for_status()
-            print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
-            for line in r.iter_lines():
-                if not line:
-                    continue
-                if line.startswith(b"data: "):
-                    msg = json.loads(line[6:].decode("utf-8"))
-                    # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
-                    print("EVENT:", msg)
-                    if msg.get("done"):
-                        break
-    
-        self.payload=self.Formatter_JSON_specif()
-        with requests.post(f"{URL}/train_full", json=self.payload, stream=True) as r:
-            r.raise_for_status()
-            print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
-            for line in r.iter_lines():
-                if not line:
-                    continue
-                if line.startswith(b"data: "):
-                    msg = json.loads(line[6:].decode("utf-8"))
-                    # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
-                    print("EVENT:", msg)
-                    if msg.get("done"):
-                        break
 
 # Créer la fenêtre de paramétrage de l'horizon des données
 class Fenetre_Params_horizon(tk.Toplevel):
