@@ -28,6 +28,7 @@ from classes import (
     Parametres_visualisation_suivi,
     Parametres_archi_reseau_MLP,
     Parametres_archi_reseau_CNN,
+    Parametres_archi_reseau_LSTM,
     PaquetComplet
 )
 
@@ -72,7 +73,9 @@ last_config_series = None
 # ====================================
 
 @app.post("/train_full")
-def training(payload: PaquetComplet):
+def training(payload: PaquetComplet,payload_model: dict):
+# def training(payload: PaquetComplet):
+
 #     series: TimeSeriesData = 
 # En attendant la requête entre serveur de data on implémente en dur dans le code la serie temporelle
     series = TimeSeriesData(
@@ -93,9 +96,21 @@ def training(payload: PaquetComplet):
     values=[12.4, 12.7, 13.0, 12.9, 13.2, 13.5, 13.4, 13.7, 14.0, 13.9, 14.2, 14.5]
 )
     
+
     
     #Récupération des données
     cfg: PaquetComplet = payload
+    model_type = cfg.Parametres_choix_reseau_neurones.modele.lower()
+
+    if model_type == "mlp":
+        cfg_model = Parametres_archi_reseau_MLP(**payload_model)
+    elif model_type == "cnn":
+        cfg_model = Parametres_archi_reseau_CNN(**payload_model)
+    elif model_type == "lstm":
+        cfg_model = Parametres_archi_reseau_LSTM(**payload_model)
+    else:
+        raise ValueError(f"Modèle inconnu: {model_type}")
+
 
     #-------------------------------
     # ----- TEMPO  -----------------
@@ -156,22 +171,21 @@ def training(payload: PaquetComplet):
         kernel_size = None
         stride = None
         padding = None
-        if cfg and cfg.Parametres_archi_reseau_MLP:
-            if cfg.Parametres_archi_reseau_MLP.hidden_size is not None:
-                hidden_size = int(cfg.Parametres_archi_reseau_MLP.hidden_size)
-            if cfg.Parametres_archi_reseau_MLP.nb_couches is not None:
-                nb_couches = int(cfg.Parametres_archi_reseau_MLP.nb_couches)
-            if cfg.Parametres_archi_reseau_MLP.dropout_rate is not None:
-                dropout_rate = float(cfg.Parametres_archi_reseau_MLP.dropout_rate)
-            if cfg.Parametres_archi_reseau_MLP.fonction_activation is not None:
-                act_map = {
-                    "ReLU": "relu",
-                    "GELU": "gelu",
-                    "tanh": "tanh",
-                    "sigmoid": "sigmoid",
-                    "leaky_relu": "leaky_relu",
-                }
-                activation = act_map.get(cfg.Parametres_archi_reseau_MLP.fonction_activation, "relu")
+        if cfg_model.hidden_size is not None:
+            hidden_size = int(cfg_model.hidden_size)
+        if cfg_model.nb_couches is not None:
+            nb_couches = int(cfg_model.nb_couches)
+        if cfg_model.dropout_rate is not None:
+            dropout_rate = float(cfg_model.dropout_rate)
+        if cfg_model.fonction_activation is not None:
+            act_map = {
+                "ReLU": "relu",
+                "GELU": "gelu",
+                "tanh": "tanh",
+                "sigmoid": "sigmoid",
+                "leaky_relu": "leaky_relu",
+            }
+            activation = act_map.get(cfg_model.fonction_activation, "relu")
 
     #CLASS MODEL CNN
     if model =='cnn':
@@ -184,32 +198,31 @@ def training(payload: PaquetComplet):
         stride = 1
         padding = 1
 
-        if cfg and cfg.Parametres_archi_reseau_CNN:
-            if cfg.Parametres_archi_reseau_CNN.hidden_size is not None:
-                hidden_size = int(cfg.Parametres_archi_reseau_CNN.hidden_size)
-            
-            if cfg.Parametres_archi_reseau_CNN.nb_couches is not None:
-                nb_couches = int(cfg.Parametres_archi_reseau_CNN.nb_couches)
+        if cfg_model.hidden_size is not None:
+            hidden_size = int(cfg_model.hidden_size)
+        
+        if cfg_model.nb_couches is not None:
+            nb_couches = int(cfg_model.nb_couches)
 
-            if cfg.Parametres_archi_reseau_CNN.fonction_activation is not None:
-                act_map = {
-                    "ReLU": "relu",
-                    "GELU": "gelu",
-                    "tanh": "tanh",
-                    "sigmoid": "sigmoid",
-                    "leaky_relu": "leaky_relu",
-                }
-                activation = act_map.get(cfg.Parametres_archi_reseau_CNN.fonction_activation, "relu")
-            
-            if cfg.Parametres_archi_reseau_CNN.kernel_size is not None:
-                kernel_size = int(cfg.Parametres_archi_reseau_CNN.kernel_size)
-            
-            if cfg.Parametres_archi_reseau_CNN.stride is not None:
-                stride = int(cfg.Parametres_archi_reseau_CNN.stride)
-            
-            if cfg.Parametres_archi_reseau_CNN.padding is not None:
-                padding = int(cfg.Parametres_archi_reseau_CNN.padding)
-    
+        if cfg_model.fonction_activation is not None:
+            act_map = {
+                "ReLU": "relu",
+                "GELU": "gelu",
+                "tanh": "tanh",
+                "sigmoid": "sigmoid",
+                "leaky_relu": "leaky_relu",
+            }
+            activation = act_map.get(cfg_model.fonction_activation, "relu")
+        
+        if cfg_model.kernel_size is not None:
+            kernel_size = int(cfg_model.kernel_size)
+        
+        if cfg.stride is not None:
+            stride = int(cfg_model.stride)
+        
+        if cfg_model.padding is not None:
+            padding = int(cfg_model.padding)
+
     #CLASS MODEL LSTM
     if model =='lstm':
         #print('LSTMMMM')
@@ -218,17 +231,17 @@ def training(payload: PaquetComplet):
         bidirectional = False
         batch_first = False
 
-        if cfg.Parametres_archi_reseau_LSTM.hidden_size is not None:
-            hidden_size = int(cfg.Parametres_archi_reseau_LSTM.hidden_size)
+        if cfg_model.hidden_size is not None:
+            hidden_size = int(cfg_model.hidden_size)
             
-        if cfg.Parametres_archi_reseau_LSTM.nb_couches is not None:
-            nb_couches = int(cfg.Parametres_archi_reseau_LSTM.nb_couches)
+        if cfg_model.nb_couches is not None:
+            nb_couches = int(cfg_model.nb_couches)
 
-        if cfg.Parametres_archi_reseau_LSTM.bidirectional is not None:
-            bidirectional = bool(cfg.Parametres_archi_reseau_LSTM.bidirectional)
+        if cfg_model.bidirectional is not None:
+            bidirectional = bool(cfg_model.bidirectional)
 
-        if cfg.Parametres_archi_reseau_LSTM.batch_first is not None:
-            batch_first = bool(cfg.Parametres_archi_reseau_LSTM.batch_first)
+        if cfg_model.batch_first is not None:
+            batch_first = bool(cfg_model.batch_first)
         
 
 
@@ -333,11 +346,8 @@ def training(payload: PaquetComplet):
                 X,y,
                 hidden_size=hidden_size,
                 nb_couches=nb_couches,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                activation=activation,
-                use_batchnorm=use_batchnorm,
+                bidirectional=bidirectional,
+                batch_first=batch_size,
                 loss_name=loss_name,
                 optimizer_name=optimizer_name,
                 learning_rate=learning_rate,

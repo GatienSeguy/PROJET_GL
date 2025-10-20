@@ -3,7 +3,8 @@ import inspect
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from models.optim import make_loss, make_optimizer
-from models.model_LSTM import LSTM  # adapte le chemin si besoin
+from models.model_LSTM import LSTM 
+
 
 
 def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
@@ -41,36 +42,28 @@ def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
                 return
 
     # --- mapping des alias ---
-    put(kwargs.get("hidden_size", kwargs.get("hidden_size", kwargs.get("width", 128))),
-        "hidden_size", "hidden_size", "width")
+    batch_first_val = kwargs.get("batch_first", True)
+    if not isinstance(batch_first_val, bool):
+        batch_first_val = True if str(batch_first_val).lower() == "true" else False
+   
+    if "batch_first" in kwargs and not isinstance(kwargs["batch_first"], bool):
+        del kwargs["batch_first"]
+    put(batch_first_val, "batch_first", "batchfirst")
+    
 
-    put(kwargs.get("nb_couches",
-                   kwargs.get("n_layers",
-                              kwargs.get("nb_couches",
-                                         kwargs.get("depth",
-                                                    kwargs.get("layers",
-                                                               kwargs.get("num_layers", 2)))))),
-        "nb_couches", "n_layers", "nb_couches", "depth", "layers", "num_layers")
+    put(kwargs.get("nb_couches", 2), "num_layers", "n_layers", "nb_couches", "depth", "layers")
+    put(kwargs.get("hidden_size", 128), "hidden_size", "width", "hidden_dim")
+    put(kwargs.get("bidirectional", False), "bidirectional", "bi", "bidir")
 
-    put(kwargs.get("bidirectional", kwargs.get("bi", kwargs.get("bidir", False))),
-        "bidirectional", "bi", "bidir")
-
-    put(kwargs.get("batch_first", kwargs.get("batchfirst", True)),
-        "batch_first", "batchfirst")
-
-    # --- tout autre kw explicite présent dans la signature ---
+   
     for k, v in kwargs.items():
         if k in params:
             resolved[k] = v
 
-    # (Optionnel) Debug :
-    print("[LSTM kwargs résolus] ->", {
-        k: resolved[k]
-        for k in resolved
-        if k not in ("in_dim", "input_dim", "in_features", "out_dim", "output_dim", "out_features")
-    })
-
     return LSTM(**resolved)
+
+
+
 
 
 def train_LSTM(
@@ -111,10 +104,17 @@ def train_LSTM(
     """
     # Sanity checks rapides
     if batch_first:
+        if X.ndim == 2:
+            X = X.unsqueeze(-1)
+        elif X.ndim == 1:
+            X = X.unsqueeze(0).unsqueeze(-1)
         assert X.ndim == 3, "X doit être (B, T, in_dim) avec batch_first=True"
         B, T, in_dim = X.shape
     else:
-        # non utilisé en pratique chez toi, mais on fiabilise
+        if X.ndim == 2:
+            X = X.unsqueeze(-1)
+        elif X.ndim == 1:
+            X = X.unsqueeze(0).unsqueeze(-1)
         assert X.ndim == 3, "X doit être (T, B, in_dim) avec batch_first=False"
         T, B, in_dim = X.shape
 
@@ -167,7 +167,6 @@ def train_LSTM(
 
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
-
             optimizer.zero_grad()
             pred = model(xb)  # (B, T, out_dim) si batch_first
 

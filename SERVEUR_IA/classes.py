@@ -173,9 +173,10 @@ class PaquetComplet(BaseModel):
     Parametres_optimisateur: Optional[Parametres_optimisateur]
     Parametres_entrainement: Optional[Parametres_entrainement]
     Parametres_visualisation_suivi: Optional[Parametres_visualisation_suivi]
+    # Parametres_archi_reseau_MLP: Optional[Parametres_archi_reseau_MLP]
+    # Parametres_archi_reseau_CNN: Optional[Parametres_archi_reseau_CNN]
+    # Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
+    
+    
 
-    #MODELES :
-    Parametres_archi_reseau_MLP: Optional[Parametres_archi_reseau_MLP]
-    Parametres_archi_reseau_CNN: Optional[Parametres_archi_reseau_CNN]
-    Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
 

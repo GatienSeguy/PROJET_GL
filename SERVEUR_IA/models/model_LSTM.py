@@ -16,18 +16,18 @@ class LSTM(nn.Module):
         in_dim: int,
         hidden_dim: int,#
         out_dim: int,
-        num_blocks: int = 2,#
+        nb_couches: int = 2,#
         bidirectional: bool = False, #New
         batch_first: bool = True #New
     ):
         super().__init__()
         assert in_dim > 0 and hidden_dim > 0 and out_dim > 0, "Dims > 0"
-        assert num_blocks >= 1, "Au moins 1 bloc"
+        assert nb_couches >= 1, "Au moins 1 bloc"
 
         self.in_dim = in_dim
-        self.hidden_dim = hidden_dim
         self.out_dim = out_dim
-        self.num_blocks = num_blocks
+        self.hidden_dim = hidden_dim
+        self.nb_couches = nb_couches
         self.bidirectional = bidirectional
         self.batch_first = batch_first
 
@@ -42,7 +42,7 @@ class LSTM(nn.Module):
 
         # --- Blocs internes LSTM empilés ---
         blocks = []
-        for _ in range(num_blocks - 1):
+        for _ in range(nb_couches - 1):
             blocks.append(
                 nn.LSTM(
                     input_size=hidden_dim * (2 if bidirectional else 1),
