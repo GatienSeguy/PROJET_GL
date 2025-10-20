@@ -126,3 +126,5 @@ def train_MLP(
     yield {"done": True, "final_loss": float(last_avg)}
 
     return model, last_avg
+
+

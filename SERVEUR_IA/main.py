@@ -17,6 +17,7 @@ from trains.training_MLP import train_MLP
 from trains.training_CNN import train_CNN
 from trains.training_LSTM import train_LSTM
 
+from test.testing import test_model
 
 from classes import (
     TimeSeriesData,
@@ -156,7 +157,14 @@ def training(payload: PaquetComplet,payload_model: dict):
     # on entraîne sur le split train (garde X_test/y_test pour logs/éval plus tard)
     X, y = X_train, y_train
 
-
+    def split_info():
+        msg = {
+            "type": "info",
+            "phase": "split",
+            "n_train": int(X_train.shape[0]),
+            "n_test": int(X_test.shape[0]),
+        }
+        yield f"data: {json.dumps(msg)}\n\n"
 
     #---------------------------------
     # ----- ARCHI --------------------
@@ -297,13 +305,15 @@ def training(payload: PaquetComplet,payload_model: dict):
     # ----- Lancement Entraînement --------
     #--------------------------------------
     def event_gen():
-
+        for msg in split_info():
+            yield msg
         if cfg and cfg.Parametres_choix_reseau_neurones:
             if cfg.Parametres_choix_reseau_neurones.modele:
                 model= cfg.Parametres_choix_reseau_neurones.modele.lower()
-        print(model)
+        
         if model == "mlp":
-            for msg in train_MLP(
+            # on capture le générateur
+            gen = train_MLP(
                 X, y,
                 hidden_size=hidden_size,
                 nb_couches=nb_couches,        
@@ -317,8 +327,43 @@ def training(payload: PaquetComplet,payload_model: dict):
                 batch_size=batch_size,
                 epochs=epochs,
                 device=device,
-            ):
-                yield f"data: {json.dumps(msg)}\n\n"
+            )
+
+            model_trained = None
+            try:
+                for msg in gen:
+                    yield f"data: {json.dumps(msg)}\n\n"
+            except StopIteration as e:
+                if e.value is not None:
+                    if isinstance(e.value, tuple):
+                        model_trained = e.value[0]
+                    else:
+                        model_trained = e.value
+
+            # ---- TEST sur les données restantes ----
+            if model_trained is not None:
+                print("⏱️ Phase de test...")
+                report = test_model(model_trained, X_test, y_test, device=device)
+                yield f"data: {json.dumps({'type':'report','phase':'test_final', **report})}\n\n"
+
+                
+        # if model == "mlp":
+        #     for msg in train_MLP(
+        #         X, y,
+        #         hidden_size=hidden_size,
+        #         nb_couches=nb_couches,        
+        #         dropout_rate=dropout_rate,
+        #         activation=activation,
+        #         use_batchnorm=use_batchnorm,
+        #         loss_name=loss_name,
+        #         optimizer_name=optimizer_name,
+        #         learning_rate=learning_rate,
+        #         weight_decay=weight_decay,
+        #         batch_size=batch_size,
+        #         epochs=epochs,
+        #         device=device,
+        #     ):
+        #         yield f"data: {json.dumps(msg)}\n\n"
 
 
 
@@ -353,7 +398,7 @@ def training(payload: PaquetComplet,payload_model: dict):
                 hidden_size=hidden_size,
                 nb_couches=nb_couches,
                 bidirectional=bidirectional,
-                batch_first=batch_size,
+                batch_first=batch_first,
                 loss_name=loss_name,
                 optimizer_name=optimizer_name,
                 learning_rate=learning_rate,
