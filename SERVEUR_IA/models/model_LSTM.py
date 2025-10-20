@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class LSTM(nn.Module):
+class LSTM(nn.Module): 
     """
     LSTM modulaire pour séries temporelles, inspiré de la structure Conv1D.
 
