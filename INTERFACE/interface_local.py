@@ -18,7 +18,7 @@ URL = "http://138.231.149.81:8000"
 class Parametres_temporels_class():
     def __init__(self):
         self.horizon=1 # int
-        self.dates=["2025-01-01", "2025-01-01"] # variable datetime
+        self.dates=["2025-01-01", "2025-01-02"] # variable datetime
         self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
 class Parametres_choix_reseau_neurones_class():
@@ -125,7 +125,7 @@ class Fenetre_Acceuil(tk.Tk):
         self.cadre.pack(fill="both", expand=True)
 
         # Titre
-        tk.Label(self.cadre, text="Bienvenue 👋", font=self.font_titre, bg="#f0f4f8", fg="#2c3e50").pack(pady=(0, 20))
+        tk.Label(self.cadre, text="MLApp", font=self.font_titre, bg="#f0f4f8", fg="#2c3e50").pack(pady=(0, 20))
 
         # Section 1 : Modèle
         section_modele = tk.LabelFrame(self.cadre, text="🧬 Modèle", font=self.font_section, bg="#eaf2f8", fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
@@ -195,6 +195,7 @@ class Fenetre_Acceuil(tk.Tk):
     def EnvoyerConfig(self):
         payload_global = self.Formatter_JSON_global()
         payload_model = self.Formatter_JSON_specif()
+        # Avant d’envoyer le payload
         print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
         with requests.post(f"{URL}/train_full", json={"payload": payload_global, "payload_model": payload_model}, stream=True) as r:
             r.raise_for_status()
