@@ -110,6 +110,11 @@ Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 class Fenetre_Acceuil(tk.Tk):
     def __init__(self):
         self.Payload={}
+        self.Fenetre_Params_instance = None
+        self.Fenetre_Params_horizon_instance = None
+        self.Fenetre_Choix_datasets_instance = None
+        self.feur_instance = None
+
         tk.Tk.__init__(self)
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
         self.configure(bg="#f0f4f8")
@@ -151,6 +156,11 @@ class Fenetre_Acceuil(tk.Tk):
         self.update_idletasks()
         self.geometry(f"520x{self.winfo_reqheight()}")
 
+        self.attributes('-fullscreen', True)  # Enable fullscreen
+        self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
+        self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
+
+
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
             parent, text=texte, font=self.font_bouton, command=commande,
@@ -164,12 +174,24 @@ class Fenetre_Acceuil(tk.Tk):
 
     def test(self):
         print("test")
+    
     def Parametrer_modele(self):
-        Fenetre_Params(self)
+        if self.Fenetre_Params_instance is None or not self.Fenetre_Params_instance.est_ouverte():
+            self.Fenetre_Params_instance = Fenetre_Params(self)
+        else:
+            self.Fenetre_Params_instance.lift()  # Ramène la fenêtre secondaire au premier plan
+    
     def Parametrer_horizon(self):
-        Fenetre_Params_horizon(self)
+        if self.Fenetre_Params_horizon_instance is None or not self.Fenetre_Params_horizon_instance.est_ouverte():
+            self.Fenetre_Params_horizon_instance = Fenetre_Params_horizon(self)
+        else:
+            self.Fenetre_Params_horizon_instance.lift()  # Ramène la fenêtre secondaire au premier plan
+
     def Parametrer_dataset(self):
-        Fenetre_Choix_datasets(self)
+        if self.Fenetre_Choix_datasets_instance is None or not self.Fenetre_Choix_datasets_instance.est_ouverte():
+            self.Fenetre_Choix_datasets_instance = Fenetre_Choix_datasets(self)
+        else:
+            self.Fenetre_Choix_datasets_instance.lift()  # Ramène la fenêtre secondaire au premier plan
     
     def Formatter_JSON_global(self):
         self.config_totale={}
@@ -275,6 +297,8 @@ class Fenetre_Params(tk.Toplevel):
         self.update_idletasks()
         self.geometry(f"500x{self.winfo_reqheight()}")
 
+    def est_ouverte(self):
+        return self.winfo_exists()
     # Fonctions des fenêtres de paramétrage
     
     def Params_temporels(self):
@@ -835,7 +859,10 @@ class Fenetre_Params_horizon(tk.Toplevel):
 
         self.update_idletasks()
         self.geometry(f"500x{self.winfo_reqheight()}")
-        
+    
+    def est_ouverte(self):
+        return self.winfo_exists()
+
     def validate_int_fct(self, text):
         return text.isdigit() or text == ""
     
@@ -948,6 +975,9 @@ class Fenetre_Choix_datasets(tk.Toplevel):
         self.update_idletasks()
         self.geometry(f"500x{self.winfo_reqheight()}")
     
+    def est_ouverte(self):
+        return self.winfo_exists()
+
     def Save_quit(self):
         # Sauvegarder les paramètres
         self.destroy()
