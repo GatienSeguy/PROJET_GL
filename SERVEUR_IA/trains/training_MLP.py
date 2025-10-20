@@ -117,7 +117,7 @@ def train_MLP(
             n += xb.size(0)
         last_avg = total / max(1, n)
 
-        k = 100
+        k = 1
         if epoch % k == 0:
             yield {"epochs": epoch, "avg_loss": float(last_avg)}
 
@@ -125,6 +125,6 @@ def train_MLP(
 
     yield {"done": True, "final_loss": float(last_avg)}
 
-    return model, last_avg
+    return model
 
 

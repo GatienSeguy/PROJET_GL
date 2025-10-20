@@ -128,4 +128,4 @@ def train_CNN(
         print(f"[{epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
     yield {"done": True, "final_loss": float(last_avg)}
-    return model, last_avg
+    return model

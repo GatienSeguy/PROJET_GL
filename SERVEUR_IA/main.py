@@ -1,5 +1,6 @@
 from fastapi import FastAPI
  
+
 from fastapi.responses import StreamingResponse
 import json 
   
@@ -38,7 +39,8 @@ from .fonctions_pour_main import(
     _parse_any_datetime,
     filter_series_by_dates,
     build_supervised_tensors_with_step,
-    split_train_test
+    split_train_test,
+    sse
 )
 ##### EN attendant c'est ici :
 
@@ -52,9 +54,10 @@ from .fonctions_pour_main import(
 #  ipconfig getifaddr en0  
 
 # 2- Faire pour lancer le serveur
-# cd /Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_IA
-#  uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
+# 2) va à la racine du projet
+# cd /Users/gatienseguy/Documents/VSCode/PROJET_GL
+# touch SERVEUR_IA/__init__.py
+# python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 #3 - à la txrx : metxztre : URL = ""http:// IP DE L'ORDI HOST DU SERVEUR :8000" "
 
 
@@ -79,26 +82,33 @@ def training(payload: PaquetComplet,payload_model: dict):
 
 #     series: TimeSeriesData = 
 # En attendant la requête entre serveur de data on implémente en dur dans le code la serie temporelle
-    series = TimeSeriesData(
-    timestamps=[
-        datetime.fromisoformat("2025-01-01T00:00:00"),
-        datetime.fromisoformat("2025-01-01T01:00:00"),
-        datetime.fromisoformat("2025-01-01T02:00:00"),
-        datetime.fromisoformat("2025-01-01T03:00:00"),
-        datetime.fromisoformat("2025-01-01T04:00:00"),
-        datetime.fromisoformat("2025-01-01T05:00:00"),
-        datetime.fromisoformat("2025-01-01T06:00:00"),
-        datetime.fromisoformat("2025-01-01T07:00:00"),
-        datetime.fromisoformat("2025-01-01T08:00:00"),
-        datetime.fromisoformat("2025-01-01T09:00:00"),
-        datetime.fromisoformat("2025-01-01T10:00:00"),
-        datetime.fromisoformat("2025-01-01T11:00:00"),
-    ],
-    values=[12.4, 12.7, 13.0, 12.9, 13.2, 13.5, 13.4, 13.7, 14.0, 13.9, 14.2, 14.5]
-)
+#     series = TimeSeriesData(
+#     timestamps=[
+#         datetime.fromisoformat("2025-01-01T00:00:00"),
+#         datetime.fromisoformat("2025-01-01T01:00:00"),
+#         datetime.fromisoformat("2025-01-01T02:00:00"),
+#         datetime.fromisoformat("2025-01-01T03:00:00"),
+#         datetime.fromisoformat("2025-01-01T04:00:00"),
+#         datetime.fromisoformat("2025-01-01T05:00:00"),
+#         datetime.fromisoformat("2025-01-01T06:00:00"),
+#         datetime.fromisoformat("2025-01-01T07:00:00"),
+#         datetime.fromisoformat("2025-01-01T08:00:00"),
+#         datetime.fromisoformat("2025-01-01T09:00:00"),
+#         datetime.fromisoformat("2025-01-01T10:00:00"),
+#         datetime.fromisoformat("2025-01-01T11:00:00"),
+#     ],
+#     values=[12.4, 12.7, 13.0, 12.9, 13.2, 13.5, 13.4, 13.7, 14.0, 13.9, 14.2, 14.5]
+# )
     
 
-    
+    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/timeseries_data.json"  # ton fichier JSON existant
+
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    series = TimeSeriesData(**data)
+
+
     #Récupération des données
     cfg: PaquetComplet = payload
 
@@ -309,14 +319,14 @@ def training(payload: PaquetComplet,payload_model: dict):
             yield msg
         if cfg and cfg.Parametres_choix_reseau_neurones:
             if cfg.Parametres_choix_reseau_neurones.modele:
-                model= cfg.Parametres_choix_reseau_neurones.modele.lower()
+                model_name= cfg.Parametres_choix_reseau_neurones.modele.lower()
         
-        if model == "mlp":
-            # on capture le générateur
+         # 2) construire le générateur d'entraînement
+        if model_name == "mlp":
             gen = train_MLP(
                 X, y,
                 hidden_size=hidden_size,
-                nb_couches=nb_couches,        
+                nb_couches=nb_couches,
                 dropout_rate=dropout_rate,
                 activation=activation,
                 use_batchnorm=use_batchnorm,
@@ -328,50 +338,9 @@ def training(payload: PaquetComplet,payload_model: dict):
                 epochs=epochs,
                 device=device,
             )
-
-            model_trained = None
-            try:
-                for msg in gen:
-                    yield f"data: {json.dumps(msg)}\n\n"
-            except StopIteration as e:
-                if e.value is not None:
-                    if isinstance(e.value, tuple):
-                        model_trained = e.value[0]
-                    else:
-                        model_trained = e.value
-
-            # ---- TEST sur les données restantes ----
-            if model_trained is not None:
-                print("⏱️ Phase de test...")
-                report = test_model(model_trained, X_test, y_test, device=device)
-                yield f"data: {json.dumps({'type':'report','phase':'test_final', **report})}\n\n"
-
-                
-        # if model == "mlp":
-        #     for msg in train_MLP(
-        #         X, y,
-        #         hidden_size=hidden_size,
-        #         nb_couches=nb_couches,        
-        #         dropout_rate=dropout_rate,
-        #         activation=activation,
-        #         use_batchnorm=use_batchnorm,
-        #         loss_name=loss_name,
-        #         optimizer_name=optimizer_name,
-        #         learning_rate=learning_rate,
-        #         weight_decay=weight_decay,
-        #         batch_size=batch_size,
-        #         epochs=epochs,
-        #         device=device,
-        #     ):
-        #         yield f"data: {json.dumps(msg)}\n\n"
-
-
-
-        if model =="cnn":
-            print("CNN")
-
-            for msg in train_CNN(
-                X,y,
+        elif model_name == "cnn":
+            gen = train_CNN(
+                X, y,
                 hidden_size=hidden_size,
                 nb_couches=nb_couches,
                 kernel_size=kernel_size,
@@ -385,16 +354,11 @@ def training(payload: PaquetComplet,payload_model: dict):
                 weight_decay=weight_decay,
                 batch_size=batch_size,
                 epochs=epochs,
-                device=device
-            ):
-                yield f"data: {json.dumps(msg)}\n\n"
-
-
-        if model =="lstm":
-            print("LSTM CHAMPION")
-
-            for msg in train_LSTM(
-                X,y,
+                device=device,
+            )
+        elif model_name == "lstm":
+            gen = train_LSTM(
+                X, y,
                 hidden_size=hidden_size,
                 nb_couches=nb_couches,
                 bidirectional=bidirectional,
@@ -405,11 +369,35 @@ def training(payload: PaquetComplet,payload_model: dict):
                 weight_decay=weight_decay,
                 batch_size=batch_size,
                 epochs=epochs,
-                device=device
+                device=device,
+            )
+        else:
+            yield sse({"type":"error","message": f"Modèle inconnu: {model_name}"})
+            return
+        
+        model_trained = None
+        try:
+            while True:
+                msg = next(gen)
+                
+                yield sse(msg)
+        except StopIteration as e:
+            # Le modèle est retourné via StopIteration.value
+            model_trained = e.value
+        
+        # 4) Test en streaming : y / ŷ par paire + métriques finales
+        if model_trained is not None:
+            for evt in test_model(
+                model_trained, X_test, y_test,
+                device=device,
+                batch_size=256,
+                inverse_fn=None,
             ):
-                yield f"data: {json.dumps(msg)}\n\n"
+                yield f"data: {json.dumps(evt)}\n\n"
+        else:
+            yield sse({"type":"warn","message":"Modèle non récupéré (test sauté)."})
+    
     return StreamingResponse(event_gen(), media_type="text/event-stream")
-
 
 
 

@@ -4,7 +4,7 @@ import torch
 from typing import Optional, Tuple, Literal, List
 from pydantic import BaseModel, Field, conint, confloat
 from datetime import date,datetime
-
+import json
 def build_supervised_tensors(
     values: List[Optional[float]],
     window_len: int = 1,
@@ -98,3 +98,7 @@ def split_train_test(X, y, portion_train):
     n_train = max(1, min(n-1, int(n * p))) if n >= 2 else n
     return X[:n_train], y[:n_train], X[n_train:], y[n_train:]
 
+
+
+def sse(event: dict) -> str:
+    return f"data: {json.dumps(event)}\n\n"

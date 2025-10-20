@@ -26,7 +26,7 @@ payload_global = {
      'patience': 5},
 
     'Parametres_entrainement': 
-    {'nb_epochs': 1000, 
+    {'nb_epochs': 100, 
      'batch_size': 4, 
      'clip_gradient': None},
 

@@ -222,8 +222,8 @@ class Fenetre_Acceuil(tk.Tk):
     
     def plot_predictions(self, y_true_pairs, y_pred_pairs):
         """
-        y_true_pairs, y_pred_pairs : liste  s de listes (N x D)
-        Affiche y vs yhat pour D dimensions (ou une seule si D=1).
+        y_true_pairs, y_pred_pairs : listes de listes (N x D)
+        Affiche y vs yhat pour D dimensions (ou une seule si D=1) avec un style élégant.
         """
         if not y_true_pairs or not y_pred_pairs:
             return
@@ -236,23 +236,102 @@ class Fenetre_Acceuil(tk.Tk):
             yt = yt.squeeze(1)
             yp = yp.squeeze(1)
 
-        fig, ax = plt.subplots()
+        # Configuration du style
+        plt.style.use('seaborn-v0_8-darkgrid')
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
         if yt.ndim == 1:
             x = np.arange(len(yt))
-            ax.plot(x, yt, marker='o', label='y (true)')
-            ax.plot(x, yp, marker='o', label='ŷ (pred)')
+            
+            # Tracer avec un style élégant
+            ax.plot(x, yt, 
+                    color='#2E86AB', 
+                    linewidth=2, 
+                    marker='o', 
+                    markersize=4, 
+                    markerfacecolor='white',
+                    markeredgewidth=1.5,
+                    markeredgecolor='#2E86AB',
+                    label='y (vraies valeurs)', 
+                    alpha=0.8,
+                    zorder=2)
+            
+            ax.plot(x, yp, 
+                    color='#A23B72', 
+                    linewidth=2, 
+                    marker='s', 
+                    markersize=4, 
+                    markerfacecolor='white',
+                    markeredgewidth=1.5,
+                    markeredgecolor='#A23B72',
+                    label='ŷ (prédictions)', 
+                    alpha=0.8,
+                    zorder=2)
+            
+            # Remplissage entre les courbes pour montrer l'erreur
+            ax.fill_between(x, yt, yp, alpha=0.2, color='gray', label='Erreur')
+            
         else:
             x = np.arange(yt.shape[0])
-            for d in range(yt.shape[1]):
-                ax.plot(x, yt[:, d], marker='o', label=f'y (true) dim {d}')
-                ax.plot(x, yp[:, d], marker='o', label=f'ŷ (pred) dim {d}')
+            colors_true = ['#2E86AB', '#06A77D', '#F77F00', '#D62828']
+            colors_pred = ['#A23B72', '#F18F01', '#C73E1D', '#6A4C93']
+            
+            for d in range(min(yt.shape[1], 4)):  # Limiter à 4 dimensions pour la lisibilité
+                ax.plot(x, yt[:, d], 
+                        color=colors_true[d % len(colors_true)],
+                        linewidth=2,
+                        marker='o',
+                        markersize=3,
+                        markerfacecolor='white',
+                        markeredgewidth=1,
+                        markeredgecolor=colors_true[d % len(colors_true)],
+                        label=f'y (vrai) dim {d}',
+                        alpha=0.8,
+                        zorder=2)
+                
+                ax.plot(x, yp[:, d],
+                        color=colors_pred[d % len(colors_pred)],
+                        linewidth=2,
+                        marker='s',
+                        markersize=3,
+                        markerfacecolor='white',
+                        markeredgewidth=1,
+                        markeredgecolor=colors_pred[d % len(colors_pred)],
+                        label=f'ŷ (prédit) dim {d}',
+                        alpha=0.8,
+                        linestyle='--',
+                        zorder=2)
 
-        ax.set_title('Test set: y vs ŷ')
-        ax.set_xlabel('Sample index')
-        ax.set_ylabel('Value')
-        ax.legend()
-        ax.grid(True, linestyle='--', alpha=0.3)
+        # Titre et labels
+        ax.set_title('Comparaison des prédictions avec les valeurs réelles', 
+                    fontsize=14, 
+                    fontweight='bold',
+                    pad=20)
+        ax.set_xlabel('Index de l\'échantillon', fontsize=11, fontweight='bold')
+        ax.set_ylabel('Valeur', fontsize=11, fontweight='bold')
+        
+        # Légende élégante
+        legend = ax.legend(loc='best', 
+                        frameon=True, 
+                        fancybox=True, 
+                        shadow=True,
+                        fontsize=10)
+        legend.get_frame().set_alpha(0.9)
+        
+        # Grille plus subtile
+        ax.grid(True, linestyle='--', alpha=0.4, zorder=1)
+        ax.set_axisbelow(True)
+        
+        # Améliorer l'apparence générale
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#CCCCCC')
+        ax.spines['bottom'].set_color('#CCCCCC')
+        
+        # Ajuster les marges
         fig.tight_layout()
+        
+        # Afficher
         plt.show()
 
 
@@ -263,42 +342,443 @@ class Fenetre_Acceuil(tk.Tk):
 
         print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
 
-        # --- buffers pour le plot ---
+        # --- buffers pour le plot et métriques ---
         y_true_pairs, y_pred_pairs = [], []
-        seen_test_done = False
+        test_metrics = None
+        train_losses = []
+        train_epochs = []
+        
+        # --- Fenêtre de progression avec graphique dynamique ---
+        fenetre_progress = tk.Toplevel(self)
+        fenetre_progress.title("📈 Entraînement en cours...")
+        fenetre_progress.geometry("900x650")
+        fenetre_progress.configure(bg="#f5f7fa")
+        
+        cadre_progress = tk.Frame(fenetre_progress, padx=20, pady=20, bg="#f5f7fa")
+        cadre_progress.pack(fill="both", expand=True)
+        
+        # Labels de statut
+        label_status = tk.Label(
+            cadre_progress, 
+            text="Initialisation...", 
+            font=("Helvetica", 14, "bold"),
+            bg="#f5f7fa",
+            fg="#2c3e50"
+        )
+        label_status.pack(pady=10)
+        
+        cadre_info = tk.Frame(cadre_progress, bg="#f5f7fa")
+        cadre_info.pack(pady=5)
+        
+        label_epoch = tk.Label(
+            cadre_info, 
+            text="", 
+            font=("Helvetica", 11),
+            bg="#f5f7fa",
+            fg="#34495e"
+        )
+        label_epoch.grid(row=0, column=0, padx=20)
+        
+        label_loss = tk.Label(
+            cadre_info, 
+            text="", 
+            font=("Helvetica", 11),
+            bg="#f5f7fa",
+            fg="#34495e"
+        )
+        label_loss.grid(row=0, column=1, padx=20)
+        
+        progress_bar = ttk.Progressbar(cadre_progress, length=800, mode='determinate')
+        progress_bar.pack(pady=15)
+        
+        # === GRAPHIQUE MATPLOTLIB INTÉGRÉ AVEC STYLE ===
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        from matplotlib.figure import Figure
+        
+        # Créer la figure
+        fig = Figure(figsize=(8, 4), dpi=100, facecolor='#f5f7fa')
+        ax = fig.add_subplot(111)
+        
+        # Style du graphique
+        ax.set_facecolor('#ffffff')
+        ax.set_title('Évolution de la Loss pendant l\'entraînement', 
+                    fontsize=13, 
+                    fontweight='bold',
+                    color='#2c3e50',
+                    pad=15)
+        ax.set_xlabel('Epoch', fontsize=10, fontweight='bold', color='#34495e')
+        ax.set_ylabel('Loss', fontsize=10, fontweight='bold', color='#34495e')
+        ax.grid(True, linestyle='--', alpha=0.3, color='#bdc3c7')
+        ax.set_axisbelow(True)
+        
+        # Supprimer les bordures supérieure et droite
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#95a5a6')
+        ax.spines['bottom'].set_color('#95a5a6')
+        
+        # Ligne de loss (vide au début)
+        line_loss, = ax.plot([], [], 
+                            color='#e74c3c', 
+                            linewidth=2.5, 
+                            marker='o', 
+                            markersize=5,
+                            markerfacecolor='#ffffff',
+                            markeredgewidth=2,
+                            markeredgecolor='#e74c3c',
+                            label='Loss',
+                            alpha=0.9)
+        
+        # Légende
+        legend = ax.legend(loc='upper right', 
+                        frameon=True, 
+                        fancybox=True, 
+                        shadow=True,
+                        fontsize=9)
+        legend.get_frame().set_facecolor('#ffffff')
+        legend.get_frame().set_alpha(0.9)
+        
+        fig.tight_layout()
+        
+        # Intégrer le graphique dans Tkinter
+        canvas = FigureCanvasTkAgg(fig, master=cadre_progress)
+        canvas.draw()
+        canvas.get_tk_widget().pack(pady=10)
+        
+        # Log textuel
+        text_log = tk.Text(
+            cadre_progress, 
+            height=6, 
+            width=100, 
+            font=("Courier", 9),
+            bg="#f8f9fa",
+            fg="#2c3e50",
+            relief="flat",
+            padx=10,
+            pady=10
+        )
+        text_log.pack(pady=10)
+        
+        scrollbar = tk.Scrollbar(cadre_progress, command=text_log.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text_log.config(yscrollcommand=scrollbar.set)
 
-        with requests.post(f"{URL}/train_full", json={"payload": payload_global, "payload_model": payload_model}, stream=True) as r:
-            r.raise_for_status()
-            print("Content-Type:", r.headers.get("content-type"))
-            for line in r.iter_lines():
-                if not line:
-                    continue
-                if line.startswith(b"data: "):
-                    msg = json.loads(line[6:].decode("utf-8"))
-                    print("EVENT:", msg)
+        def log_message(msg, color="black"):
+            text_log.insert(tk.END, msg + "\n", color)
+            text_log.see(tk.END)
+            fenetre_progress.update()
+        
+        # Configuration des tags de couleur
+        text_log.tag_config("black", foreground="#2c3e50")
+        text_log.tag_config("blue", foreground="#3498db")
+        text_log.tag_config("green", foreground="#27ae60")
+        text_log.tag_config("red", foreground="#e74c3c")
+        text_log.tag_config("orange", foreground="#e67e22")
+        
+        # Variable pour stocker le nombre total d'epochs
+        total_epochs = 100  # Valeur par défaut
+        
+        def update_loss_plot():
+            """Mise à jour DYNAMIQUE du graphique de loss"""
+            if train_epochs and train_losses:
+                # Mettre à jour les données de la ligne
+                line_loss.set_data(train_epochs, train_losses)
+                
+                # Ajuster les limites des axes
+                ax.relim()
+                ax.autoscale_view()
+                
+                # Ajuster les limites Y pour bien voir la courbe
+                if len(train_losses) > 0:
+                    y_min = min(train_losses)
+                    y_max = max(train_losses)
+                    y_range = y_max - y_min
+                    if y_range > 0:
+                        ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+                    else:
+                        # Si toutes les valeurs sont identiques
+                        ax.set_ylim(y_min - 0.001, y_max + 0.001)
+                
+                # Redessiner le canvas
+                canvas.draw()
+                canvas.flush_events()
+                fenetre_progress.update()
 
-                    # Récupération des paires
-                    if msg.get("type") == "test_pair":
-                        # msg['y'] et msg['yhat'] sont des listes de longueur D
-                        y_true_pairs.append(msg["y"])
-                        y_pred_pairs.append(msg["yhat"])
+        try:
+            with requests.post(
+                f"{URL}/train_full", 
+                json={"payload": payload_global, "payload_model": payload_model}, 
+                stream=True, 
+                timeout=300
+            ) as r:
+                r.raise_for_status()
+                
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+                    if line.startswith(b"data: "):
+                        msg = json.loads(line[6:].decode("utf-8"))
+                        msg_type = msg.get("type")
+                        
+                        print(f"EVENT: {msg}")  # Debug
+                        
+                        # ========== PHASE SPLIT ==========
+                        if msg_type == "split":
+                            label_status.config(text="📊 Découpage des données...", fg="#3498db")
+                            log_message(f"✓ Train: {msg['n_train']} échantillons | Test: {msg['n_test']} échantillons", "blue")
+                        
+                        # ========== PHASE ENTRAINEMENT ==========
+                        elif msg_type == "train_start":
+                            label_status.config(text="🚀 Entraînement démarré", fg="#27ae60")
+                            total_epochs = msg.get('epochs', 100)  # Récupérer le nombre total d'epochs
+                            log_message(f"🚀 Début de l'entraînement sur {msg.get('n_samples', '?')} échantillons pour {total_epochs} epochs", "green")
+                            fenetre_progress.update()
+                        
+                        # ========== GÉRER VOS ÉVÉNEMENTS ACTUELS ==========
+                        # Vos événements ont 'epochs' et 'avg_loss'
+                        elif 'epochs' in msg and 'avg_loss' in msg:
+                            epoch = msg.get("epochs", 0)
+                            loss = msg.get("avg_loss", 0.0)
+                            
+                            # 🔥 AJOUTER LE POINT À LA COURBE 🔥
+                            train_epochs.append(epoch)
+                            train_losses.append(loss)
+                            
+                            # Mise à jour des labels
+                            label_epoch.config(text=f"📊 Epoch: {epoch}/{total_epochs}", fg="#3498db")
+                            
+                            # Couleur dynamique selon la loss
+                            loss_color = "#27ae60" if loss < 0.001 else "#e67e22" if loss < 0.01 else "#e74c3c"
+                            label_loss.config(text=f"📉 Loss: {loss:.6f}", fg=loss_color)
+                            
+                            progress_bar['value'] = (epoch / total_epochs) * 100
+                            
+                            log_message(f"Epoch {epoch}/{total_epochs} - Loss: {loss:.6f}", "black")
+                            
+                            # 🔥 MISE À JOUR DYNAMIQUE DU GRAPHIQUE 🔥
+                            update_loss_plot()
+                        
+                        # ========== FORMAT STANDARD (si vous corrigez le serveur) ==========
+                        elif msg_type == "train_epoch":
+                            epoch = msg.get("epoch", 0)
+                            total_epochs_msg = msg.get("total_epochs", total_epochs)
+                            loss = msg.get("loss", 0.0)
+                            
+                            train_epochs.append(epoch)
+                            train_losses.append(loss)
+                            
+                            label_epoch.config(text=f"📊 Epoch: {epoch}/{total_epochs_msg}", fg="#3498db")
+                            loss_color = "#27ae60" if loss < 0.001 else "#e67e22" if loss < 0.01 else "#e74c3c"
+                            label_loss.config(text=f"📉 Loss: {loss:.6f}", fg=loss_color)
+                            progress_bar['value'] = (epoch / total_epochs_msg) * 100
+                            
+                            log_message(f"Epoch {epoch}/{total_epochs_msg} - Loss: {loss:.6f}", "black")
+                            update_loss_plot()
+                        
+                        elif msg_type == "train_progress":
+                            progress = msg.get("progress", 0)
+                            progress_bar['value'] = progress
+                            fenetre_progress.update()
+                        
+                        elif msg_type == "train_done":
+                            label_status.config(text="✅ Entraînement terminé", fg="#27ae60")
+                            log_message("✅ Entraînement terminé avec succès!", "green")
+                            progress_bar['value'] = 100
+                            fenetre_progress.update()
+                        
+                        # ========== PHASE TEST ==========
+                        elif msg_type == "test_start":
+                            label_status.config(text="🧪 Test en cours...", fg="#3498db")
+                            log_message(f"🧪 Début du test sur {msg['n_test']} échantillons", "blue")
+                            progress_bar['value'] = 0
+                            label_epoch.config(text="")
+                            label_loss.config(text="")
+                            fenetre_progress.update()
+                        
+                        elif msg_type == "test_pair":
+                            y_true_pairs.append(msg["y"])
+                            y_pred_pairs.append(msg["yhat"])
+                        
+                        elif msg_type == "test_progress":
+                            done = msg.get("done", 0)
+                            total = msg.get("total", 1)
+                            progress = (done / total) * 100
+                            progress_bar['value'] = progress
+                            label_status.config(text=f"🧪 Test: {done}/{total}", fg="#3498db")
+                            fenetre_progress.update()
+                        
+                        elif msg_type == "test_final":
+                            test_metrics = msg["metrics"]
+                            label_status.config(text="✅ Test terminé", fg="#27ae60")
+                            log_message("✅ Test terminé avec succès!", "green")
+                            
+                            # Afficher les métriques dans le log
+                            log_message("\n=== MÉTRIQUES FINALES ===", "green")
+                            for metric, value in test_metrics["overall_mean"].items():
+                                if value is not None:
+                                    log_message(f"  {metric}: {value:.6f}", "blue")
+                            
+                            progress_bar['value'] = 100
+                            fenetre_progress.update()
+                        
+                        # ========== ERREURS ==========
+                        elif msg_type == "error":
+                            error_msg = msg.get('message', 'Erreur inconnue')
+                            label_status.config(text="❌ Erreur", fg="#e74c3c")
+                            log_message(f"❌ ERREUR: {error_msg}", "red")
+                            messagebox.showerror("Erreur", error_msg)
+                            break
+                        
+                        elif msg_type == "warn":
+                            log_message(f"⚠️ ATTENTION: {msg.get('message', '')}", "orange")
+                            fenetre_progress.update()
 
-                    # On déclenche l'affichage à la fin du test
-                    if msg.get("type") == "test_done":
-                        seen_test_done = True
-                        self.plot_predictions(y_true_pairs, y_pred_pairs)
+        except requests.exceptions.Timeout:
+            log_message("❌ Timeout: Le serveur ne répond pas", "red")
+            messagebox.showerror("Timeout", "Le serveur met trop de temps à répondre")
+        except Exception as e:
+            log_message(f"❌ Exception: {str(e)}", "red")
+            messagebox.showerror("Erreur de connexion", f"Impossible de communiquer avec le serveur:\n{str(e)}")
+            import traceback
+            traceback.print_exc()
+        
+        finally:
+            # Bouton pour fermer la fenêtre
+            btn_fermer = tk.Button(
+                cadre_progress,
+                text="Fermer",
+                command=fenetre_progress.destroy,
+                font=("Helvetica", 11),
+                bg="#3498db",
+                fg="white",
+                padx=20,
+                pady=5
+            )
+            btn_fermer.pack(pady=10)
+            
+            # Afficher le graphique final des prédictions
+            if y_true_pairs and y_pred_pairs:
+                fenetre_progress.after(1000, lambda: self.plot_predictions(y_true_pairs, y_pred_pairs))
+            
+            # Afficher le tableau récapitulatif des métriques
+            if test_metrics:
+                fenetre_progress.after(1500, lambda: self.afficher_tableau_metriques(test_metrics, train_losses))
 
-                    # Sécurité : si jamais le flux se termine sans test_done
-                    if msg.get("done"):
-                        if not seen_test_done:  # pas de test_done reçu mais on a peut-être des données
-                            self.plot_predictions(y_true_pairs, y_pred_pairs)
-                        break
+    def afficher_tableau_metriques(self, metrics, train_losses):
+        """
+        Affiche un tableau récapitulatif des métriques dans une nouvelle fenêtre Tkinter
+        """
+        fenetre_metrics = tk.Toplevel(self)
+        fenetre_metrics.title("📊 Résultats Finaux")
+        fenetre_metrics.geometry("700x500")
+        
+        # Cadre principal
+        cadre = tk.Frame(fenetre_metrics, padx=20, pady=20, bg="#f0f4f8")
+        cadre.pack(fill="both", expand=True)
+        
+        # Titre
+        tk.Label(
+            cadre, 
+            text="📈 Métriques de Performance", 
+            font=("Helvetica", 16, "bold"),
+            bg="#f0f4f8",
+            fg="#2c3e50"
+        ).pack(pady=(0, 20))
+        
+        # Cadre pour les métriques globales
+        cadre_global = tk.LabelFrame(
+            cadre, 
+            text="Métriques Globales", 
+            font=("Helvetica", 12, "bold"),
+            bg="#ffffff",
+            padx=15,
+            pady=15
+        )
+        cadre_global.pack(fill="x", pady=10)
+        
+        # Afficher les métriques globales
+        overall = metrics["overall_mean"]
+        row = 0
+        for metric, value in overall.items():
+            tk.Label(
+                cadre_global, 
+                text=f"{metric}:", 
+                font=("Helvetica", 11, "bold"),
+                bg="#ffffff",
+                anchor="w"
+            ).grid(row=row, column=0, sticky="w", pady=5, padx=5)
+            
+            value_text = f"{value:.6f}" if value is not None else "N/A"
+            tk.Label(
+                cadre_global, 
+                text=value_text, 
+                font=("Helvetica", 11),
+                bg="#ffffff",
+                fg="#27ae60" if value is not None else "#e74c3c"
+            ).grid(row=row, column=1, sticky="e", pady=5, padx=5)
+            row += 1
+        
+        # Cadre pour les métriques par dimension
+        if metrics["per_dim"]["MSE"] and len(metrics["per_dim"]["MSE"]) > 1:
+            cadre_dims = tk.LabelFrame(
+                cadre, 
+                text="Métriques par Dimension", 
+                font=("Helvetica", 12, "bold"),
+                bg="#ffffff",
+                padx=15,
+                pady=15
+            )
+            cadre_dims.pack(fill="both", expand=True, pady=10)
+            
+            # Créer un tableau
+            text_dims = tk.Text(cadre_dims, height=6, width=60, font=("Courier", 10))
+            text_dims.pack(fill="both", expand=True)
+            
+            # En-têtes
+            text_dims.insert(tk.END, f"{'Dim':<5} {'MSE':<12} {'MAE':<12} {'RMSE':<12} {'R²':<12}\n")
+            text_dims.insert(tk.END, "-" * 60 + "\n")
+            
+            # Données
+            for i in range(len(metrics["per_dim"]["MSE"])):
+                mse_val = metrics["per_dim"]["MSE"][i]
+                mae_val = metrics["per_dim"]["MAE"][i]
+                rmse_val = metrics["per_dim"]["RMSE"][i]
+                r2_val = metrics["per_dim"]["R2"][i]
+                
+                r2_str = f"{r2_val:.6f}" if r2_val is not None else "N/A"
+                text_dims.insert(tk.END, f"{i:<5} {mse_val:<12.6f} {mae_val:<12.6f} {rmse_val:<12.6f} {r2_str:<12}\n")
+            
+            text_dims.config(state=tk.DISABLED)
+        
+        # Informations supplémentaires
+        info_text = f"Nombre d'échantillons de test: {metrics.get('n_test', 'N/A')}\n"
+        info_text += f"Dimensions: {metrics.get('dims', 'N/A')}\n"
+        if train_losses:
+            info_text += f"Loss finale (entraînement): {train_losses[-1]:.6f}"
+        
+        tk.Label(
+            cadre,
+            text=info_text,
+            font=("Helvetica", 10),
+            bg="#f0f4f8",
+            fg="#7f8c8d",
+            justify="left"
+        ).pack(pady=10)
+        
+        # Bouton pour fermer
+        tk.Button(
+            cadre,
+            text="Fermer",
+            font=("Helvetica", 11),
+            command=fenetre_metrics.destroy,
+            bg="#e74c3c",
+            fg="white",
+            padx=20,
+            pady=5
+        ).pack(pady=10)
 
-    
 
-
-
-
+##############
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(tk.Toplevel):
     def __init__(self, master=None):
