@@ -30,6 +30,13 @@ class Parametres_archi_reseau_class():
         self.dropout_rate=0.0 # float entre 0.0 et 0.9
         #self.nb_neurones_par_couche=None # list d'int
         self.fonction_activation="ReLU" # fontion ReLU/GELU/tanh
+
+        self.bidirectional=False # bool
+        self.batch_first=False # bool
+
+        self.kernel_size=3 # int
+        self.stride=1 # int
+        self.padding=0 # int
 class Parametres_choix_loss_fct_class():
     def __init__(self):
         self.fonction_perte="MSE" # fonction MSE/MAE/Huber
@@ -363,45 +370,48 @@ class Fenetre_Params(tk.Toplevel):
 ############################ Faut modif ici modele par modele c.f. le fichier classes.py
 ############################
     def Params_archi_reseau(self):
-        # if : ...Variables pour les paramètres POUR MLP
-        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-        Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
-        Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
-        
-
-        ## if : ...Variables pour les paramètres POUR CNN
-        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-        Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
-        Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
-        # new CNN
-        Params_archi_reseau_kernel_size = tk.IntVar(value = Parametres_archi_reseau.kernel_size)
-        Params_archi_reseau_stride = tk.IntVar(value = Parametres_archi_reseau.stride)
-        Params_archi_reseau_padding = tk.IntVar(valeur = Parametres_archi_reseau.padding)
-
-
-
-        ## if : .... Variables pour les paramètres POUR LSTM
-        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-        Params_archi_reseau_bidirectional = tk.BooleanVar(value = Parametres_archi_reseau.bidirectional) #bool
-        Params_archi_reseau_batch_first = tk.BooleanVar(value = Parametres_archi_reseau.batch_first) #bool
-
-
-
         def Save_quit():
-            Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
-            Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
-            Parametres_archi_reseau.dropout_rate = Params_archi_reseau_dropout_rate.get()
-            Parametres_archi_reseau.fonction_activation = Params_archi_reseau_fonction_activation.get()
+            if( Parametres_choix_reseau_neurones.modele=="MLP"):
+                Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
+                Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
+                Parametres_archi_reseau.dropout_rate = Params_archi_reseau_dropout_rate.get()
+                Parametres_archi_reseau.fonction_activation = Params_archi_reseau_fonction_activation.get()
+            elif( Parametres_choix_reseau_neurones.modele=="CNN"):
+                Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
+                Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
+                Parametres_archi_reseau.dropout_rate = Params_archi_reseau_dropout_rate.get()
+                Parametres_archi_reseau.fonction_activation = Params_archi_reseau_fonction_activation.get()
+                Parametres_archi_reseau.kernel_size = Params_archi_reseau_kernel_size.get()
+                Parametres_archi_reseau.stride = Params_archi_reseau_stride.get()
+                Parametres_archi_reseau.padding = Params_archi_reseau_padding.get()
+            elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
+                Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
+                Parametres_archi_reseau.hidden_size = Params_archi_reseau_hidden_size.get()
+                Parametres_archi_reseau.bidirectional = Params_archi_reseau_bidirectional.get()
+                Parametres_archi_reseau.batch_first = Params_archi_reseau_batch_first.get()
+
+
             fenetre_params_archi_reseau.destroy()
         
         def Quit():
-            Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
-            Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
-            Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau.dropout_rate)
-            Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau.fonction_activation)
+            if( Parametres_choix_reseau_neurones.modele=="MLP"):
+                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
+                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
+                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau.dropout_rate)
+                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau.fonction_activation)
+            elif( Parametres_choix_reseau_neurones.modele=="CNN"):
+                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
+                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
+                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau.dropout_rate)
+                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau.fonction_activation)
+                Params_archi_reseau_kernel_size.set(Parametres_archi_reseau.kernel_size)
+                Params_archi_reseau_stride.set(Parametres_archi_reseau.stride)
+                Params_archi_reseau_padding.set(Parametres_archi_reseau.padding)
+            elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
+                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau.nb_couches)
+                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau.hidden_size)
+                Params_archi_reseau_bidirectional.set(Parametres_archi_reseau.bidirectional)
+                Params_archi_reseau_batch_first.set(Parametres_archi_reseau.batch_first)
             fenetre_params_archi_reseau.destroy()
 
         # Fenêtre secondaire
@@ -417,21 +427,93 @@ class Fenetre_Params(tk.Toplevel):
         # Validation d'entiers
         vcmd = (fenetre_params_archi_reseau.register(self.validate_int_fct), "%P")
 
-        # Ligne 1 : Nombre de couches de neurones
-        tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
+        if( Parametres_choix_reseau_neurones.modele=="MLP"):
+            # if : ...Variables pour les paramètres POUR MLP
+            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
+            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
+            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
+            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
+            # Ligne 1 : Nombre de couches de neurones
+            tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
 
-        # Ligne 2 : Taille des couches cachées
-        tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
+            # Ligne 2 : Taille des couches cachées
+            tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
 
-        # Ligne 3 : Taux de dropout
-        tk.Label(cadre, text="Taux de dropout (0.0 - 0.9) :").grid(row=2, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_archi_reseau_dropout_rate).grid(row=2, column=1, pady=5)
+            # Ligne 3 : Taux de dropout
+            tk.Label(cadre, text="Taux de dropout (0.0 - 0.9) :").grid(row=2, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_dropout_rate).grid(row=2, column=1, pady=5)
 
-        # Ligne 4 : Fonction d'activation
-        tk.Label(cadre, text="Fonction d'activation :").grid(row=3, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values =["ReLU","GELU","tanh"],textvariable=Params_archi_reseau_fonction_activation,state="readonly").grid(row=3, column=1, pady=5)
+            # Ligne 4 : Fonction d'activation
+            tk.Label(cadre, text="Fonction d'activation :").grid(row=3, column=0, sticky="w", pady=5)
+            ttk.Combobox(cadre, values =["ReLU","GELU","tanh"],textvariable=Params_archi_reseau_fonction_activation,state="readonly").grid(row=3, column=1, pady=5)
+
+        elif( Parametres_choix_reseau_neurones.modele=="CNN"):
+            ## if : ...Variables pour les paramètres POUR CNN
+            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
+            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
+            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
+            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
+            # new CNN
+            Params_archi_reseau_kernel_size = tk.IntVar(value = Parametres_archi_reseau.kernel_size)
+            Params_archi_reseau_stride = tk.IntVar(value = Parametres_archi_reseau.stride)
+            Params_archi_reseau_padding = tk.IntVar(value = Parametres_archi_reseau.padding)
+
+            # Ligne 1 : Nombre de couches de neurones
+            tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
+
+            # Ligne 2 : Taille des couches cachées
+            tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
+
+            # Ligne 3 : Taux de dropout
+            tk.Label(cadre, text="Taux de dropout (0.0 - 0.9) :").grid(row=2, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_dropout_rate).grid(row=2, column=1, pady=5)
+
+            # Ligne 4 : Fonction d'activation
+            tk.Label(cadre, text="Fonction d'activation :").grid(row=3, column=0, sticky="w", pady=5)
+            ttk.Combobox(cadre, values =["ReLU","GELU","tanh"],textvariable=Params_archi_reseau_fonction_activation,state="readonly").grid(row=3, column=1, pady=5)
+
+            # Ligne 5 : Taille du kernel
+            tk.Label(cadre, text="Taille du kernel :").grid(row=4, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_kernel_size, validate="key", validatecommand=vcmd).grid(row=4, column=1, pady=5)
+
+            # Ligne 6 : Stride
+            tk.Label(cadre, text="Stride :").grid(row=5, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_stride, validate="key", validatecommand=vcmd).grid(row=5, column=1, pady=5)
+
+            # Ligne 7 : Padding
+            tk.Label(cadre, text="Padding :").grid(row=6, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_padding, validate="key", validatecommand=vcmd).grid(row=6, column=1, pady=5)
+
+        elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
+            ## if : .... Variables pour les paramètres POUR LSTM
+            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
+            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
+            Params_archi_reseau_bidirectional = tk.BooleanVar(value = Parametres_archi_reseau.bidirectional) #bool
+            Params_archi_reseau_batch_first = tk.BooleanVar(value = Parametres_archi_reseau.batch_first) #bool
+
+            # Ligne 1 : Nombre de couches de neurones
+            tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
+
+            # Ligne 2 : Taille des couches cachées
+            tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
+            tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
+
+            # Ligne 3 : Bidirectional
+            tk.Label(cadre, text="Bidirectional :").grid(row=2, column=0, sticky="w", pady=5)
+            tk.Checkbutton(cadre, variable=Params_archi_reseau_bidirectional).grid(row=2, column=1, pady=5)
+            # Ligne 4 : Batch first
+            tk.Label(cadre, text="Batch first :").grid(row=3, column=0, sticky="w", pady=5)
+            tk.Checkbutton(cadre, variable=Params_archi_reseau_batch_first).grid(row=3, column=1, pady=5)
+
+
+
+
+
 
         # Boutons
         bouton_frame = tk.Frame(fenetre_params_archi_reseau)
