@@ -2,8 +2,8 @@
 import inspect
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from models.optim import make_loss, make_optimizer
-from models.model_LSTM import LSTM 
+from ..models.optim import make_loss, make_optimizer
+from ..models.model_LSTM import LSTM 
 
 
 

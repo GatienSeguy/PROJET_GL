@@ -9,17 +9,17 @@ from datetime import date,datetime
 import torch
 import os, time
 
-from models.model_MLP import MLP
-from models.optim import make_loss,make_optimizer
+from .models.model_MLP import MLP
+from .models.optim import make_loss,make_optimizer
 
 #Train Modele
-from trains.training_MLP import train_MLP
-from trains.training_CNN import train_CNN
-from trains.training_LSTM import train_LSTM
+from .trains.training_MLP import train_MLP
+from .trains.training_CNN import train_CNN
+from .trains.training_LSTM import train_LSTM
 
-from test.testing import test_model
+from .test.testing import test_model
 
-from classes import (
+from .classes import (
     TimeSeriesData,
     Parametres_temporels,
     Parametres_choix_reseau_neurones,
@@ -33,7 +33,7 @@ from classes import (
     PaquetComplet
 )
 
-from fonctions_pour_main import(
+from .fonctions_pour_main import(
     build_supervised_tensors,
     _parse_any_datetime,
     filter_series_by_dates,

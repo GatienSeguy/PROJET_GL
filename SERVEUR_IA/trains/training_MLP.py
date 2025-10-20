@@ -2,8 +2,8 @@
 import inspect
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from models.optim import make_loss, make_optimizer
-from models.model_MLP import MLP
+from ..models.optim import make_loss, make_optimizer
+from ..models.model_MLP import MLP
 
 
 def _build_mlp_safely(in_dim: int, out_dim: int, **kwargs):

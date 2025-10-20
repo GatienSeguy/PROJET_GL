@@ -2,8 +2,8 @@
 import inspect
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from models.optim import make_loss, make_optimizer
-from models.model_CNN import CNN 
+from ..models.optim import make_loss, make_optimizer
+from ..models.model_CNN import CNN 
 
 
 def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
