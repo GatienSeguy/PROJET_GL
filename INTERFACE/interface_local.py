@@ -3,9 +3,13 @@ from tkcalendar import Calendar
 from datetime import datetime
 import requests, json
 from tkinter import ttk
+from tkinter import messagebox
 
-#URL = "http://138.231.149.81:8000" 
+
+
+# URL = "http://192.168.1.94:8000" 
 URL = "http://192.168.27.66:8000"
+# URL = "http://192.168.1.169:8000"
 
 
 # Paramètres et variables
@@ -301,14 +305,33 @@ class Fenetre_Params(tk.Toplevel):
         
         fenetre_params_temporels.mainloop()
 
+    
     def Params_choix_reseau_neurones(self):
         # Variables pour les paramètres
-        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele) # str ['MLP','LSTM','GRU','CNN']
+        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele)  # str ['MLP','LSTM','GRU','CNN']
+
+        # Dictionnaire des descriptions
+        descriptions = {
+            "MLP": "MLP (Multi-Layer Perceptron) : réseau de neurones dense, adapté aux données tabulaires ou vectorielles.",
+            "LSTM": "LSTM (Long Short-Term Memory) : réseau récurrent conçu pour capturer les dépendances temporelles longues.",
+            "GRU": "GRU (Gated Recurrent Unit) : variante plus légère du LSTM, efficace pour les séquences temporelles.",
+            "CNN": "CNN (Convolutional Neural Network) : réseau spécialisé dans l'extraction de caractéristiques spatiales, souvent utilisé en vision par ordinateur."
+        }
+
+        def afficher_description():
+            modele = Params_choix_reseau_neurones_modele.get()
+            texte = descriptions.get(modele, "Modèle inconnu.")
+            messagebox.showinfo("Description du modèle", texte)
+            self.lift()  # Ramène la fenêtre secondaire au premier plan
+            self.focus_force()  # Force le focus clavier
+            fenetre_params_choix_reseau_neurones.lift()  # Ramène la fenêtre tertiaire au premier plan
+            fenetre_params_choix_reseau_neurones.focus_force()  # Force le focus clavier
+
 
         def Save_quit():
             Parametres_choix_reseau_neurones.modele = Params_choix_reseau_neurones_modele.get()
             fenetre_params_choix_reseau_neurones.destroy()
-        
+
         def Quit():
             Params_choix_reseau_neurones_modele.set(Parametres_choix_reseau_neurones.modele)
             fenetre_params_choix_reseau_neurones.destroy()
@@ -317,23 +340,25 @@ class Fenetre_Params(tk.Toplevel):
         fenetre_params_choix_reseau_neurones = tk.Toplevel(self)
         fenetre_params_choix_reseau_neurones.title("Paramètres de Choix du réseau de neurones")
         fenetre_params_choix_reseau_neurones.geometry("")
-        
+
         # Cadre principal
         cadre = tk.LabelFrame(fenetre_params_choix_reseau_neurones, text="Configuration", padx=10, pady=10)
         cadre.pack(padx=10, pady=10, fill="both", expand=True)
 
-        # Ligne 1 : Horizon temporel
+        # Ligne 1 : Choix du modèle + bouton "?"
         tk.Label(cadre, text="Choix du modèle :").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values =["MLP","LSTM","GRU","CNN"],textvariable=Params_choix_reseau_neurones_modele,state="readonly").grid(row=0, column=1, pady=5)
+        ttk.Combobox(cadre, values=["MLP", "LSTM", "GRU", "CNN"], textvariable=Params_choix_reseau_neurones_modele, state="readonly").grid(row=0, column=1, pady=5)
+        tk.Button(cadre, text="❓", command=afficher_description, width=3).grid(row=0, column=2, padx=5)
 
         # Boutons
         bouton_frame = tk.Frame(fenetre_params_choix_reseau_neurones)
         bouton_frame.pack(pady=10)
         tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
         tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-        
+
         fenetre_params_choix_reseau_neurones.mainloop()
-    
+
+
     def Params_archi_reseau(self):
         # Variables pour les paramètres
         Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
