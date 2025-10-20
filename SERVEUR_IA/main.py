@@ -13,8 +13,9 @@ from models.model_MLP import MLP
 from models.optim import make_loss,make_optimizer
 
 #Train Modele
-from models.training_MLP import train_MLP
-from models.training_CNN import train_CNN
+from trains.training_MLP import train_MLP
+from trains.training_CNN import train_CNN
+from trains.training_LSTM import train_LSTM
 
 
 from classes import (
@@ -140,7 +141,7 @@ def training(payload: PaquetComplet):
     # ----- ARCHI --------------------
     #---------------------------------
    
-    
+    ##### FAIRE UN FONCTION !!!!!!!
     if cfg and cfg.Parametres_choix_reseau_neurones:
             if cfg.Parametres_choix_reseau_neurones.modele:
                 model= cfg.Parametres_choix_reseau_neurones.modele.lower()
@@ -208,6 +209,30 @@ def training(payload: PaquetComplet):
             
             if cfg.Parametres_archi_reseau_CNN.padding is not None:
                 padding = int(cfg.Parametres_archi_reseau_CNN.padding)
+    
+    #CLASS MODEL LSTM
+    if model =='lstm':
+        #print('LSTMMMM')
+        hidden_size = 128
+        nb_couches = 2
+        bidirectional = False
+        batch_first = False
+
+        if cfg.Parametres_archi_reseau_LSTM.hidden_size is not None:
+            hidden_size = int(cfg.Parametres_archi_reseau_LSTM.hidden_size)
+            
+        if cfg.Parametres_archi_reseau_LSTM.nb_couches is not None:
+            nb_couches = int(cfg.Parametres_archi_reseau_LSTM.nb_couches)
+
+        if cfg.Parametres_archi_reseau_LSTM.bidirectional is not None:
+            bidirectional = bool(cfg.Parametres_archi_reseau_LSTM.bidirectional)
+
+        if cfg.Parametres_archi_reseau_LSTM.batch_first is not None:
+            batch_first = bool(cfg.Parametres_archi_reseau_LSTM.batch_first)
+        
+
+
+            
     #---------------------------------
     # ----- LOSS  --------------------
     # ---------------------------------
@@ -282,6 +307,29 @@ def training(payload: PaquetComplet):
             print("CNN")
 
             for msg in train_CNN(
+                X,y,
+                hidden_size=hidden_size,
+                nb_couches=nb_couches,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                activation=activation,
+                use_batchnorm=use_batchnorm,
+                loss_name=loss_name,
+                optimizer_name=optimizer_name,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                batch_size=batch_size,
+                epochs=epochs,
+                device=device
+            ):
+                yield f"data: {json.dumps(msg)}\n\n"
+
+
+        if model =="lstm":
+            print("LSTM CHAMPION")
+
+            for msg in train_LSTM(
                 X,y,
                 hidden_size=hidden_size,
                 nb_couches=nb_couches,

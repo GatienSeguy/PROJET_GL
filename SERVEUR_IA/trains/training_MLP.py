@@ -1,33 +1,33 @@
-# models/training_cnn.py
+# trains/training_MLP.py
 import inspect
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from models.optim import make_loss, make_optimizer
-from models.model_CNN import CNN 
+from models.model_MLP import MLP
 
 
-def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
+def _build_mlp_safely(in_dim: int, out_dim: int, **kwargs):
     """
-    Crée un CNN1D en détectant la signature réelle et en mappant les alias :
+    Crée un MLP en détectant la signature réelle et en mappant les alias :
     - hidden_size -> hidden_dim | width
     - nb_couches  -> n_layers | depth | layers
-    - kernel_size -> ksize
-    - stride
-    - padding
-    - activation
-    - use_batchnorm
-    - in_dim / out_dim
+    - dropout_rate-> dropout | p_dropout
+    - activation  -> act | activation_name
+    - use_batchnorm -> batchnorm | bn | use_bn
+    - in_dim -> input_dim | in_features
+    - out_dim -> output_dim | out_features
     """
-    sig = inspect.signature(CNN.__init__)
+    sig = inspect.signature(MLP.__init__)
     params = set(sig.parameters.keys())
+
     resolved = {}
 
-    # in/out dims
-    for cand in ("in_dim", "input_dim", "in_channels"):
+    # --- in/out dims ---
+    for cand in ("in_dim", "input_dim", "in_features"):
         if cand in params:
             resolved[cand] = in_dim
             break
-    for cand in ("out_dim", "output_dim", "out_channels"):
+    for cand in ("out_dim", "output_dim", "out_features"):
         if cand in params:
             resolved[cand] = out_dim
             break
@@ -38,36 +38,36 @@ def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
                 resolved[name] = value
                 return
 
-    # map aliases from kwargs
-    put(kwargs.get("hidden_size", 32), "hidden_dim", "hidden_size", "width")
+    # --- mapping des alias ---
+    put(kwargs.get("hidden_size", 128), "hidden_size", "hidden_dim", "width")
     put(kwargs.get("nb_couches", 2), "nb_couches", "n_layers", "depth", "layers")
+    put(kwargs.get("dropout_rate", 0.0), "dropout_rate", "dropout", "p_dropout")
     put(kwargs.get("activation", "relu"), "activation", "act", "activation_name")
     put(kwargs.get("use_batchnorm", False), "use_batchnorm", "batchnorm", "bn", "use_bn")
-    put(kwargs.get("kernel_size", 3), "kernel_size", "ksize")
-    put(kwargs.get("stride", 1), "stride")
-    put(kwargs.get("padding", 1), "padding")
 
-    # Tout autre kw explicite
+    # --- Tout autre kw explicite présent dans la signature ---
     for k, v in kwargs.items():
         if k in params:
             resolved[k] = v
 
-    # debug
-    print("[CNN kwargs résolus] ->", {k: resolved[k] for k in resolved if k not in ("in_dim", "out_dim")})
+    # (Optionnel) Debug :
+    print("[MLP kwargs résolus] ->", {
+        k: resolved[k]
+        for k in resolved
+        if k not in ("in_dim", "input_dim", "in_features", "out_dim", "output_dim", "out_features")
+    })
 
-    return CNN(**resolved)
+    return MLP(**resolved)
 
 
-def train_CNN(
+def train_MLP(
     X: torch.Tensor,
     y: torch.Tensor,
     *,
-    # --- ARCHI ---
-    hidden_size: int = 32,
+    # --- ARCHITECTURE ---
+    hidden_size: int = 128,
     nb_couches: int = 2,
-    kernel_size: int = 3,
-    stride: int = 1,
-    padding: int = 1,
+    dropout_rate: float = 0.0,
     activation: str = "relu",
     use_batchnorm: bool = False,
 
@@ -75,7 +75,7 @@ def train_CNN(
     loss_name: str = "mse",
     optimizer_name: str = "adam",
     learning_rate: float = 1e-3,
-    weight_decay: float = 0.0, #Nouveau
+    weight_decay: float = 0.0,
 
     # --- TRAIN ---
     batch_size: int = 64,
@@ -86,32 +86,29 @@ def train_CNN(
         y = y.unsqueeze(1)
 
     loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True)
-    print("ZEBI AVANT MODEL")
-    model = _build_cnn_safely(
+
+    model = _build_mlp_safely(
         in_dim=X.shape[1],
         out_dim=y.shape[1],
         hidden_size=hidden_size,
         nb_couches=nb_couches,
-        kernel_size=kernel_size,
-        stride=stride,
-        padding=padding,
+        dropout_rate=dropout_rate,
         activation=activation,
         use_batchnorm=use_batchnorm,
     ).to(device)
 
-    print(" AVANT LOSS")
     criterion = make_loss({"name": loss_name})
-    print(" AVANT OPTI")
-    optimizer = make_optimizer(model, {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay})
+    optimizer = make_optimizer(
+        model,
+        {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay}
+    )
 
-    print("APRES OPTIM")
     last_avg = None
     for epoch in range(1, epochs + 1):
         total, n = 0.0, 0
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
             optimizer.zero_grad()
-            xb = xb.unsqueeze(1)
             pred = model(xb)
             loss = criterion(pred, yb)
             loss.backward()
@@ -120,12 +117,12 @@ def train_CNN(
             n += xb.size(0)
         last_avg = total / max(1, n)
 
-        # Progression tous les k epochs
         k = 100
         if epoch % k == 0:
-            yield {"epoch": epoch, "avg_loss": float(last_avg)}
+            yield {"epochs": epoch, "avg_loss": float(last_avg)}
 
         print(f"[{epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
     yield {"done": True, "final_loss": float(last_avg)}
+
     return model, last_avg
