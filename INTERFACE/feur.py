@@ -3,13 +3,9 @@ from tkcalendar import Calendar
 from datetime import datetime
 import requests, json
 from tkinter import ttk
-from tkinter import messagebox
 
-
-
-# URL = "http://192.168.1.94:8000" 
+#URL = "http://138.231.149.81:8000" 
 URL = "http://192.168.27.66:8000"
-# URL = "http://192.168.1.169:8000"
 
 
 # Paramètres et variables
@@ -100,7 +96,7 @@ class Fenetre_Acceuil(tk.Tk):
         section_data = tk.LabelFrame(self.cadre, text="📊 Données", font=self.font_section, bg="#eaf2f8", fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
         section_data.pack(fill="x", pady=10)
 
-        self.bouton(section_data, "📁 Choix Dataset", self.Parametrer_dataset)
+        self.bouton(section_data, "📁 Choix Dataset", self.test)
         self.bouton(section_data, "📅 Paramétrer Horizon", self.Parametrer_horizon)
 
         # Section 3 : Actions
@@ -130,8 +126,6 @@ class Fenetre_Acceuil(tk.Tk):
         Fenetre_Params(self)
     def Parametrer_horizon(self):
         Fenetre_Params_horizon(self)
-    def Parametrer_dataset(self):
-        Fenetre_Choix_datasets(self)
     
     def EnvoyerConfig(self):
         print(self.Payload)
@@ -147,6 +141,7 @@ class Fenetre_Acceuil(tk.Tk):
                     print("EVENT:", msg)
                     if msg.get("done"):
                         break
+
 
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(tk.Toplevel):
@@ -306,33 +301,14 @@ class Fenetre_Params(tk.Toplevel):
         
         fenetre_params_temporels.mainloop()
 
-    
     def Params_choix_reseau_neurones(self):
         # Variables pour les paramètres
-        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele)  # str ['MLP','LSTM','GRU','CNN']
-
-        # Dictionnaire des descriptions
-        descriptions = {
-            "MLP": "MLP (Multi-Layer Perceptron) : réseau de neurones dense, adapté aux données tabulaires ou vectorielles.",
-            "LSTM": "LSTM (Long Short-Term Memory) : réseau récurrent conçu pour capturer les dépendances temporelles longues.",
-            "GRU": "GRU (Gated Recurrent Unit) : variante plus légère du LSTM, efficace pour les séquences temporelles.",
-            "CNN": "CNN (Convolutional Neural Network) : réseau spécialisé dans l'extraction de caractéristiques spatiales, souvent utilisé en vision par ordinateur."
-        }
-
-        def afficher_description():
-            modele = Params_choix_reseau_neurones_modele.get()
-            texte = descriptions.get(modele, "Modèle inconnu.")
-            messagebox.showinfo("Description du modèle", texte)
-            self.lift()  # Ramène la fenêtre secondaire au premier plan
-            self.focus_force()  # Force le focus clavier
-            fenetre_params_choix_reseau_neurones.lift()  # Ramène la fenêtre tertiaire au premier plan
-            fenetre_params_choix_reseau_neurones.focus_force()  # Force le focus clavier
-
+        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele) # str ['MLP','LSTM','GRU','CNN']
 
         def Save_quit():
             Parametres_choix_reseau_neurones.modele = Params_choix_reseau_neurones_modele.get()
             fenetre_params_choix_reseau_neurones.destroy()
-
+        
         def Quit():
             Params_choix_reseau_neurones_modele.set(Parametres_choix_reseau_neurones.modele)
             fenetre_params_choix_reseau_neurones.destroy()
@@ -341,54 +317,29 @@ class Fenetre_Params(tk.Toplevel):
         fenetre_params_choix_reseau_neurones = tk.Toplevel(self)
         fenetre_params_choix_reseau_neurones.title("Paramètres de Choix du réseau de neurones")
         fenetre_params_choix_reseau_neurones.geometry("")
-
+        
         # Cadre principal
         cadre = tk.LabelFrame(fenetre_params_choix_reseau_neurones, text="Configuration", padx=10, pady=10)
         cadre.pack(padx=10, pady=10, fill="both", expand=True)
 
-        # Ligne 1 : Choix du modèle + bouton "?"
+        # Ligne 1 : Horizon temporel
         tk.Label(cadre, text="Choix du modèle :").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values=["MLP", "LSTM", "GRU", "CNN"], textvariable=Params_choix_reseau_neurones_modele, state="readonly").grid(row=0, column=1, pady=5)
-        tk.Button(cadre, text="❓", command=afficher_description, width=3).grid(row=0, column=2, padx=5)
+        ttk.Combobox(cadre, values =["MLP","LSTM","GRU","CNN"],textvariable=Params_choix_reseau_neurones_modele,state="readonly").grid(row=0, column=1, pady=5)
 
         # Boutons
         bouton_frame = tk.Frame(fenetre_params_choix_reseau_neurones)
         bouton_frame.pack(pady=10)
         tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
         tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-
-        fenetre_params_choix_reseau_neurones.mainloop()
-
-#######################
-############################ Faut modif ici modele par modele c.f. le fichier classes.py
-############################
-    def Params_archi_reseau(self):
-        # if : ...Variables pour les paramètres POUR MLP
-        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-        Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
-        Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
         
-
-        ## if : ...Variables pour les paramètres POUR CNN
+        fenetre_params_choix_reseau_neurones.mainloop()
+    
+    def Params_archi_reseau(self):
+        # Variables pour les paramètres
         Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
         Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
         Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau.dropout_rate) # float entre 0.0 et 0.9
         Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau.fonction_activation) # fontion ReLU/GELU/tanh
-        # new CNN
-        Params_archi_reseau_kernel_size = tk.IntVar(value = Parametres_archi_reseau.kernel_size)
-        Params_archi_reseau_stride = tk.IntVar(value = Parametres_archi_reseau.stride)
-        Params_archi_reseau_padding = tk.IntVar(valeur = Parametres_archi_reseau.padding)
-
-
-
-        ## if : .... Variables pour les paramètres POUR LSTM
-        Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau.nb_couches) # int
-        Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau.hidden_size) # int
-        Params_archi_reseau_bidirectional = tk.BooleanVar(value = Parametres_archi_reseau.bidirectional) #bool
-        Params_archi_reseau_batch_first = tk.BooleanVar(value = Parametres_archi_reseau.batch_first) #bool
-
-
 
         def Save_quit():
             Parametres_archi_reseau.nb_couches = Params_archi_reseau_nb_couches.get()
@@ -657,6 +608,7 @@ class Fenetre_Params(tk.Toplevel):
                     if msg.get("done"):
                         break
 
+
 # Créer la fenêtre de paramétrage de l'horizon des données
 class Fenetre_Params_horizon(tk.Toplevel):
     def __init__(self, master=None):
@@ -772,88 +724,6 @@ class Fenetre_Params_horizon(tk.Toplevel):
         self.Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100)
             
         self.destroy()
-
-
-#Creer la fenetre de choix des datasets
-class Fenetre_Choix_datasets(tk.Toplevel):
-    def __init__(self, master=None):
-        super().__init__(master)
-        couleur_fond = "#d9d9d9"
-        self.title("📂 Choix des datasets")
-
-        # Définir une police personnalisée
-        self.font_titre = ("Helvetica", 14, "bold")
-        self.font_bouton = ("Helvetica", 11)
-
-        self.geometry("500x1")  # largeur fixe, hauteur minimale
-
-        self.cadre = tk.Frame(self, borderwidth=30)
-        self.cadre.configure(bg=couleur_fond)
-        self.cadre.pack(fill="both", expand="yes")
-
-        # Titre simulé
-        tk.Label(self.cadre, text="Choix des datasets", font=self.font_titre, bg=couleur_fond).pack(anchor="w", pady=(0, 10))
-
-        # Cadre des paramètres
-        self.CadreParams = tk.LabelFrame(
-            self.cadre, text="", font=self.font_titre,
-            bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
-        )
-        self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
-
-        self.Liste_datasets=["A","B","C","D","E","F","G","H","I","J","K","L","M"]  # Exemple de liste de datasets
-        
-
-        # Liste des champs
-        tk.Label(self.CadreParams, text="Sélectionnez un dataset :", font=self.font_bouton, bg="#ffffff").pack(anchor="w")
-
-        # Créer une variable pour stocker la sélection
-        self.dataset_selection = tk.StringVar()
-
-        # Créer la Listbox
-        self.listbox_datasets = tk.Listbox(
-            self.CadreParams,
-            listvariable=self.dataset_selection,
-            height=6,
-            selectmode="browse",
-            font=self.font_bouton,
-            bg="#f0f0f0",
-            activestyle="dotbox"
-        )
-        self.listbox_datasets.pack(fill="x", pady=(5, 10))
-
-        # Remplir la Listbox avec les noms des datasets
-        for nom in self.Liste_datasets:
-            self.listbox_datasets.insert(tk.END, nom)
-
-        # Boutons d'action
-        tk.Button(
-            self.cadre, text="💾 Sauvegarder la configuration", font=self.font_bouton,
-            height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
-            command=self.Save_quit
-        ).pack(fill="x", pady=10)
-        tk.Button(
-            self.cadre, text="❌ Quitter", font=self.font_bouton,
-            height=2, bg="#f7b2b2", fg="#842029", relief="raised", bd=3,
-            command=self.Quit
-        ).pack(fill="x", pady=(0, 10))
-        self.update_idletasks()
-        self.geometry(f"500x{self.winfo_reqheight()}")
-    
-    def Save_quit(self):
-        # Sauvegarder les paramètres
-        self.destroy()
-    
-    def Quit(self):
-        # Reinitialiser les paramètres
-        self.destroy()
-
-    def Récupérer_datasets(self):
-        # Récupérer les datasets sélectionnés
-        pass
-
-    
-
 
 
 # Lancer la boucle principale
