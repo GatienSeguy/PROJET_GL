@@ -192,17 +192,17 @@ class Fenetre_Acceuil(tk.Tk):
         return self.config_specifique
 
     def EnvoyerConfig(self):
-        self.payload=(self.Formatter_JSON_global(),self.Formatter_JSON_specif())
-        print("Payload envoyé au serveur :", self.payload)
-        with requests.post(f"{URL}/train_full", json=self.payload, stream=True) as r:
+        payload_global = self.Formatter_JSON_global()
+        payload_model = self.Formatter_JSON_specif()
+        print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
+        with requests.post(f"{URL}/train_full", json={"payload": payload_global, "payload_model": payload_model}, stream=True) as r:
             r.raise_for_status()
-            print("Content-Type:", r.headers.get("content-type"))  # doit être text/event-stream
+            print("Content-Type:", r.headers.get("content-type"))
             for line in r.iter_lines():
                 if not line:
                     continue
                 if line.startswith(b"data: "):
                     msg = json.loads(line[6:].decode("utf-8"))
-                    # msg = {"epoch": i, "avg_loss": ...} puis {"done": True, "final_loss": ...}
                     print("EVENT:", msg)
                     if msg.get("done"):
                         break
