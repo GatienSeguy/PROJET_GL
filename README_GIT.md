@@ -27,11 +27,19 @@ Options:
 Options:
   -r  remote (défaut: origin)
 
+Configuration initiale recommandée:
+1. Configurer git pour utiliser rebase lors des pulls (déjà fait):
+   git config pull.rebase true
+
+2. Configurez une clé SSH et ajoutez le remote en SSH pour éviter de rentrer vos identifiants à chaque push:
+   ssh-keygen -t ed25519 -C "votre.email@example.com"
+   # Ajoutez la clé dans les paramètres GitHub (voir docs GitHub)
+
 Bonnes pratiques recommandées:
-- Configurez une clé SSH et ajoutez le remote en SSH pour éviter de rentrer vos identifiants à chaque push.
-- Faites des commits petits et atomiques avec des messages clairs.
-- Utilisez des branches de fonctionnalité et ouvrez des Pull Requests si vous collaborez.
-- Avant d'envoyer un push massif, vérifiez `git status` et `git log -n 5`.
+- Faites des commits petits et atomiques avec des messages clairs
+- Utilisez des branches de fonctionnalité et ouvrez des Pull Requests si vous collaborez
+- Avant d'envoyer un push massif, vérifiez `git status` et `git log -n 5`
+- En cas de conflit lors d'un rebase, utilisez `git status` pour voir les fichiers à résoudre
 
 Dépannage:
 - Si le rebase échoue: résolvez les conflits, `git rebase --continue`, ou annulez avec `git rebase --abort`.
