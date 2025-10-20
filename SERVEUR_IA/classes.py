@@ -43,7 +43,7 @@ class Parametres_optimisateur(BaseModel):
     optimisateur: Optional[Literal["Adam", "SGD", "RMSprop", "Adagrad", "Adadelta"]] = Field(None)
     learning_rate: Optional[float] = Field(None)
     decroissance: Optional[float] = Field(None)
-    scheduler: Optional[Literal["Plateau", "Cosine", "OneCycle"]] = Field(None)
+    scheduler: Optional[Literal["Plateau", "Cosine", "OneCycle","None"]] = Field(None)
     patience: Optional[int] = Field(None)
 
 class Parametres_entrainement(BaseModel):

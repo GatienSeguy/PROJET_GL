@@ -100,6 +100,12 @@ def training(payload: PaquetComplet,payload_model: dict):
     
     #Récupération des données
     cfg: PaquetComplet = payload
+
+    # float
+    # if cfg.Parametres_optimisateur and cfg.Parametres_optimisateur.learning_rate is not None:
+    #     cfg.Parametres_optimisateur.learning_rate = float(cfg.Parametres_optimisateur.learning_rate)
+
+
     model_type = cfg.Parametres_choix_reseau_neurones.modele.lower()
 
     if model_type == "mlp":
