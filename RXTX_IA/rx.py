@@ -4,12 +4,33 @@ URL = "http://138.231.149.81:8000"
 
 # Séparation du payload global et du payload modèle
 payload_global = {
-    'Parametres_temporels': {'horizon': 1, 'dates': ['2024-01-01', '2026-01-01'], 'pas_temporel': 1, 'portion_decoupage': 0.8},
-    'Parametres_choix_reseau_neurones': {'modele': 'MLP'},
-    'Parametres_choix_loss_fct': {'fonction_perte': 'MSE', 'params': None},
-    'Parametres_optimisateur': {'optimisateur': 'Adam', 'learning_rate': 0.001, 'decroissance': 0.0, 'scheduler': None, 'patience': 5},
-    'Parametres_entrainement': {'nb_epochs': 1000, 'batch_size': 4, 'clip_gradient': None},
-    'Parametres_visualisation_suivi': {'metriques': ['loss']}
+    'Parametres_temporels': 
+    {'horizon': 1,
+    'dates': ['2024-01-01', '2026-01-01'],
+    'pas_temporel': 1, 
+    'portion_decoupage': 0.8},
+
+    'Parametres_choix_reseau_neurones': 
+    {'modele': 'MLP'},
+
+    'Parametres_choix_loss_fct': 
+    {'fonction_perte': 'MSE',
+     'params': None},
+
+    'Parametres_optimisateur': 
+    {'optimisateur': 'Adam', 
+     'learning_rate': 0.01, 
+     'decroissance': 0.0, 
+     'scheduler': None, 
+     'patience': 5},
+
+    'Parametres_entrainement': 
+    {'nb_epochs': 1000, 
+     'batch_size': 4, 
+     'clip_gradient': None},
+
+    'Parametres_visualisation_suivi': 
+    {'metriques': ['loss']}
 }
 
 payload_model = {

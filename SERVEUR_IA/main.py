@@ -217,7 +217,7 @@ def training(payload: PaquetComplet,payload_model: dict):
         if cfg_model.kernel_size is not None:
             kernel_size = int(cfg_model.kernel_size)
         
-        if cfg.stride is not None:
+        if cfg_model.stride is not None:
             stride = int(cfg_model.stride)
         
         if cfg_model.padding is not None:
