@@ -18,7 +18,7 @@ class Parametres_temporels_class():
     def __init__(self):
         self.horizon=1 # int
         self.dates=["2025-01-01", "2025-01-01"] # variable datetime
-        self.pas_temporel=60 # int
+        self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
 class Parametres_choix_reseau_neurones_class():
     def __init__(self):
@@ -206,6 +206,7 @@ class Fenetre_Acceuil(tk.Tk):
                     print("EVENT:", msg)
                     if msg.get("done"):
                         break
+
 
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(tk.Toplevel):
