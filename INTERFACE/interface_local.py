@@ -430,6 +430,13 @@ class Cadre_Entrainement(tk.Frame):
         
         self.progress_bar.pack(before=self.info_frame,pady=15)
 
+        # Vider la file d'attente
+        while not self.data_queue.empty():
+            try:
+                self.data_queue.get_nowait()
+            except queue.Empty:
+                break
+
         # Réinitialiser le graphique
         self.ax.clear()
         self.ax.set_facecolor(self.cadre_bg)
@@ -445,7 +452,7 @@ class Cadre_Entrainement(tk.Frame):
         self.canvas.draw()
         
 
-        
+
         # Démarrer la mise à jour périodique
         self.update_plot()
     
@@ -506,6 +513,44 @@ class Cadre_Entrainement(tk.Frame):
     
     def stop_training(self):
         """Arrête l'entraînement et met à jour le statut"""
+        # Traiter toutes les données restantes dans la queue avant d'arrêter
+        while not self.data_queue.empty():
+            try:
+                epoch, loss = self.data_queue.get_nowait()
+                self.epochs.append(epoch)
+                self.losses.append(loss)
+                
+                # Mettre à jour les labels
+                self.label_epoch.config(text=f"Epoch: {epoch}")
+                self.label_loss.config(text=f"Loss: {loss:.6f}")
+                # Mettre à jour la barre de progression
+                self.progress_bar['value'] = (epoch / self.total_epochs) * 100
+            except queue.Empty:
+                break
+        
+        # Mettre à jour le graphique une dernière fois avec toutes les données
+        if len(self.epochs) > 0:
+            self.line.set_data(self.epochs, self.losses)
+            self.ax.set_yscale('log' if self.is_log.get() else 'linear')
+            
+            # Ajuster les limites des axes
+            self.ax.relim()
+            self.ax.autoscale_view(True, True, True)
+            
+            if len(self.losses) > 1:
+                y_min, y_max = min(self.losses), max(self.losses)
+                if self.is_log.get():
+                    # Marge en échelle log (multiplicative)
+                    ratio = (y_max / y_min) ** 0.1
+                    self.ax.set_ylim(y_min / ratio, y_max * ratio)
+                else:
+                    # Marge en échelle linéaire (additive)
+                    y_range = y_max - y_min
+                    if y_range > 0:
+                        self.ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+            
+            self.canvas.draw()
+        
         self.is_training = False
         self.progress_bar.pack_forget()
         self.label_status.config(text="✅ Terminé", fg="#27ae60")
@@ -517,36 +562,35 @@ class Cadre_Entrainement(tk.Frame):
             self.label_loss.config(text=f"Loss finale: {final_loss:.6f} (min: {min_loss:.6f})")
 
 
-
-
-
-
-
-
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        couleur_fond = "#d9d9d9"
+        self.cadre_bg=app.cadres_bg
+        self.fenetre_bg=app.fenetre_bg
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
+        self.configure(bg=self.fenetre_bg)
+        # Polices
+        self.font_titre = ("Helvetica", 18, "bold")
+        self.font_section = ("Helvetica", 14, "bold")
+        self.font_bouton = ("Helvetica", 12)
 
-        # Définir une police personnalisée
-        self.font_titre = ("Helvetica", 14, "bold")
-        self.font_bouton = ("Helvetica", 11)
+        
+
 
         self.geometry("500x1")  # largeur fixe, hauteur minimale
 
-        self.cadre = tk.Frame(self, borderwidth=30)
-        self.cadre.configure(bg=couleur_fond)
-        self.cadre.pack(fill="both", expand="yes")
+        # Cadre principal de configuration
+        self.cadre = tk.Frame(self, bg=self.fenetre_bg, padx=20, pady=20, highlightbackground="black", highlightthickness=2)
+        self.cadre.pack(fill="both", expand="yes", padx=10, pady=20)
         
         # Titre simulé
-        tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=couleur_fond).pack(anchor="w", pady=(0, 10))
+        tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=self.fenetre_bg).pack(anchor="w", pady=(0, 10))
 
         # Cadre des paramètres
         self.CadreParams = tk.LabelFrame(
             self.cadre, text="", font=self.font_titre,
-            bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
+            bg=self.cadre_bg, fg="#333333", bd=3, relief="ridge", padx=15, pady=15
         )
         self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
 
@@ -562,11 +606,8 @@ class Fenetre_Params(tk.Toplevel):
         ]
 
         for texte, commande in boutons:
-            tk.Button(
-                self.CadreParams, text=texte, font=self.font_bouton,
-                height=2, bg="#e6e6e6", fg="#000000", relief="groove", bd=2,
-                command=commande
-            ).pack(fill="x", pady=6, padx=12)
+            self.bouton(self.CadreParams, texte, commande)
+
 
         # tk.Button(
         #     self.cadre, text="🚀 Envoyer la configuration au serveur", font=self.font_bouton,
@@ -589,10 +630,21 @@ class Fenetre_Params(tk.Toplevel):
         self.update_idletasks()
         self.geometry(f"500x{self.winfo_reqheight()}")
 
+    def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
+        bouton = tk.Button(
+            parent, text=texte, font=self.font_bouton, command=commande,
+            bg=bg, fg=fg, relief="raised", bd=2, height=2
+        )
+        bouton.pack(fill="x", pady=5)
+
+        # Effet de survol
+        bouton.bind("<Enter>", lambda e: bouton.config(bg="#d6eaf8"))
+        bouton.bind("<Leave>", lambda e: bouton.config(bg=bg))
+
     def est_ouverte(self):
         return self.winfo_exists()
-    # Fonctions des fenêtres de paramétrage
     
+    # Fonctions des fenêtres de paramétrage
     def Params_temporels(self):
         # Variables pour les paramètres temporels
         Params_temporels_horizon = tk.IntVar(value=Parametres_temporels.horizon)
@@ -683,7 +735,6 @@ class Fenetre_Params(tk.Toplevel):
         
         fenetre_params_temporels.mainloop()
 
-    
     def Params_choix_reseau_neurones(self):
         # Variables pour les paramètres
         Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele)  # str ['MLP','LSTM','GRU','CNN']
@@ -736,9 +787,6 @@ class Fenetre_Params(tk.Toplevel):
 
         fenetre_params_choix_reseau_neurones.mainloop()
 
-#######################
-############################ Faut modif ici modele par modele c.f. le fichier classes.py
-############################
     def Params_archi_reseau(self):
         def Save_quit():
             if( Parametres_choix_reseau_neurones.modele=="MLP"):
