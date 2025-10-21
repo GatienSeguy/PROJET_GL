@@ -5,6 +5,10 @@ import requests, json
 from tkinter import ttk
 from tkinter import messagebox
 
+# === GRAPHIQUE MATPLOTLIB INTÉGRÉ AVEC STYLE ===
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+
 
 import matplotlib
 matplotlib.use("TkAgg")  # backend Tkinter
@@ -12,9 +16,9 @@ import matplotlib.pyplot as plt
 import numpy as np
  
 # URL = "http://192.168.1.94:8000" 
-# URL = "http://192.168.27.66:8000"
+URL = "http://192.168.27.66:8000"
 # URL = "http://192.168.1.169:8000"
-URL = "http://138.231.149.81:8000"
+# URL = "http://138.231.149.81:8000"
 
 
 # Paramètres et variables
@@ -99,11 +103,9 @@ class Parametres_visualisation_suivi_class():
 
 Parametres_temporels=Parametres_temporels_class()
 Parametres_choix_reseau_neurones=Parametres_choix_reseau_neurones_class()
-
 Parametres_archi_reseau_MLP=Parametres_archi_reseau_class.MLP_params()
 Parametres_archi_reseau_CNN=Parametres_archi_reseau_class.CNN_params()
 Parametres_archi_reseau_LSTM=Parametres_archi_reseau_class.LSTM_params()
-
 Parametres_choix_loss_fct=Parametres_choix_loss_fct_class()
 Parametres_optimisateur=Parametres_optimisateur_class()
 Parametres_entrainement=Parametres_entrainement_class()
@@ -334,8 +336,6 @@ class Fenetre_Acceuil(tk.Tk):
         # Afficher
         plt.show()
 
-
-
     def EnvoyerConfig(self):
         payload_global = self.Formatter_JSON_global()
         payload_model = self.Formatter_JSON_specif()
@@ -391,9 +391,6 @@ class Fenetre_Acceuil(tk.Tk):
         progress_bar = ttk.Progressbar(cadre_progress, length=800, mode='determinate')
         progress_bar.pack(pady=15)
         
-        # === GRAPHIQUE MATPLOTLIB INTÉGRÉ AVEC STYLE ===
-        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-        from matplotlib.figure import Figure
         
         # Créer la figure
         fig = Figure(figsize=(8, 4), dpi=100, facecolor='#f5f7fa')
@@ -783,7 +780,6 @@ class Fenetre_Acceuil(tk.Tk):
             padx=20,
             pady=5
         ).pack(pady=10)
-
 
 ##############
 # Créer la fenêtre de paramétrage du modèle

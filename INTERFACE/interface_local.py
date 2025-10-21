@@ -5,13 +5,21 @@ import requests, json
 from tkinter import ttk
 from tkinter import messagebox
 
+# === GRAPHIQUE MATPLOTLIB INTÉGRÉ AVEC STYLE ===
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+import matplotlib
+matplotlib.use("TkAgg")  # backend Tkinter
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 
 
 # URL = "http://192.168.1.94:8000" 
-# URL = "http://192.168.27.66:8000"
+URL = "http://192.168.27.66:8000"
 # URL = "http://192.168.1.169:8000"
-URL = "http://138.231.149.81:8000"
+# URL = "http://138.231.149.81:8000"
 
 
 # Paramètres et variables
@@ -74,7 +82,7 @@ class Parametres_optimisateur_class():
         self.optimisateur="Adam" # fonction Adam/SGD/RMSprop/Adagrad/Adadelta
         self.learning_rate=0.001 # float
         self.decroissance=0.0 # float
-        self.scheduler=None # fonction Plateau/Cosine/OneCycle/None
+        self.scheduler="None" # fonction Plateau/Cosine/OneCycle/None
         self.patience=5 # int
 class Parametres_entrainement_class():
     def __init__(self):
@@ -96,11 +104,9 @@ class Parametres_visualisation_suivi_class():
 
 Parametres_temporels=Parametres_temporels_class()
 Parametres_choix_reseau_neurones=Parametres_choix_reseau_neurones_class()
-
 Parametres_archi_reseau_MLP=Parametres_archi_reseau_class.MLP_params()
 Parametres_archi_reseau_CNN=Parametres_archi_reseau_class.CNN_params()
 Parametres_archi_reseau_LSTM=Parametres_archi_reseau_class.LSTM_params()
-
 Parametres_choix_loss_fct=Parametres_choix_loss_fct_class()
 Parametres_optimisateur=Parametres_optimisateur_class()
 Parametres_entrainement=Parametres_entrainement_class()
@@ -110,6 +116,8 @@ Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(tk.Tk):
     def __init__(self):
+        self.cadres_bg="#eaf2f8"
+        self.fenetre_bg="#f0f4f8"
         self.Payload={}
         self.Fenetre_Params_instance = None
         self.Fenetre_Params_horizon_instance = None
@@ -118,7 +126,7 @@ class Fenetre_Acceuil(tk.Tk):
 
         tk.Tk.__init__(self)
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
-        self.configure(bg="#f0f4f8")
+        self.configure(bg=self.fenetre_bg)
         self.geometry("520x1")
 
         # Polices
@@ -126,22 +134,26 @@ class Fenetre_Acceuil(tk.Tk):
         self.font_section = ("Helvetica", 18, "bold")
         self.font_bouton = ("Helvetica", 14)
 
-        # Cadre principal
-        self.cadre = tk.Frame(self, bg="#f0f4f8", padx=20, pady=20)
-        self.cadre.pack(fill="both", expand=True)
+        # Cadre principal de configuration
+        self.cadre = tk.Frame(self, bg=self.cadres_bg, padx=20, pady=20, width=200, highlightbackground="black", highlightthickness=2)
+        self.cadre.pack(side="left",fill="y", padx=10, pady=20)
+
+        # Cadre des résultats
+        self.cadre_results = tk.Frame(self, bg=self.cadres_bg, padx=20, pady=20, highlightbackground="black", highlightthickness=2)
+        self.cadre_results.pack(side="right",fill="both", expand=True, padx=10, pady=20)
 
         # Titre
-        tk.Label(self.cadre, text="MLApp", font=self.font_titre, bg="#f0f4f8", fg="#2c3e50").pack(pady=(0, 20))
+        tk.Label(self.cadre, text="MLApp", font=self.font_titre, bg=self.cadres_bg, fg="#2c3e50").pack(pady=(0, 20))
 
         # Section 1 : Modèle
-        section_modele = tk.LabelFrame(self.cadre, text="🧬 Modèle", font=self.font_section, bg="#eaf2f8", fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
+        section_modele = tk.LabelFrame(self.cadre, text="🧬 Modèle", font=self.font_section, bg=self.cadres_bg, fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
         section_modele.pack(fill="x", pady=10)
 
         self.bouton(section_modele, "📂 Charger Modèle", self.test)
         self.bouton(section_modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele)
 
         # Section 2 : Données
-        section_data = tk.LabelFrame(self.cadre, text="📊 Données", font=self.font_section, bg="#eaf2f8", fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
+        section_data = tk.LabelFrame(self.cadre, text="📊 Données", font=self.font_section, bg=self.cadres_bg, fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
         section_data.pack(fill="x", pady=10)
 
         self.bouton(section_data, "📁 Choix Dataset", self.Parametrer_dataset)
@@ -160,7 +172,6 @@ class Fenetre_Acceuil(tk.Tk):
         self.attributes('-fullscreen', True)  # Enable fullscreen
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
-
 
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
@@ -216,6 +227,8 @@ class Fenetre_Acceuil(tk.Tk):
         return self.config_specifique
 
     def EnvoyerConfig(self):
+        fenetre_entrainement = self.Fenetre_Entrainement()
+
         payload_global = self.Formatter_JSON_global()
         payload_model = self.Formatter_JSON_specif()
         # Avant d’envoyer le payload
@@ -231,6 +244,188 @@ class Fenetre_Acceuil(tk.Tk):
                     print("EVENT:", msg)
                     if msg.get("done"):
                         break
+    
+    def Fenetre_Entrainement(self):
+        # --- buffers pour le plot et métriques ---
+        y_true_pairs, y_pred_pairs = [], []
+        test_metrics = None
+        train_losses = []
+        train_epochs = []
+
+        # --- Fenêtre de progression avec graphique dynamique ---
+        #fenetre_progress = tk.Toplevel(self)
+        #fenetre_progress.title("📈 Entraînement en cours...")
+        #fenetre_progress.geometry("900x650")
+        #fenetre_progress.configure(bg="#f5f7fa")
+        
+        self.cadre_progress = tk.Frame(self.cadre_results, padx=20, pady=20, bg=self.cadres_bg)
+        self.cadre_progress.pack(fill="both", expand=True)
+
+        # Labels de statut
+        label_status = tk.Label(
+            self.cadre_progress, 
+            text="Initialisation...", 
+            font=("Helvetica", 14, "bold"),
+            bg=self.cadres_bg,
+            fg="#2c3e50"
+        )
+        label_status.pack(pady=10)
+        
+        cadre_info = tk.Frame(self.cadre_progress, bg=self.cadres_bg)
+        cadre_info.pack(pady=5)
+        
+        label_epoch = tk.Label(
+            cadre_info, 
+            text="", 
+            font=("Helvetica", 11),
+            bg=self.cadres_bg,
+            fg="#34495e"
+        )
+        label_epoch.grid(row=0, column=0, padx=20)
+        
+        label_loss = tk.Label(
+            cadre_info, 
+            text="", 
+            font=("Helvetica", 11),
+            bg=self.cadres_bg,
+            fg="#34495e"
+        )
+        label_loss.grid(row=0, column=1, padx=20)
+        
+        progress_bar = ttk.Progressbar(self.cadre_progress, length=800, mode='determinate')
+        progress_bar.pack(pady=15)
+
+        # Créer la figure
+        fig = Figure(figsize=(8, 4), dpi=150, facecolor=self.cadres_bg)
+        ax = fig.add_subplot(111)
+        
+        # Style du graphique
+        ax.set_facecolor(self.cadres_bg)
+        ax.set_title('Évolution de la Loss pendant l\'entraînement', 
+                    fontsize=13, 
+                    fontweight='bold',
+                    color='#2c3e50',
+                    pad=15)
+        ax.set_xlabel('Epoch', fontsize=10, fontweight='bold', color='#34495e')
+        ax.set_ylabel('Loss', fontsize=10, fontweight='bold', color='#34495e')
+        ax.grid(True, linestyle='--', alpha=0.3, color='#bdc3c7')
+        ax.set_axisbelow(True)
+        
+        # Supprimer les bordures supérieure et droite
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#95a5a6')
+        ax.spines['bottom'].set_color('#95a5a6')
+
+        # Ligne de loss (vide au début)
+        line_loss, = ax.plot([], [], 
+                            color='#e74c3c', 
+                            linewidth=2.5, 
+                            marker='o', 
+                            markersize=5,
+                            markerfacecolor='#ffffff',
+                            markeredgewidth=2,
+                            markeredgecolor='#e74c3c',
+                            label='Loss',
+                            alpha=0.9)
+        
+        # Légende
+        legend = ax.legend(loc='upper right', 
+                        frameon=True, 
+                        fancybox=True, 
+                        shadow=True,
+                        fontsize=9)
+        legend.get_frame().set_facecolor('#ffffff')
+        legend.get_frame().set_alpha(0.9)
+        
+        fig.tight_layout()
+
+        # Intégrer le graphique dans Tkinter
+        canvas = FigureCanvasTkAgg(fig, master=self.cadre_progress)
+        canvas.draw()
+        canvas.get_tk_widget().pack(pady=10)
+
+        # Log textuel
+        text_log = tk.Text(
+            self.cadre_progress, 
+            height=6, 
+            width=100, 
+            font=("Courier", 9),
+            bg="#f8f9fa",
+            fg="#2c3e50",
+            relief="flat",
+            padx=10,
+            pady=10
+        )
+        text_log.pack(pady=10)
+        
+        scrollbar = tk.Scrollbar(self.cadre_progress, command=text_log.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text_log.config(yscrollcommand=scrollbar.set)
+
+        def log_message(msg, color="black"):
+            text_log.insert(tk.END, msg + "\n", color)
+            text_log.see(tk.END)
+            self.cadre_progress.update()
+        
+        # Configuration des tags de couleur
+        text_log.tag_config("black", foreground="#2c3e50")
+        text_log.tag_config("blue", foreground="#3498db")
+        text_log.tag_config("green", foreground="#27ae60")
+        text_log.tag_config("red", foreground="#e74c3c")
+        text_log.tag_config("orange", foreground="#e67e22")
+        
+        # Variable pour stocker le nombre total d'epochs
+        total_epochs = Parametres_entrainement.nb_epochs
+
+        def update_loss_plot():
+            """Mise à jour DYNAMIQUE du graphique de loss"""
+            if train_epochs and train_losses:
+                # Exclure la première valeur pour le zoom
+                epochs_to_plot = train_epochs[1:] if len(train_epochs) > 1 else train_epochs
+                losses_to_plot = train_losses[1:] if len(train_losses) > 1 else train_losses
+                
+                if not epochs_to_plot or not losses_to_plot:
+                    return
+                
+                # Mettre à jour les données de la ligne
+                line_loss.set_data(epochs_to_plot, losses_to_plot)
+                
+                # Ajuster les limites des axes
+                ax.relim()
+                ax.autoscale_view()
+                
+                # Ajuster les limites Y pour bien voir la courbe
+                if len(losses_to_plot) > 0:
+                    y_min = min(losses_to_plot)
+                    y_max = max(losses_to_plot)
+                    y_range = y_max - y_min
+                    if y_range > 0:
+                        ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+                    else:
+                        # Si toutes les valeurs sont identiques
+                        ax.set_ylim(y_min - 0.001, y_max + 0.001)
+                
+                # Redessiner le canvas
+                canvas.draw()
+                canvas.flush_events()
+                self.cadre_progress.update()
+        
+    class Cadre_Entrainement(tk.Frame):
+        def __init__(self, master=None):
+            super().__init__(master)
+            self.pack()
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Créer la fenêtre de paramétrage du modèle
@@ -993,6 +1188,7 @@ class Fenetre_Choix_datasets(tk.Toplevel):
         pass
 
     
+
 
 
 
