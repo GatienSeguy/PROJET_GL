@@ -1,39 +1,38 @@
 import tkinter as tk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-import matplotlib.ticker as ticker
-import numpy as np
+from tkinter import ttk
 
-class MonApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Grille logarithmique enrichie")
+root = tk.Tk()
+root.title("Onglets imbriqués")
+root.geometry("500x400")
 
-        self.fig = Figure(figsize=(6, 4))
-        self.ax = self.fig.add_subplot(111)
+# Notebook principal
+main_notebook = ttk.Notebook(root)
+main_notebook.pack(expand=True, fill='both')
 
-        # Données en log
-        x = np.logspace(0.1, 2, 100)
-        y = np.log10(x)
-        self.ax.plot(x, y)
+# Onglet principal "Paramètres"
+frame_parametres = ttk.Frame(main_notebook)
+main_notebook.add(frame_parametres, text="Paramètres")
 
-        # Échelle log
-        self.ax.set_xscale('log')
+# Onglet principal "À propos"
+frame_apropos = ttk.Frame(main_notebook)
+main_notebook.add(frame_apropos, text="À propos")
 
-        # Grille principale
-        self.ax.grid(True, which='major', linestyle='-', color='gray')
+# Notebook secondaire dans "Paramètres"
+sub_notebook = ttk.Notebook(frame_parametres)
+sub_notebook.pack(expand=True, fill='both', padx=10, pady=10)
 
-        # Grille secondaire (petites divisions)
-        self.ax.grid(True, which='minor', linestyle=':', color='lightgray')
+# Sous-onglets
+sub_affichage = ttk.Frame(sub_notebook)
+sub_reseau = ttk.Frame(sub_notebook)
 
-        # Locator pour les ticks mineurs
-        self.ax.xaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs=np.arange(2, 10)*0.1, numticks=12))
-        self.ax.xaxis.set_minor_formatter(ticker.NullFormatter())  # Optionnel : ne pas afficher les labels mineurs
+sub_notebook.add(sub_affichage, text="Affichage")
+sub_notebook.add(sub_reseau, text="Réseau")
 
-        # Canvas Tkinter
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+# Contenu des sous-onglets
+ttk.Label(sub_affichage, text="Réglages d'affichage ici").pack(pady=20)
+ttk.Label(sub_reseau, text="Paramètres réseau ici").pack(pady=20)
 
-app = MonApp()
-app.mainloop()
+# Contenu de l'onglet "À propos"
+ttk.Label(frame_apropos, text="Application version 1.0").pack(pady=20)
+
+root.mainloop()
