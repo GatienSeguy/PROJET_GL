@@ -13,6 +13,17 @@ matplotlib.use("TkAgg")  # backend Tkinter
 import matplotlib.pyplot as plt
 import numpy as np
 
+import threading
+import queue
+from tkinter import messagebox
+
+import tkinter as tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import threading
+import queue
 
 
 
@@ -27,7 +38,7 @@ URL = "http://192.168.27.66:8000"
 class Parametres_temporels_class():
     def __init__(self):
         self.horizon=1 # int
-        self.dates=["2025-01-01", "2025-01-02"] # variable datetime
+        self.dates=["2001-01-01", "2025-01-02"] # variable datetime
         self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
 class Parametres_choix_reseau_neurones_class():
@@ -139,7 +150,7 @@ class Fenetre_Acceuil(tk.Tk):
         self.cadre.pack(side="left",fill="y", padx=10, pady=20)
 
         # Cadre des résultats
-        self.Cadre_results = self.Cadre_Entrainement(self)
+        self.Cadre_results = Cadre_Entrainement(self)
         self.Cadre_results.pack(side="right",fill="both", expand=True, padx=10, pady=20)
         
         # Titre
@@ -228,32 +239,260 @@ class Fenetre_Acceuil(tk.Tk):
         return self.config_specifique
 
     def EnvoyerConfig(self):
+        """Envoie la configuration au serveur et affiche l'entraînement en temps réel"""
+        
+        # Démarrer l'affichage de l'entraînement
+        self.Cadre_results.start_training()
+        
+        # Préparer les payloads
         payload_global = self.Formatter_JSON_global()
         payload_model = self.Formatter_JSON_specif()
-        # Avant d’envoyer le payload
-        print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
-        with requests.post(f"{URL}/train_full", json={"payload": payload_global, "payload_model": payload_model}, stream=True) as r:
-            r.raise_for_status()
-            print("Content-Type:", r.headers.get("content-type"))
-            for line in r.iter_lines():
-                if not line:
-                    continue
-                if line.startswith(b"data: "):
-                    msg = json.loads(line[6:].decode("utf-8"))
-                    print("EVENT:", msg)
-                    if msg.get("done"):
-                        break
         
+        # Avant d'envoyer le payload
+        print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
+        
+        def run_training():
+            """Fonction pour exécuter l'entraînement dans un thread séparé"""
+            try:
+                with requests.post(
+                    f"{URL}/train_full", 
+                    json={"payload": payload_global, "payload_model": payload_model}, 
+                    stream=True,
+                    timeout=None
+                ) as r:
+                    r.raise_for_status()
+                    print("Content-Type:", r.headers.get("content-type"))
+                    
+                    for line in r.iter_lines():
+                        if not line:
+                            continue
+                        
+                        if line.startswith(b"data: "):
+                            try:
+                                msg = json.loads(line[6:].decode("utf-8"))
+                                print("EVENT:", msg)
+                                
+                                # Traiter les différents types de messages
+                                if msg.get("type") == "epoch":
+                                    # Message d'epoch avec loss
+                                    epoch = msg.get("epoch")
+                                    avg_loss = msg.get("avg_loss")
+                                    
+                                    if epoch is not None and avg_loss is not None:
+                                        # Ajouter le point au graphique
+                                        self.Cadre_results.add_data_point(epoch, avg_loss)
+                                
+                                elif "epochs" in msg and "avg_loss" in msg:
+                                    # Format alternatif (comme dans votre exemple)
+                                    epoch = msg.get("epochs")
+                                    avg_loss = msg.get("avg_loss")
+                                    
+                                    if epoch is not None and avg_loss is not None:
+                                        self.Cadre_results.add_data_point(epoch, avg_loss)
+                                
+                                elif msg.get("type") == "error":
+                                    # Afficher les erreurs
+                                    print(f"ERREUR: {msg.get('message')}")
+                                    messagebox.showerror("Erreur", msg.get('message', 'Erreur inconnue'))
+                                    break
+                                
+                                elif msg.get("done"):
+                                    # Entraînement terminé
+                                    break
+                            
+                            except json.JSONDecodeError as e:
+                                print(f"Erreur de décodage JSON: {e}")
+                                continue
+            
+            except requests.exceptions.RequestException as e:
+                print(f"Erreur de connexion: {e}")
+                messagebox.showerror("Erreur de connexion", f"Impossible de se connecter au serveur:\n{str(e)}")
+            
+            finally:
+                # Arrêter l'affichage de l'entraînement
+                self.Cadre_results.stop_training()
+        
+        # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
+        training_thread = threading.Thread(target=run_training, daemon=True)
+        training_thread.start()
+
+
+
+    # def EnvoyerConfig(self):
+    #     payload_global = self.Formatter_JSON_global()
+    #     payload_model = self.Formatter_JSON_specif()
+    #     # Avant d’envoyer le payload
+    #     print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
+    #     with requests.post(f"{URL}/train_full", json={"payload": payload_global, "payload_model": payload_model}, stream=True) as r:
+    #         r.raise_for_status()
+    #         print("Content-Type:", r.headers.get("content-type"))
+    #         for line in r.iter_lines():
+    #             if not line:
+    #                 continue
+    #             if line.startswith(b"data: "):
+    #                 msg = json.loads(line[6:].decode("utf-8"))
+    #                 print("EVENT:", msg)
+    #                 if msg.get("done"):
+    #                     break
+
+class Cadre_Entrainement(tk.Frame):
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.cadre_bg = "#eaf2f8"
+        self.configure(bg=self.cadre_bg, padx=20, pady=20, highlightbackground="black", highlightthickness=2)
+        
+        # Variables pour stocker les données
+        self.epochs = []
+        self.losses = []
+        self.data_queue = queue.Queue()
+        self.is_training = False
+        
+        # Titre
+        self.titre = tk.Label(
+            self, 
+            text="📊 Suivi de l'Entraînement en Temps Réel", 
+            font=("Helvetica", 16, "bold"),
+            bg=self.cadre_bg,
+            fg="#2c3e50"
+        )
+        self.titre.pack(pady=(0, 10))
+        
+        # Frame pour les informations
+        self.info_frame = tk.Frame(self, bg=self.cadre_bg)
+        self.info_frame.pack(fill="x", pady=(0, 10))
+        
+        # Labels d'information
+        self.label_epoch = tk.Label(
+            self.info_frame,
+            text="Epoch: -",
+            font=("Helvetica", 12, "bold"),
+            bg=self.cadre_bg,
+            fg="#34495e"
+        )
+        self.label_epoch.pack(side="left", padx=10)
+        
+        self.label_loss = tk.Label(
+            self.info_frame,
+            text="Loss: -",
+            font=("Helvetica", 12, "bold"),
+            bg=self.cadre_bg,
+            fg="#e74c3c"
+        )
+        self.label_loss.pack(side="left", padx=10)
+        
+        self.label_status = tk.Label(
+            self.info_frame,
+            text="⏸️ En attente",
+            font=("Helvetica", 12),
+            bg=self.cadre_bg,
+            fg="#7f8c8d"
+        )
+        self.label_status.pack(side="right", padx=10)
+        
+        # Création du graphique matplotlib avec style moderne
+        self.fig = Figure(figsize=(10, 6), facecolor=self.cadre_bg)
+        self.ax = self.fig.add_subplot(111)
+        
+        # Style du graphique
+        self.ax.set_facecolor(self.cadre_bg)
+        self.ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
+        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold', color='#2c3e50')
+        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold', color='#2c3e50')
+        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', color='#2c3e50', pad=20)
+        
+        # Ligne de tracé (sera mise à jour)
+        self.line, = self.ax.plot([], [], 'o-', linewidth=2.5, markersize=6, 
+                                   color='#3498db', markerfacecolor='#e74c3c',
+                                   markeredgewidth=2, markeredgecolor='#c0392b')
+        
+        # Canvas pour afficher le graphique
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        
+        
+        # Ajustement automatique des marges
+        self.fig.tight_layout()
+        
+    def start_training(self):
+        """Initialise l'affichage pour un nouvel entraînement"""
+        self.is_training = True
+        self.epochs = []
+        self.losses = []
+        
+        # Réinitialiser le graphique
+        self.ax.clear()
+        self.ax.set_facecolor(self.cadre_bg)
+        self.ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
+        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold', color='#2c3e50')
+        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold', color='#2c3e50')
+        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', color='#2c3e50', pad=20)
+        self.line, = self.ax.plot([], [], 'o-', linewidth=2.5, markersize=6,
+                                   color='#3498db', markerfacecolor='#e74c3c',
+                                   markeredgewidth=2, markeredgecolor='#c0392b')
+        
+        self.label_status.config(text="🚀 En cours...", fg="#27ae60")
+        self.canvas.draw()
+        
+        # Démarrer la mise à jour périodique
+        self.update_plot()
     
-
-    class Cadre_Entrainement(tk.Frame):
-        def __init__(self, master=None):
-            super().__init__(master)
-            self.cadre_bg="#eaf2f8"
-            self.configure(bg=self.cadre_bg, padx=20, pady=20, highlightbackground="black", highlightthickness=2)
-            label = tk.Label(self, text="Zone d'affichage des résultats d'entraînement", bg=self.cadre_bg)
-            label.pack()
-
+    def add_data_point(self, epoch, loss):
+        """Ajoute un nouveau point de données"""
+        self.data_queue.put((epoch, loss))
+    
+    def update_plot(self):
+        """Met à jour le graphique avec les nouvelles données"""
+        if not self.is_training:
+            return
+        
+        # Récupérer toutes les données disponibles dans la queue
+        updated = False
+        while not self.data_queue.empty():
+            try:
+                epoch, loss = self.data_queue.get_nowait()
+                self.epochs.append(epoch)
+                self.losses.append(loss)
+                updated = True
+                
+                # Mettre à jour les labels
+                self.label_epoch.config(text=f"Epoch: {epoch}")
+                self.label_loss.config(text=f"Loss: {loss:.6f}")
+            except queue.Empty:
+                break
+        
+        # Mettre à jour le graphique si de nouvelles données sont disponibles
+        if updated and len(self.epochs) > 0:
+            self.line.set_data(self.epochs, self.losses)
+            
+            # Ajuster les limites des axes
+            self.ax.relim()
+            self.ax.autoscale_view(True, True, True)
+            
+            # Ajouter une marge visuelle
+            if len(self.losses) > 1:
+                y_min, y_max = min(self.losses), max(self.losses)
+                y_range = y_max - y_min
+                if y_range > 0:
+                    self.ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+            
+            self.canvas.draw()
+        
+        # Continuer la mise à jour si l'entraînement est en cours
+        if self.is_training:
+            self.after(100, self.update_plot)  # Mise à jour toutes les 100ms
+    
+    def stop_training(self):
+        """Arrête l'entraînement et met à jour le statut"""
+        self.is_training = False
+        self.label_status.config(text="✅ Terminé", fg="#27ae60")
+        
+        # Afficher les statistiques finales
+        if len(self.losses) > 0:
+            final_loss = self.losses[-1]
+            min_loss = min(self.losses)
+            self.label_loss.config(text=f"Loss finale: {final_loss:.6f} (min: {min_loss:.6f})")
 
 
 
