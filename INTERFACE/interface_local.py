@@ -17,9 +17,9 @@ import numpy as np
 
 
 # URL = "http://192.168.1.94:8000" 
-# URL = "http://192.168.27.66:8000"
+URL = "http://192.168.27.66:8000"
 # URL = "http://192.168.1.169:8000"
-URL = "http://138.231.149.81:8000"
+# URL = "http://138.231.149.81:8000"
 
 
 # Paramètres et variables
@@ -228,10 +228,6 @@ class Fenetre_Acceuil(tk.Tk):
         return self.config_specifique
 
     def EnvoyerConfig(self):
-        self.Cadre_results.Fenetre_Entrainement()
-        pass
-        
-        
         payload_global = self.Formatter_JSON_global()
         payload_model = self.Formatter_JSON_specif()
         # Avant d’envoyer le payload
