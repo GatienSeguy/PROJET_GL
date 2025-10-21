@@ -620,7 +620,6 @@ class Fenetre_Params(tk.Toplevel):
 
         # Liste des boutons
         boutons = [
-            ("Paramètres temporels et de découpage de données", self.Params_temporels),
             ("Choix du modèle de réseau de neurones", self.Params_choix_reseau_neurones),
             ("Paramétrage de l'architecture réseau", self.Params_archi_reseau),
             ("Choix de la fonction perte (loss)", self.Params_choix_loss_fct),
@@ -669,96 +668,7 @@ class Fenetre_Params(tk.Toplevel):
         return self.winfo_exists()
     
     # Fonctions des fenêtres de paramétrage
-    def Params_temporels(self):
-        # Variables pour les paramètres temporels
-        Params_temporels_horizon = tk.IntVar(value=Parametres_temporels.horizon)
-        date_debut_str = tk.StringVar(value=Parametres_temporels.dates[0])
-        date_fin_str = tk.StringVar(value=Parametres_temporels.dates[1])
-        Params_temporels_pas_temporel = tk.IntVar(value=Parametres_temporels.pas_temporel)
-        Params_temporels_portion_decoupage = tk.IntVar(value=Parametres_temporels.portion_decoupage*100)
-
-        def ouvrir_calendrier_debut():
-            top = tk.Toplevel(self)
-            top.title("Sélectionner la date de début")
-            try:
-                date_obj = datetime.strptime(date_debut_str.get(), "%Y-%m-%d")
-            except ValueError:
-                date_obj = datetime.today()
-            cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',
-                        year=date_obj.year, month=date_obj.month, day=date_obj.day)
-            cal.pack(padx=10, pady=10)
-            tk.Button(top, text="Valider", command=lambda: (date_debut_str.set(cal.get_date()), top.destroy())).pack(pady=10)
-
-        # Fonction locale : ouvrir calendrier fin
-        def ouvrir_calendrier_fin():
-            top = tk.Toplevel(self)
-            top.title("Sélectionner la date de fin")
-            try:
-                date_obj = datetime.strptime(date_fin_str.get(), "%Y-%m-%d")
-            except ValueError:
-                date_obj = datetime.today()
-            cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',
-                        year=date_obj.year, month=date_obj.month, day=date_obj.day)
-            cal.pack(padx=10, pady=10)
-            tk.Button(top, text="Valider", command=lambda: (date_fin_str.set(cal.get_date()), top.destroy())).pack(pady=10)
-
-        def Save_quit():
-            Parametres_temporels.horizon = Params_temporels_horizon.get()
-            Parametres_temporels.pas_temporel = Params_temporels_pas_temporel.get()
-            Parametres_temporels.portion_decoupage = Params_temporels_portion_decoupage.get() / 100
-            Parametres_temporels.dates = [date_debut_str.get(), date_fin_str.get()]
-            fenetre_params_temporels.destroy()
-        
-        def Quit():
-            Params_temporels_horizon.set(Parametres_temporels.horizon)
-            date_debut_str.set(Parametres_temporels.dates[0])
-            date_fin_str.set(value=Parametres_temporels.dates[1])
-            Params_temporels_pas_temporel.set(Parametres_temporels.pas_temporel)
-            Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100)
-        
-            fenetre_params_temporels.destroy()
-
-
-        # Fenêtre secondaire
-        fenetre_params_temporels = tk.Toplevel(self)
-        fenetre_params_temporels.title("Paramètres temporels et de découpage de données")
-        fenetre_params_temporels.geometry("")
-
-        # Cadre principal
-        cadre = tk.LabelFrame(fenetre_params_temporels, text="Configuration", padx=10, pady=10)
-        cadre.pack(padx=10, pady=10, fill="both", expand=True)
-
-        # Validation d'entiers
-        vcmd = (fenetre_params_temporels.register(self.validate_int_fct), "%P")
-
-        # Ligne 1 : Horizon temporel
-        tk.Label(cadre, text="Horizon temporel (int) :").grid(row=0, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_temporels_horizon, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
-
-        # Ligne 2 : Pas temporel
-        tk.Label(cadre, text="Pas temporel (int) :").grid(row=1, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_temporels_pas_temporel, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
-
-        # Ligne 3 : Portion découpage
-        tk.Label(cadre, text="Portion découpage (%) :").grid(row=2, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_temporels_portion_decoupage, validate="key", validatecommand=vcmd).grid(row=2, column=1, pady=5)
-
-        # Ligne 4 : Boutons pour sélectionner les dates
-        tk.Label(cadre, text="Date de début :").grid(row=3, column=0, sticky="w", pady=5)
-        tk.Button(cadre, textvariable=date_debut_str, command=ouvrir_calendrier_debut).grid(row=3, column=1, pady=5)
-
-        tk.Label(cadre, text="Date de fin :").grid(row=4, column=0, sticky="w", pady=5)
-        tk.Button(cadre, textvariable=date_fin_str, command=ouvrir_calendrier_fin).grid(row=4, column=1, pady=5)
-
-
-        # Boutons
-        bouton_frame = tk.Frame(fenetre_params_temporels)
-        bouton_frame.pack(pady=10)
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-        
-        fenetre_params_temporels.mainloop()
-
+    
     def Params_choix_reseau_neurones(self):
         # Variables pour les paramètres
         Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele)  # str ['MLP','LSTM','GRU','CNN']
