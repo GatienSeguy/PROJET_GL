@@ -71,10 +71,10 @@ def train_LSTM(
     y: torch.Tensor,
     *,
     # --- ARCHI ---
-    hidden_size: int = 128,          # alias: hidden_size, width
-    nb_couches: int = 2,            # alias: n_layers, nb_couches, depth, layers, num_layers
-    bidirectional: bool = False,    # alias: bi, bidir
-    batch_first: bool = True,       # alias: batchfirst
+    hidden_size: int = 128,          # hidden_size, width
+    nb_couches: int = 2,            #  n_layers, nb_couches, depth, layers, num_layers
+    bidirectional: bool = False,    #  bi, bidir
+    batch_first: bool = True,       #  batchfirst
 
     # --- LOSS / OPTIM ---
     loss_name: str = "mse",
@@ -197,11 +197,11 @@ def train_LSTM(
 
         last_avg = total / max(1, n)
 
-        k = 100  # fréquence des yield comme pour le MLP
+        k = 1
         if epoch % k == 0:
             yield {"epochs": epoch, "avg_loss": float(last_avg)}
 
-        print(f"[{epoch:03d}/{epochs}] loss={last_avg:.6f}")
+        print(f"[LSTM {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
     yield {"done": True, "final_loss": float(last_avg)}
     return model

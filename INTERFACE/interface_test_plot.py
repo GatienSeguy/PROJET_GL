@@ -11,10 +11,10 @@ matplotlib.use("TkAgg")  # backend Tkinter
 import matplotlib.pyplot as plt
 import numpy as np
  
-URL = "http://192.168.1.94:8000" 
+# URL = "http://192.168.1.94:8000" 
 # URL = "http://192.168.27.66:8000"
 # URL = "http://192.168.1.169:8000"
-# URL = "http://138.231.149.81:8000"
+URL = "http://138.231.149.81:8000"
 
 
 # Paramètres et variables
@@ -67,7 +67,7 @@ class Parametres_archi_reseau_class():
 
         self.kernel_size=3 # int
         self.stride=1 # int
-        self.padding=0 # int
+        self.padding=1 # int
 class Parametres_choix_loss_fct_class():
     def __init__(self):
         self.fonction_perte="MSE" # fonction MSE/MAE/Huber
@@ -75,13 +75,13 @@ class Parametres_choix_loss_fct_class():
 class Parametres_optimisateur_class():
     def __init__(self):
         self.optimisateur="Adam" # fonction Adam/SGD/RMSprop/Adagrad/Adadelta
-        self.learning_rate=0.001 # float
+        self.learning_rate=0.0001 # float
         self.decroissance=0.0 # float
         self.scheduler=None # fonction Plateau/Cosine/OneCycle/None
         self.patience=5 # int
 class Parametres_entrainement_class():
     def __init__(self):
-        self.nb_epochs=1000 # int
+        self.nb_epochs=200 # int
         self.batch_size=4 # int
         #self.nb_workers=None # int
         self.clip_gradient=None # float
@@ -476,22 +476,29 @@ class Fenetre_Acceuil(tk.Tk):
         text_log.tag_config("orange", foreground="#e67e22")
         
         # Variable pour stocker le nombre total d'epochs
-        total_epochs = 100  # Valeur par défaut
+        total_epochs = Parametres_entrainement.nb_epochs
         
         def update_loss_plot():
             """Mise à jour DYNAMIQUE du graphique de loss"""
             if train_epochs and train_losses:
+                # Exclure la première valeur pour le zoom
+                epochs_to_plot = train_epochs[1:] if len(train_epochs) > 1 else train_epochs
+                losses_to_plot = train_losses[1:] if len(train_losses) > 1 else train_losses
+                
+                if not epochs_to_plot or not losses_to_plot:
+                    return
+                
                 # Mettre à jour les données de la ligne
-                line_loss.set_data(train_epochs, train_losses)
+                line_loss.set_data(epochs_to_plot, losses_to_plot)
                 
                 # Ajuster les limites des axes
                 ax.relim()
                 ax.autoscale_view()
                 
                 # Ajuster les limites Y pour bien voir la courbe
-                if len(train_losses) > 0:
-                    y_min = min(train_losses)
-                    y_max = max(train_losses)
+                if len(losses_to_plot) > 0:
+                    y_min = min(losses_to_plot)
+                    y_max = max(losses_to_plot)
                     y_range = y_max - y_min
                     if y_range > 0:
                         ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
@@ -530,7 +537,7 @@ class Fenetre_Acceuil(tk.Tk):
                         # ========== PHASE ENTRAINEMENT ==========
                         elif msg_type == "train_start":
                             label_status.config(text="🚀 Entraînement démarré", fg="#27ae60")
-                            total_epochs = msg.get('epochs', 100)  # Récupérer le nombre total d'epochs
+                            total_epochs = msg.get('epochs', Parametres_entrainement.nb_epochs)  # Priorité au serveur
                             log_message(f"🚀 Début de l'entraînement sur {msg.get('n_samples', '?')} échantillons pour {total_epochs} epochs", "green")
                             fenetre_progress.update()
                         

@@ -126,7 +126,7 @@ class Parametres_archi_reseau_CNN(BaseModel):
         description="pas d'application du noyau"
     )
 
-    padding: Optional[conint(gt=0)] = Field(
+    padding: Optional[conint(gt=-1)] = Field(
         None,
         description="Nombre de 0 dans noyau"
     )
