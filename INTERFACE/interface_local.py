@@ -169,7 +169,8 @@ class Fenetre_Acceuil(tk.Tk):
         self.update_idletasks()
         self.geometry(f"520x{self.winfo_reqheight()}")
 
-        self.attributes('-fullscreen', True)  # Enable fullscreen
+        #self.attributes('-fullscreen', True)  # Enable fullscreen
+        self.state('zoomed')
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
 
