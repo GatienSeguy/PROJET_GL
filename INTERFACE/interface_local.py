@@ -414,11 +414,32 @@ class Cadre_Entrainement(tk.Frame):
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
         tk.Checkbutton(self, text="📈 Échelle Logarithmique", variable=self.is_log,
-                    bg=self.cadre_bg, font=("Helvetica", 10, "bold"), 
-                    selectcolor="white").pack(pady=(10,0))
+                    bg=self.cadre_bg, font=("Helvetica", 14, "bold"), 
+                    selectcolor="white",command=self.Log_scale).pack(side="left",pady=(10,0))
         
         # Ajustement automatique des marges
         self.fig.tight_layout()
+    
+    def Log_scale(self):
+        if hasattr(self, 'Log_scale_possible'):
+            self.ax.set_yscale('log' if self.is_log.get() else 'linear')
+            if len(self.losses) > 1:
+                y_min, y_max = min(self.losses), max(self.losses)
+                if self.is_log.get():
+                    # Marge en échelle log (multiplicative)
+                    ratio = (y_max / y_min) ** 0.1
+                    self.ax.set_ylim(y_min / ratio, y_max * ratio)
+                else:
+                    # Marge en échelle linéaire (additive)
+                    y_range = y_max - y_min
+                    if y_range > 0:
+                        self.ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+            # if self.is_log.get():
+            #     self.ax.grid(True, which='minor', linestyle='--',alpha=0.3, color='#95a5a6')
+            # self.ax.relim()
+            # self.ax.autoscale_view(True, True, True)
+            self.canvas.draw()
+
         
     def start_training(self):
         """Initialise l'affichage pour un nouvel entraînement"""
@@ -428,6 +449,7 @@ class Cadre_Entrainement(tk.Frame):
         self.is_log.set(False)
         self.total_epochs = Parametres_entrainement.nb_epochs
         
+        self.progress_bar['value']=0
         self.progress_bar.pack(before=self.info_frame,pady=15)
 
         # Vider la file d'attente
@@ -441,6 +463,7 @@ class Cadre_Entrainement(tk.Frame):
         self.ax.clear()
         self.ax.set_facecolor(self.cadre_bg)
         self.ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
+        self.ax.grid(True, which='minor', linestyle='--',alpha=0.3, color='#95a5a6') #Grille log
         self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold', color='#2c3e50')
         self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold', color='#2c3e50')
         self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', color='#2c3e50', pad=20)
@@ -461,6 +484,7 @@ class Cadre_Entrainement(tk.Frame):
         self.data_queue.put((epoch, loss))
     
     def update_plot(self):
+        self.Log_scale_possible=True
         """Met à jour le graphique avec les nouvelles données"""
         if not self.is_training:
             return
