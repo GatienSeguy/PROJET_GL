@@ -357,6 +357,9 @@ def training(payload: PaquetComplet,payload_model: dict):
                 device=device,
             )
         elif model_name == "lstm":
+            if X.ndim == 2:
+                X = X.unsqueeze(1)  # (5269, 1) -> (5269, 1, 1)
+            
             gen = train_LSTM(
                 X, y,
                 hidden_size=hidden_size,

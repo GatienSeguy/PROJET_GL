@@ -74,7 +74,7 @@ def train_LSTM(
     hidden_size: int = 128,          # hidden_size, width
     nb_couches: int = 2,            #  n_layers, nb_couches, depth, layers, num_layers
     bidirectional: bool = False,    #  bi, bidir
-    batch_first: bool = True,       #  batchfirst
+    batch_first: bool = True,       #   batchfirst
 
     # --- LOSS / OPTIM ---
     loss_name: str = "mse",
@@ -102,6 +102,9 @@ def train_LSTM(
 
     Retourne (model, last_avg) et yield un dict toutes les k époques comme train_MLP.
     """
+    
+    print(f"DEBUG - X.shape: {X.shape}, y.shape: {y.shape}, batch_first: {batch_first}")
+    
     # Sanity checks rapides
     if batch_first:
         if X.ndim == 2:
