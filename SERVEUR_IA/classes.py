@@ -28,8 +28,6 @@ class Parametres_temporels(BaseModel):
 
 
 
-
-
 ##### Nouvelles calsses
 class Parametres_choix_reseau_neurones(BaseModel):
     modele: Optional[Literal["MLP", "LSTM", "GRU", "CNN"]] = Field(None, description="Type de modèle choisi")
@@ -177,3 +175,6 @@ class PaquetComplet(BaseModel):
     
 
 
+class Tx_choix_dataset(BaseModel):
+    dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
+    name: Optional[str] = Field(None, description="Nom du fichier à utiliser")

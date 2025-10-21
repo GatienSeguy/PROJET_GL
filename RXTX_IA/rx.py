@@ -1,7 +1,7 @@
 import requests, json
 
 # URL = "http://138.231.149.81:8000"
-URL = "http://192.168.1.94:8000"
+URL = "http://192.168.27.65:8000"
 
 # Séparation du payload global et du payload modèle
 payload_global = {
