@@ -346,6 +346,7 @@ class Cadre_Entrainement(tk.Frame):
         self.losses = []
         self.data_queue = queue.Queue()
         self.is_training = False
+        self.is_log=tk.BooleanVar(value=False)
         
         # Titre
         self.titre = tk.Label(
@@ -356,6 +357,8 @@ class Cadre_Entrainement(tk.Frame):
             fg="#2c3e50"
         )
         self.titre.pack(pady=(0, 10))
+
+        self.progress_bar = ttk.Progressbar(self, length=800, mode='determinate')        
         
         # Frame pour les informations
         self.info_frame = tk.Frame(self, bg=self.cadre_bg)
@@ -410,7 +413,9 @@ class Cadre_Entrainement(tk.Frame):
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
-        
+        tk.Checkbutton(self, text="📈 Échelle Logarithmique", variable=self.is_log,
+                    bg=self.cadre_bg, font=("Helvetica", 10, "bold"), 
+                    selectcolor="white").pack(pady=(10,0))
         
         # Ajustement automatique des marges
         self.fig.tight_layout()
@@ -420,7 +425,11 @@ class Cadre_Entrainement(tk.Frame):
         self.is_training = True
         self.epochs = []
         self.losses = []
+        self.is_log.set(False)
+        self.total_epochs = Parametres_entrainement.nb_epochs
         
+        self.progress_bar.pack(before=self.info_frame,pady=15)
+
         # Réinitialiser le graphique
         self.ax.clear()
         self.ax.set_facecolor(self.cadre_bg)
@@ -434,6 +443,8 @@ class Cadre_Entrainement(tk.Frame):
         
         self.label_status.config(text="🚀 En cours...", fg="#27ae60")
         self.canvas.draw()
+        
+
         
         # Démarrer la mise à jour périodique
         self.update_plot()
@@ -459,23 +470,33 @@ class Cadre_Entrainement(tk.Frame):
                 # Mettre à jour les labels
                 self.label_epoch.config(text=f"Epoch: {epoch}")
                 self.label_loss.config(text=f"Loss: {loss:.6f}")
+                # Mettre à jour la barre de progression
+                self.progress_bar['value'] = (epoch / self.total_epochs) * 100
             except queue.Empty:
                 break
         
         # Mettre à jour le graphique si de nouvelles données sont disponibles
         if updated and len(self.epochs) > 0:
             self.line.set_data(self.epochs, self.losses)
+
+            self.ax.set_yscale('log' if self.is_log.get() else 'linear')
+
             
             # Ajuster les limites des axes
             self.ax.relim()
             self.ax.autoscale_view(True, True, True)
             
-            # Ajouter une marge visuelle
             if len(self.losses) > 1:
                 y_min, y_max = min(self.losses), max(self.losses)
-                y_range = y_max - y_min
-                if y_range > 0:
-                    self.ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+                if self.is_log.get():
+                    # Marge en échelle log (multiplicative)
+                    ratio = (y_max / y_min) ** 0.1
+                    self.ax.set_ylim(y_min / ratio, y_max * ratio)
+                else:
+                    # Marge en échelle linéaire (additive)
+                    y_range = y_max - y_min
+                    if y_range > 0:
+                        self.ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
             
             self.canvas.draw()
         
@@ -486,6 +507,7 @@ class Cadre_Entrainement(tk.Frame):
     def stop_training(self):
         """Arrête l'entraînement et met à jour le statut"""
         self.is_training = False
+        self.progress_bar.pack_forget()
         self.label_status.config(text="✅ Terminé", fg="#27ae60")
         
         # Afficher les statistiques finales
