@@ -266,7 +266,7 @@ def training(payload: PaquetComplet,payload_model: dict):
 
         if cfg_model.batch_first is not None:
             batch_first = bool(cfg_model.batch_first)
-        
+         
 
 
             
