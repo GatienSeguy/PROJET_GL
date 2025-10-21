@@ -175,8 +175,22 @@ def training(payload: PaquetComplet,payload_model: dict):
         if X_test.ndim == 2:
             X_test = X_test.unsqueeze(1)
 
-    print(f"APRÈS RESHAPE - X.shape: {X.shape}, y.shape: {y.shape}")
 
+    if model_type == "lstm":
+        if X.ndim == 2:
+            X = X.unsqueeze(1)  # (B, T) -> (B, T, 1)
+        if X_test.ndim == 2:
+            X_test = X_test.unsqueeze(1)
+
+
+    elif model_type == "cnn":
+        if X.ndim == 2:
+            X = X.unsqueeze(1)  # (B, seq_len) -> (B, 1, seq_len)
+        if X_test.ndim == 2:
+            X_test = X_test.unsqueeze(1)
+    
+    
+    
     def split_info():
         msg = {
             "type": "info",
