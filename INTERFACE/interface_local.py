@@ -414,7 +414,7 @@ class Cadre_Entrainement(tk.Frame):
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
         tk.Checkbutton(self, text="📈 Échelle Logarithmique", variable=self.is_log,
-                    bg=self.cadre_bg, font=("Helvetica", 14, "bold"), 
+                    bg=self.cadre_bg,fg="black", font=("Helvetica", 14, "bold"), 
                     selectcolor="white",command=self.Log_scale).pack(side="left",pady=(10,0))
         
         # Ajustement automatique des marges
