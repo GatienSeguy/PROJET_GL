@@ -56,9 +56,6 @@ class Parametres_visualisation_suivi(BaseModel):
 
 
 
-
-
-
 class Parametres_archi_reseau_MLP(BaseModel):
     """
     Paramétrage du réseau de neurones de type MLP
