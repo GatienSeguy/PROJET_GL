@@ -128,6 +128,7 @@ Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 class Fenetre_Acceuil(tk.Tk):
     def __init__(self):
         self.cadres_bg="#eaf2f8"
+        self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
         self.Payload={}
         self.Fenetre_Params_instance = None
@@ -140,6 +141,19 @@ class Fenetre_Acceuil(tk.Tk):
         self.configure(bg=self.fenetre_bg)
         self.geometry("520x1")
 
+        #feur
+        style = ttk.Style()
+        style.theme_use('default')
+
+        style.configure('TNotebook', background=self.cadres_bg, borderwidth=0)
+        style.configure('TNotebook.Tab', background=self.cadres_bg, padding=[10, 5])
+        style.configure('TNotebook.Tab', foreground="black")
+
+        # Couleur du texte quand l'onglet est sélectionné
+        style.map('TNotebook.Tab', foreground=[('selected', 'black')])
+
+
+
         # Polices
         self.font_titre = ("Helvetica", 20, "bold")
         self.font_section = ("Helvetica", 18, "bold")
@@ -150,8 +164,28 @@ class Fenetre_Acceuil(tk.Tk):
         self.cadre.pack(side="left",fill="y", padx=10, pady=20)
 
         # Cadre des résultats
-        self.Cadre_results = Cadre_Entrainement(self)
-        self.Cadre_results.pack(side="right",fill="both", expand=True, padx=10, pady=20)
+        self.Cadre_results_global=tk.Frame(self, bg=self.cadres_bg, highlightbackground="black", highlightthickness=2)
+        self.Cadre_results_global.pack(side="right",fill="both", expand=True, padx=10, pady=20)
+
+        self.Results_notebook = ttk.Notebook(self.Cadre_results_global, style='TNotebook')
+        self.Results_notebook.pack(expand=True, fill='both')
+
+        self.Cadre_results_Entrainement = Cadre_Entrainement(self,self.Cadre_results_global)
+        self.Results_notebook.add(self.Cadre_results_Entrainement, text="Training")
+
+        self.Cadre_results_Testing = Cadre_Testing(self,self.Cadre_results_global)
+        self.Results_notebook.add(self.Cadre_results_Testing, text="Testing")
+
+        self.Cadre_results_Metrics = Cadre_Metrics(self,self.Cadre_results_global)
+        self.Results_notebook.add(self.Cadre_results_Metrics, text="Metrics")
+
+        self.Cadre_results_Prediction = Cadre_Prediction(self,self.Cadre_results_global)
+        self.Results_notebook.add(self.Cadre_results_Prediction, text="Prediction")
+
+
+
+
+
         
         # Titre
         tk.Label(self.cadre, text="MLApp", font=self.font_titre, bg=self.cadres_bg, fg="#2c3e50").pack(pady=(0, 20))
@@ -242,7 +276,7 @@ class Fenetre_Acceuil(tk.Tk):
         """Envoie la configuration au serveur et affiche l'entraînement en temps réel"""
         
         # Démarrer l'affichage de l'entraînement
-        self.Cadre_results.start_training()
+        self.Cadre_results_Entrainement.start_training()
         
         # Préparer les payloads
         payload_global = self.Formatter_JSON_global()
@@ -280,7 +314,7 @@ class Fenetre_Acceuil(tk.Tk):
                                     
                                     if epoch is not None and avg_loss is not None:
                                         # Ajouter le point au graphique
-                                        self.Cadre_results.add_data_point(epoch, avg_loss)
+                                        self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
                                 
                                 elif "epochs" in msg and "avg_loss" in msg:
                                     # Format alternatif (comme dans votre exemple)
@@ -288,7 +322,7 @@ class Fenetre_Acceuil(tk.Tk):
                                     avg_loss = msg.get("avg_loss")
                                     
                                     if epoch is not None and avg_loss is not None:
-                                        self.Cadre_results.add_data_point(epoch, avg_loss)
+                                        self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
                                 
                                 elif msg.get("type") == "error":
                                     # Afficher les erreurs
@@ -310,7 +344,7 @@ class Fenetre_Acceuil(tk.Tk):
             
             finally:
                 # Arrêter l'affichage de l'entraînement
-                self.Cadre_results.stop_training()
+                self.Cadre_results_Entrainement.stop_training()
         
         # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
         training_thread = threading.Thread(target=run_training, daemon=True)
@@ -336,10 +370,10 @@ class Fenetre_Acceuil(tk.Tk):
     #                     break
 
 class Cadre_Entrainement(tk.Frame):
-    def __init__(self, master=None):
+    def __init__(self, app, master=None):
         super().__init__(master)
-        self.cadre_bg = "#eaf2f8"
-        self.configure(bg=self.cadre_bg, padx=20, pady=20, highlightbackground="black", highlightthickness=2)
+        self.cadres_bg = app.cadres_bg
+        self.configure(bg=self.cadres_bg)
         
         # Variables pour stocker les données
         self.epochs = []
@@ -353,7 +387,7 @@ class Cadre_Entrainement(tk.Frame):
             self, 
             text="📊 Suivi de l'Entraînement en Temps Réel", 
             font=("Helvetica", 16, "bold"),
-            bg=self.cadre_bg,
+            bg=self.cadres_bg,
             fg="#2c3e50"
         )
         self.titre.pack(pady=(0, 10))
@@ -361,7 +395,7 @@ class Cadre_Entrainement(tk.Frame):
         self.progress_bar = ttk.Progressbar(self, length=800, mode='determinate')        
         
         # Frame pour les informations
-        self.info_frame = tk.Frame(self, bg=self.cadre_bg)
+        self.info_frame = tk.Frame(self, bg=self.cadres_bg)
         self.info_frame.pack(fill="x", pady=(0, 10))
         
         # Labels d'information
@@ -369,7 +403,7 @@ class Cadre_Entrainement(tk.Frame):
             self.info_frame,
             text="Epoch: -",
             font=("Helvetica", 12, "bold"),
-            bg=self.cadre_bg,
+            bg=self.cadres_bg,
             fg="#34495e"
         )
         self.label_epoch.pack(side="left", padx=10)
@@ -378,7 +412,7 @@ class Cadre_Entrainement(tk.Frame):
             self.info_frame,
             text="Loss: -",
             font=("Helvetica", 12, "bold"),
-            bg=self.cadre_bg,
+            bg=self.cadres_bg,
             fg="#e74c3c"
         )
         self.label_loss.pack(side="left", padx=10)
@@ -387,17 +421,17 @@ class Cadre_Entrainement(tk.Frame):
             self.info_frame,
             text="⏸️ En attente",
             font=("Helvetica", 12),
-            bg=self.cadre_bg,
+            bg=self.cadres_bg,
             fg="#7f8c8d"
         )
         self.label_status.pack(side="right", padx=10)
         
         # Création du graphique matplotlib avec style moderne
-        self.fig = Figure(figsize=(10, 6), facecolor=self.cadre_bg)
+        self.fig = Figure(figsize=(10, 6), facecolor=self.cadres_bg)
         self.ax = self.fig.add_subplot(111)
         
         # Style du graphique
-        self.ax.set_facecolor(self.cadre_bg)
+        self.ax.set_facecolor(self.cadres_bg)
         self.ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
         self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold', color='#2c3e50')
         self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold', color='#2c3e50')
@@ -414,7 +448,7 @@ class Cadre_Entrainement(tk.Frame):
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
         tk.Checkbutton(self, text="📈 Échelle Logarithmique", variable=self.is_log,
-                    bg=self.cadre_bg,fg="black", font=("Helvetica", 14, "bold"), 
+                    bg=self.cadres_bg,fg="black", font=("Helvetica", 14, "bold"), 
                     selectcolor="white",command=self.Log_scale).pack(side="left",pady=(10,0))
         
         # Ajustement automatique des marges
@@ -439,8 +473,7 @@ class Cadre_Entrainement(tk.Frame):
             # self.ax.relim()
             # self.ax.autoscale_view(True, True, True)
             self.canvas.draw()
-
-        
+      
     def start_training(self):
         """Initialise l'affichage pour un nouvel entraînement"""
         self.is_training = True
@@ -461,7 +494,7 @@ class Cadre_Entrainement(tk.Frame):
 
         # Réinitialiser le graphique
         self.ax.clear()
-        self.ax.set_facecolor(self.cadre_bg)
+        self.ax.set_facecolor(self.cadres_bg)
         self.ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
         self.ax.grid(True, which='minor', linestyle='--',alpha=0.3, color='#95a5a6') #Grille log
         self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold', color='#2c3e50')
@@ -584,6 +617,66 @@ class Cadre_Entrainement(tk.Frame):
             final_loss = self.losses[-1]
             min_loss = min(self.losses)
             self.label_loss.config(text=f"Loss finale: {final_loss:.6f} (min: {min_loss:.6f})")
+
+class Cadre_Testing(tk.Frame):
+    def __init__(self, app, master=None):
+        super().__init__(master)
+        self.cadres_bg = app.cadres_bg
+        self.configure(bg=self.cadres_bg)
+
+        # Titre
+        self.titre = tk.Label(
+            self, 
+            text="📊 Suivi de la phase de test", 
+            font=("Helvetica", 16, "bold"),
+            bg=self.cadres_bg,
+            fg="#2c3e50"
+        )
+        self.titre.pack(pady=(0, 10))
+
+class Cadre_Metrics(tk.Frame):
+    def __init__(self, app, master=None):
+        super().__init__(master)
+        self.cadres_bg = app.cadres_bg
+        self.configure(bg=self.cadres_bg)
+
+        # Titre
+        self.titre = tk.Label(
+            self, 
+            text="📊 Affichage des metrics", 
+            font=("Helvetica", 16, "bold"),
+            bg=self.cadres_bg,
+            fg="#2c3e50"
+        )
+        self.titre.pack(pady=(0, 10))
+
+class Cadre_Prediction(tk.Frame):
+    def __init__(self, app, master=None):
+        super().__init__(master)
+        self.cadres_bg = app.cadres_bg
+        self.configure(bg=self.cadres_bg)
+
+        # Titre
+        self.titre = tk.Label(
+            self, 
+            text="📊 Affichage de la prédiction", 
+            font=("Helvetica", 16, "bold"),
+            bg=self.cadres_bg,
+            fg="#2c3e50"
+        )
+        self.titre.pack(pady=(0, 10))
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(tk.Toplevel):
@@ -1181,7 +1274,6 @@ class Fenetre_Params_horizon(tk.Toplevel):
             
         self.destroy()
 
-
 #Creer la fenetre de choix des datasets
 class Fenetre_Choix_datasets(tk.Toplevel):
     def __init__(self, master=None):
@@ -1264,9 +1356,6 @@ class Fenetre_Choix_datasets(tk.Toplevel):
         pass
 
     
-
-
-
 
 # Lancer la boucle principale
 if __name__ == "__main__":
