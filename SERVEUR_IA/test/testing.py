@@ -15,13 +15,7 @@ def test_model(
 ) -> Iterator[Dict[str, Any]]:
     """
     Stream l'évaluation: yield y/ŷ par paire + un 'test_final' avec les métriques.
-    Événements:
-      {type:'test_start', n_test, dims, n_batches}
-      {type:'test_pair', y:[...], yhat:[...]}  # Pour chaque échantillon
-      {type:'test_progress', done, total}
-      {type:'test_final', metrics:{per_dim, overall_mean}, n_test, dims}
     """
-    # Pas de model.eval() - le modèle doit être géré ailleurs
     X_test = X_test.to(device)
     y_test = y_test.to(device)
 
@@ -40,13 +34,18 @@ def test_model(
     nbatches = len(dl)
     yield {"type": "test_start", "n_test": N, "dims": D, "n_batches": nbatches}
 
-    # accumulateurs pour métriques
+    # CHANGEMENT: accumulateurs scalaires
     sqerr_sum = torch.zeros(D, device="cpu")
     abserr_sum = torch.zeros(D, device="cpu")
 
     seen = 0
     for bidx, (xb, yb) in enumerate(dl):
         yhat_b = model(xb.to(device))
+        # print("YO")
+        # AJOUT: Gérer les sorties 3D du LSTM (B, T, D) -> prendre dernière timestep
+        if yhat_b.ndim == 3:
+            yhat_b = yhat_b[:, -1, :]  # (B, T, D) -> (B, D)
+        
         if yhat_b.ndim == 1:
             yhat_b = yhat_b.unsqueeze(1)
 
@@ -61,8 +60,10 @@ def test_model(
         yhat_cpu = yhat_eval.detach().cpu()
 
         diff = yhat_cpu - yb_cpu           # (B, D)
-        sqerr_sum  += diff.pow(2).sum(dim=0)
-        abserr_sum += diff.abs().sum(dim=0)
+        
+        # CHANGEMENT: sum sur tout (batch + dims) puis répartir par dim
+        sqerr_sum  += diff.pow(2).sum(dim=0)   # Somme sur batch, garde dims
+        abserr_sum += diff.abs().sum(dim=0)     # Somme sur batch, garde dims
 
         # ──── STREAMER y / yhat PAIRE PAR PAIRE ────
         for i in range(yb_cpu.shape[0]):

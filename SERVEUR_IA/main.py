@@ -168,15 +168,21 @@ def training(payload: PaquetComplet,payload_model: dict):
     X, y = X_train, y_train
 
 
-
     if model_type == "lstm":
         if X.ndim == 2:
             X = X.unsqueeze(1)  # (B, T) -> (B, T, 1)
         if X_test.ndim == 2:
             X_test = X_test.unsqueeze(1)
 
-    print(f"APRÈS RESHAPE - X.shape: {X.shape}, y.shape: {y.shape}")
 
+    elif model_type == "cnn":
+        if X.ndim == 2:
+            X = X.unsqueeze(1)  # (B, seq_len) -> (B, 1, seq_len)
+        if X_test.ndim == 2:
+            X_test = X_test.unsqueeze(1)
+    
+    
+    
     def split_info():
         msg = {
             "type": "info",
@@ -394,9 +400,13 @@ def training(payload: PaquetComplet,payload_model: dict):
         except StopIteration as e:
             # Le modèle est retourné via StopIteration.value
             model_trained = e.value
+            # print(f"DEBUG - model_trained type: {type(model_trained)}, is None: {model_trained is None}")
+
         
         # 4) Test en streaming : y / ŷ par paire + métriques finales
         if model_trained is not None:
+            print(f"[DÉBUT TEST] Modèle: {type(model_trained).__name__}")
+            
             for evt in test_model(
                 model_trained, X_test, y_test,
                 device=device,
@@ -404,6 +414,9 @@ def training(payload: PaquetComplet,payload_model: dict):
                 inverse_fn=None,
             ):
                 yield f"data: {json.dumps(evt)}\n\n"
+                print(f"[SERVER] {evt.get('type')}: {evt}")
+
+
         else:
             yield sse({"type":"warn","message":"Modèle non récupéré (test sauté)."})
     
