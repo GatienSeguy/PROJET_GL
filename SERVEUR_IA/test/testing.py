@@ -41,7 +41,7 @@ def test_model(
     seen = 0
     for bidx, (xb, yb) in enumerate(dl):
         yhat_b = model(xb.to(device))
-        
+        # print("YO")
         # AJOUT: Gérer les sorties 3D du LSTM (B, T, D) -> prendre dernière timestep
         if yhat_b.ndim == 3:
             yhat_b = yhat_b[:, -1, :]  # (B, T, D) -> (B, D)
