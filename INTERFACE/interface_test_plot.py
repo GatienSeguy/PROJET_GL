@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 import numpy as np
  
 # URL = "http://192.168.1.94:8000" 
-URL = "http://192.168.27.66:8000"
+# URL = "http://192.168.27.66:8000"
 # URL = "http://192.168.1.169:8000"
-# URL = "http://138.231.149.81:8000"
+URL = "http://138.231.149.81:8000"
 
 
 # Paramètres et variables
