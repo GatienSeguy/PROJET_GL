@@ -1,9 +1,8 @@
 from fastapi import FastAPI
- 
- 
+
 from fastapi.responses import StreamingResponse
 import json 
-  
+
 from typing import Optional, Tuple, Literal, List
 from pydantic import BaseModel, Field, conint, confloat
 from datetime import date,datetime
