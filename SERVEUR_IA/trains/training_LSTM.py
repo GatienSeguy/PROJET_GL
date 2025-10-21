@@ -102,7 +102,7 @@ def train_LSTM(
 
     Retourne (model, last_avg) et yield un dict toutes les k époques comme train_MLP.
     """
-    
+
     print(f"DEBUG - X.shape: {X.shape}, y.shape: {y.shape}, batch_first: {batch_first}")
     
     # Sanity checks rapides
@@ -135,6 +135,9 @@ def train_LSTM(
         seq_to_seq = True
     elif y.ndim == 2:
         # seq->one
+        print(f"DEBUG ASSERT - batch_first={batch_first}, X.shape={X.shape}, y.shape={y.shape}")
+        print(f"Comparaison: y.shape[0]={y.shape[0]} vs X.shape[0 if batch_first else 1]={X.shape[0] if batch_first else X.shape[1]}")
+        
         assert y.shape[0] == (X.shape[0] if batch_first else X.shape[1]), \
             "Incohérence B entre X et y (seq->one)."
         out_dim = y.shape[1]

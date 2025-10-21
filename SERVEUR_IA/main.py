@@ -118,7 +118,7 @@ def training(payload: PaquetComplet,payload_model: dict):
 
 
     model_type = cfg.Parametres_choix_reseau_neurones.modele.lower()
-
+    
     if model_type == "mlp":
         cfg_model = Parametres_archi_reseau_MLP(**payload_model)
     elif model_type == "cnn":
@@ -156,6 +156,7 @@ def training(payload: PaquetComplet,payload_model: dict):
         step=pas_temporel,
     )
 
+
     if X.numel() == 0:
         def err():
             yield f"data: {json.dumps({'type':'error','message':'(X,y) vide après filtrage/découpage'})}\n\n"
@@ -166,6 +167,16 @@ def training(payload: PaquetComplet,payload_model: dict):
 
     # on entraîne sur le split train (garde X_test/y_test pour logs/éval plus tard)
     X, y = X_train, y_train
+
+
+
+    if model_type == "lstm":
+        if X.ndim == 2:
+            X = X.unsqueeze(1)  # (B, T) -> (B, T, 1)
+        if X_test.ndim == 2:
+            X_test = X_test.unsqueeze(1)
+
+    print(f"APRÈS RESHAPE - X.shape: {X.shape}, y.shape: {y.shape}")
 
     def split_info():
         msg = {
@@ -253,7 +264,7 @@ def training(payload: PaquetComplet,payload_model: dict):
         hidden_size = 128
         nb_couches = 2
         bidirectional = False
-        batch_first = False
+        batch_first = True
 
         if cfg_model.hidden_size is not None:
             hidden_size = int(cfg_model.hidden_size)
@@ -357,15 +368,12 @@ def training(payload: PaquetComplet,payload_model: dict):
                 device=device,
             )
         elif model_name == "lstm":
-            if X.ndim == 2:
-                X = X.unsqueeze(1)  # (5269, 1) -> (5269, 1, 1)
-            
             gen = train_LSTM(
                 X, y,
                 hidden_size=hidden_size,
                 nb_couches=nb_couches,
                 bidirectional=bidirectional,
-                batch_first=batch_first,
+                batch_first=True,
                 loss_name=loss_name,
                 optimizer_name=optimizer_name,
                 learning_rate=learning_rate,
