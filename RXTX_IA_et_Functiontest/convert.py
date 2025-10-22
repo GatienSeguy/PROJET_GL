@@ -24,7 +24,7 @@ df.columns = ["timestamp_raw", "value_raw"]
 ts = pd.to_datetime(df["timestamp_raw"], errors="coerce", dayfirst=True)
 
 # 🔢 Conversion des valeurs
-vals = pd.to_numeric(df["value_raw"], errors="coerce")/1000
+vals = pd.to_numeric(df["value_raw"], errors="coerce")/10000
 
 # 🧹 Nettoyage
 clean = pd.DataFrame({"timestamp": ts, "value": vals}).dropna(subset=["timestamp"])
