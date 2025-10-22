@@ -789,7 +789,7 @@ class Cadre_Metrics(tk.Frame):
         self.titre.pack(pady=(0, 10))
     def afficher_Metrics(self,metrics):
         for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
-            label = tk.Label(self, text=f"{metric}: {val:.3f}", font=("Helvetica", 16, "bold"), bg=self.cadres_bg)
+            label = tk.Label(self, text=f"{metric}: {val:.8f}", font=("Helvetica", 16, "bold"), bg=self.cadres_bg)
             label.pack(anchor="w", padx=15, pady=5)
 
 
