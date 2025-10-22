@@ -183,10 +183,6 @@ class Fenetre_Acceuil(tk.Tk):
         self.Results_notebook.add(self.Cadre_results_Prediction, text="Prediction")
 
 
-
-
-
-        
         # Titre
         tk.Label(self.cadre, text="MLApp", font=self.font_titre, bg=self.cadres_bg, fg="#2c3e50").pack(pady=(0, 20))
 
