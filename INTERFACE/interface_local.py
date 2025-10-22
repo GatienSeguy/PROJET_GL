@@ -287,6 +287,8 @@ class Fenetre_Acceuil(tk.Tk):
         
         def run_training():
             """Fonction pour exécuter l'entraînement dans un thread séparé"""
+            y=[]
+            yhat=[]
             try:
                 with requests.post(
                     f"{URL}/train_full", 
@@ -324,14 +326,22 @@ class Fenetre_Acceuil(tk.Tk):
                                     if epoch is not None and avg_loss is not None:
                                         self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
                                 
+                                elif msg.get("type") == "test_pair":
+                                    y.append(msg.get("y"))
+                                    yhat.append(msg.get("yhat"))
+                                    
+                                elif msg.get("type") == "test_final":
+                                    self.Cadre_results_Metrics.afficher_Metrics(msg.get("metrics"))
+                                    
                                 elif msg.get("type") == "error":
                                     # Afficher les erreurs
                                     print(f"ERREUR: {msg.get('message')}")
                                     messagebox.showerror("Erreur", msg.get('message', 'Erreur inconnue'))
                                     break
                                 
-                                elif msg.get("done"):
+                                elif msg.get("type")=="fin_test":
                                     # Entraînement terminé
+                                    self.Cadre_results_Testing.plot_predictions(y,yhat)
                                     break
                             
                             except json.JSONDecodeError as e:
@@ -446,6 +456,9 @@ class Cadre_Entrainement(tk.Frame):
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        
+
 
         tk.Checkbutton(self, text="📈 Échelle Logarithmique", variable=self.is_log,
                     bg=self.cadres_bg,fg="black", font=("Helvetica", 14, "bold"), 
@@ -634,6 +647,131 @@ class Cadre_Testing(tk.Frame):
         )
         self.titre.pack(pady=(0, 10))
 
+    def plot_predictions(self, y_true_pairs, y_pred_pairs):
+        """
+        y_true_pairs, y_pred_pairs : listes de listes (N x D)
+        Affiche y vs yhat pour D dimensions (ou une seule si D=1) avec un style élégant.
+        """
+        if not y_true_pairs or not y_pred_pairs:
+            return
+
+        yt = np.array(y_true_pairs, dtype=float)  # (N, D)
+        yp = np.array(y_pred_pairs, dtype=float)  # (N, D)
+
+        # Squeeze si D=1
+        if yt.ndim == 2 and yt.shape[1] == 1:
+            yt = yt.squeeze(1)
+            yp = yp.squeeze(1)
+
+        # Création du graphique matplotlib avec style moderne
+        fig = Figure(facecolor=self.cadres_bg)
+        ax = fig.add_subplot(111)
+        
+        # Style du graphique
+        ax.set_facecolor(self.cadres_bg)
+        ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
+        
+        if yt.ndim == 1:
+            x = np.arange(len(yt))
+            
+            # Tracer avec un style élégant
+            ax.plot(x, yt, 
+                    color='#2E86AB', 
+                    linewidth=2, 
+                    marker='o', 
+                    markersize=4, 
+                    markerfacecolor='white',
+                    markeredgewidth=1.5,
+                    markeredgecolor='#2E86AB',
+                    label='y (vraies valeurs)', 
+                    alpha=0.8,
+                    zorder=2)
+            
+            ax.plot(x, yp, 
+                    color='#A23B72', 
+                    linewidth=2, 
+                    marker='s', 
+                    markersize=4, 
+                    markerfacecolor='white',
+                    markeredgewidth=1.5,
+                    markeredgecolor='#A23B72',
+                    label='ŷ (prédictions)', 
+                    alpha=0.8,
+                    zorder=2)
+            
+            # Remplissage entre les courbes pour montrer l'erreur
+            ax.fill_between(x, yt, yp, alpha=0.2, color='gray', label='Erreur')
+            
+        else:
+            x = np.arange(yt.shape[0])
+            colors_true = ['#2E86AB', '#06A77D', '#F77F00', '#D62828']
+            colors_pred = ['#A23B72', '#F18F01', '#C73E1D', '#6A4C93']
+            
+            for d in range(min(yt.shape[1], 4)):  # Limiter à 4 dimensions pour la lisibilité
+                ax.plot(x, yt[:, d], 
+                        color=colors_true[d % len(colors_true)],
+                        linewidth=2,
+                        marker='o',
+                        markersize=3,
+                        markerfacecolor='white',
+                        markeredgewidth=1,
+                        markeredgecolor=colors_true[d % len(colors_true)],
+                        label=f'y (vrai) dim {d}',
+                        alpha=0.8,
+                        zorder=2)
+                
+                ax.plot(x, yp[:, d],
+                        color=colors_pred[d % len(colors_pred)],
+                        linewidth=2,
+                        marker='s',
+                        markersize=3,
+                        markerfacecolor='white',
+                        markeredgewidth=1,
+                        markeredgecolor=colors_pred[d % len(colors_pred)],
+                        label=f'ŷ (prédit) dim {d}',
+                        alpha=0.8,
+                        linestyle='--',
+                        zorder=2)
+
+        # Titre et labels
+        ax.set_title('Comparaison des prédictions avec les valeurs réelles', 
+                    fontsize=14, 
+                    fontweight='bold',
+                    pad=20)
+        ax.set_xlabel('Index de l\'échantillon', fontsize=11, fontweight='bold')
+        ax.set_ylabel('Valeur', fontsize=11, fontweight='bold')
+        
+        # Légende élégante
+        legend = ax.legend(loc='best', 
+                        frameon=True, 
+                        fancybox=True, 
+                        shadow=True,
+                        fontsize=10)
+        legend.get_frame().set_alpha(0.9)
+        
+        # Grille plus subtile
+        ax.grid(True, linestyle='--', alpha=0.4, zorder=1)
+        ax.set_axisbelow(True)
+
+        
+        ax.set_facecolor(self.cadres_bg)
+        ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
+        
+        
+        # Ajuster les marges
+        fig.tight_layout()
+        fig.patch.set_facecolor(self.cadres_bg)
+        
+
+
+        canvas = FigureCanvasTkAgg(fig, master=self)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True,padx=(0,10))
+        
+        # Afficher
+        #plt.show()
+
+
 class Cadre_Metrics(tk.Frame):
     def __init__(self, app, master=None):
         super().__init__(master)
@@ -649,6 +787,13 @@ class Cadre_Metrics(tk.Frame):
             fg="#2c3e50"
         )
         self.titre.pack(pady=(0, 10))
+    def afficher_Metrics(self,metrics):
+        for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
+            label = tk.Label(self, text=f"{metric}: {val:.3f}", font=("Helvetica", 16, "bold"), bg=self.cadres_bg)
+            label.pack(anchor="w", padx=15, pady=5)
+
+
+        pass
 
 class Cadre_Prediction(tk.Frame):
     def __init__(self, app, master=None):
