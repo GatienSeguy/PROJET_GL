@@ -644,6 +644,8 @@ class Cadre_Testing(tk.Frame):
         self.titre.pack(pady=(0, 10))
 
     def plot_predictions(self, y_true_pairs, y_pred_pairs):
+        for widget in self.winfo_children():
+            widget.destroy()
         """
         y_true_pairs, y_pred_pairs : listes de listes (N x D)
         Affiche y vs yhat pour D dimensions (ou une seule si D=1) avec un style élégant.
@@ -662,6 +664,7 @@ class Cadre_Testing(tk.Frame):
         # Création du graphique matplotlib avec style moderne
         fig = Figure(facecolor=self.cadres_bg)
         ax = fig.add_subplot(111)
+        
         
         # Style du graphique
         ax.set_facecolor(self.cadres_bg)
