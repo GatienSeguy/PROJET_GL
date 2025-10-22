@@ -102,3 +102,9 @@ def test_model(
             "overall_mean": overall
         },
     }
+    yield {
+        "type": "fin_test",
+        "done":1
+        }
+
+
