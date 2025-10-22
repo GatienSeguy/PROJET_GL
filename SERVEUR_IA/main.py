@@ -406,7 +406,7 @@ def training(payload: PaquetComplet,payload_model: dict):
         # 4) Test en streaming : y / ŷ par paire + métriques finales
         if model_trained is not None:
             print(f"[DÉBUT TEST] Modèle: {type(model_trained).__name__}")
-            
+
             for evt in test_model(
                 model_trained, X_test, y_test,
                 device=device,
@@ -414,7 +414,7 @@ def training(payload: PaquetComplet,payload_model: dict):
                 inverse_fn=None,
             ):
                 yield f"data: {json.dumps(evt)}\n\n"
-                print(f"[SERVER] {evt.get('type')}: {evt}")
+                #print(f"data: {json.dumps(evt)}\n\n")
 
 
         else:
