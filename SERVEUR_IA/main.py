@@ -1,22 +1,12 @@
 from fastapi import FastAPI
-
 from fastapi.responses import StreamingResponse
 import json 
-
-from typing import Optional, Tuple, Literal, List
-from pydantic import BaseModel, Field, conint, confloat
-from datetime import date,datetime
 import torch
-import os, time
-
-from .models.model_MLP import MLP
-from .models.optim import make_loss,make_optimizer
 
 #Train Modele
 from .trains.training_MLP import train_MLP
 from .trains.training_CNN import train_CNN
 from .trains.training_LSTM import train_LSTM
-# from .trains.training_LSTM_apple import train_LSTM2
 
 from .test.testing import test_model
 
@@ -24,58 +14,27 @@ from .launcher_serveur import json_path
 
 from .classes import (
     TimeSeriesData,
-    Parametres_temporels,
-    Parametres_choix_reseau_neurones,
-    Parametres_choix_loss_fct,
-    Parametres_optimisateur,
-    Parametres_entrainement,
-    Parametres_visualisation_suivi,
     Parametres_archi_reseau_MLP,
     Parametres_archi_reseau_CNN,
     Parametres_archi_reseau_LSTM,
-    PaquetComplet
-)
+    PaquetComplet)
 
 from .fonctions_pour_main import(
-    build_supervised_tensors,
-    _parse_any_datetime,
     filter_series_by_dates,
     build_supervised_tensors_with_step,
     split_train_test,
     sse,
     normalize_data,
-    denormalize_data,
     create_inverse_function
 )
-##### EN attendant c'est ici :
 
-
-## EN LOCAL :
-# uvicorn main:app --reload   
-
-
-## EN SERVEUR SUR WIFI :
-# 1- Faire sur terminal de mon mac :
-#  ipconfig getifaddr en0  
-
-# 2- Faire pour lancer le serveur
-# 2) va à la racine du projet
-# cd /Users/gatienseguy/Documents/VSCode/PROJET_GL
-# touch SERVEUR_IA/__init__.py
 # python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
-#3 - à la txrx : metxztre : URL = ""http:// IP DE L'ORDI HOST DU SERVEUR :8000" "
-
-
 
 app = FastAPI()
 
 last_config_tempo = None
 last_config_TimeSeries = None
-
 last_config_series = None  
-
-
-
 
 # ====================================
 # ROUTES
@@ -89,7 +48,6 @@ def training(payload: PaquetComplet,payload_model: dict):
         data = json.load(f)
 
     series = TimeSeriesData(**data)
-
 
     #Récupération des données
     cfg: PaquetComplet = payload
@@ -140,8 +98,7 @@ def training(payload: PaquetComplet,payload_model: dict):
         return StreamingResponse(err(), media_type="text/event-stream")
 
 
-
-### NORMALISATION
+# NORMALISATION
     all_data = torch.cat([X.flatten(), y.flatten()])
     
     # Normaliser (vous pouvez choisir "standardization" ou "minmax")
@@ -160,7 +117,6 @@ def training(payload: PaquetComplet,payload_model: dict):
 #####
 
     
-
     # split séquentiel train/test via 'portion_decoupage'
     X_train, y_train, X_test, y_test = split_train_test(X, y, portion_train=portion_decoupage)
     
@@ -192,11 +148,11 @@ def training(payload: PaquetComplet,payload_model: dict):
         }
         yield f"data: {json.dumps(msg)}\n\n"
 
+
+
     #---------------------------------
     # ----- ARCHI --------------------
     #---------------------------------
-   
-    ##### FAIRE UN FONCTION !!!!!!!
     if cfg and cfg.Parametres_choix_reseau_neurones:
             if cfg.Parametres_choix_reseau_neurones.modele:
                 model= cfg.Parametres_choix_reseau_neurones.modele.lower()
@@ -226,6 +182,7 @@ def training(payload: PaquetComplet,payload_model: dict):
                 "leaky_relu": "leaky_relu",
             }
             activation = act_map.get(cfg_model.fonction_activation, "relu")
+
 
     #CLASS MODEL CNN
     if model =='cnn':
@@ -263,9 +220,9 @@ def training(payload: PaquetComplet,payload_model: dict):
         if cfg_model.padding is not None:
             padding = int(cfg_model.padding)
 
+
     #CLASS MODEL LSTM
     if model =='lstm':
-        #print('LSTMMMM')
         hidden_size = 128
         nb_couches = 2
         bidirectional = False
@@ -283,8 +240,6 @@ def training(payload: PaquetComplet,payload_model: dict):
         if cfg_model.batch_first is not None:
             batch_first = bool(cfg_model.batch_first)
          
-
-
             
     #---------------------------------
     # ----- LOSS  --------------------
@@ -324,12 +279,11 @@ def training(payload: PaquetComplet,payload_model: dict):
     # --------------------------------------
     # ----- Device ------------------------
     # --------------------------------------
-    #device = "cuda"
     device = "cpu"
 
 
     #--------------------------------------
-    # ----- Lancement Entraînement --------
+    # ---------- Entraînement ------------
     #--------------------------------------
     def event_gen():
         for msg in split_info():
@@ -339,6 +293,8 @@ def training(payload: PaquetComplet,payload_model: dict):
                 model_name= cfg.Parametres_choix_reseau_neurones.modele.lower()
         
          # 2) construire le générateur d'entraînement
+        
+        #CLASS MODEL MLP
         if model_name == "mlp":
             gen = train_MLP(
                 X, y,
@@ -355,6 +311,8 @@ def training(payload: PaquetComplet,payload_model: dict):
                 epochs=epochs,
                 device=device,
             )
+        
+        #CLASS MODEL CNN
         elif model_name == "cnn":
             gen = train_CNN(
                 X, y,
@@ -373,6 +331,8 @@ def training(payload: PaquetComplet,payload_model: dict):
                 epochs=epochs,
                 device=device,
             )
+        
+        #CLASS MODEL LSTM
         elif model_name == "lstm":
             gen = train_LSTM(
                 X, y,
@@ -389,38 +349,6 @@ def training(payload: PaquetComplet,payload_model: dict):
                 device=device,
             )
 
-            # device = "mps"
-
-            # gen = train_LSTM2(
-            #     X, y,
-            #     # --- Architecture ---
-            #     hidden_size=hidden_size,
-            #     nb_couches=nb_couches,
-            #     bidirectional=bidirectional,
-            #     batch_first=True,
-                
-            #     # --- Loss / Optim ---
-            #     loss_name=loss_name,
-            #     optimizer_name=optimizer_name,
-            #     learning_rate=learning_rate,
-            #     weight_decay=weight_decay,
-                
-            #     # --- Training ---
-            #     batch_size=batch_size,
-            #     epochs=epochs,
-            #     device=device,
-                
-            #     # --- Optimisations M3 Pro (nouveaux paramètres) ---
-            #     num_workers=4,              # Parallélisation sur 4 cœurs
-            #     pin_memory=False,            # Accélère les transferts CPU->GPU
-            #     persistent_workers=True,    # Garde les workers actifs entre epochs
-            #     prefetch_factor=2,          # Précharge 2 batches à l'avance
-                
-            #     # --- Comportement ---
-            #     take_last_if_needed=True,
-            #     verbose=True,               # Affiche les infos de progression
-            # )
-
         else:
             yield sse({"type":"error","message": f"Modèle inconnu: {model_name}"})
             return
@@ -434,10 +362,12 @@ def training(payload: PaquetComplet,payload_model: dict):
         except StopIteration as e:
             # Le modèle est retourné via StopIteration.value
             model_trained = e.value
-            # print(f"DEBUG - model_trained type: {type(model_trained)}, is None: {model_trained is None}")
+    
 
-        
-        # 4) Test en streaming : y / ŷ par paire + métriques finales
+    #--------------------------------------
+    # -------------Tests ------------------
+    #--------------------------------------
+        # Test en streaming : y / yhat par paire + métriques finales
         if model_trained is not None:
             print(f"[DÉBUT TEST] Modèle: {type(model_trained).__name__}")
 
@@ -448,28 +378,10 @@ def training(payload: PaquetComplet,payload_model: dict):
                 inverse_fn=inverse_fn,
             ):
                 yield f"data: {json.dumps(evt)}\n\n"
-                #print(f"data: {json.dumps(evt)}\n\n")
-
-
         else:
             yield sse({"type":"warn","message":"Modèle non récupéré (test sauté)."})
     
     return StreamingResponse(event_gen(), media_type="text/event-stream")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
