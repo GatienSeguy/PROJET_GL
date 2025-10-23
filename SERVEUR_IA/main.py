@@ -389,35 +389,6 @@ def training(payload: PaquetComplet,payload_model: dict):
 
 @app.get("/")
 def accueil():
-    """
-    Retourne les dernières données reçues via /tempoconfig et /timeseries
-    """
     response = {"message": "Serveur IA actif !"}
-
-    if last_config_tempo:
-        response["tempo"] = {
-            "horizon": last_config_tempo.horizon,
-            "dates": last_config_tempo.dates,
-            "pas_temporel": last_config_tempo.pas_temporel,
-            "split_train": last_config_tempo.portion_decoupage,
-        }
-    else:
-        response["tempo"] = "Aucune configuration temporelle reçue."
-
-    if last_config_series:
-        response["series"] = {
-            "nb_points": len(last_config_series.values),
-            "first": {
-                "timestamp": last_config_series.timestamps[0],
-                "value": last_config_series.values[0]
-            },
-            "last": {
-                "timestamp": last_config_series.timestamps[-1],
-                "value": last_config_series.values[-1]
-            }
-        }
-    else:
-        response["series"] = "Aucune série reçue."
-
     return response
 
