@@ -4,29 +4,14 @@ from datetime import datetime
 import requests, json
 from tkinter import ttk
 from tkinter import messagebox
-
-# === GRAPHIQUE MATPLOTLIB INTÉGRÉ AVEC STYLE ===
+import numpy as np
+import threading
+import queue
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib
-matplotlib.use("TkAgg")  # backend Tkinter
-import matplotlib.pyplot as plt
-import numpy as np
-
-import threading
-import queue
-from tkinter import messagebox
-
-import tkinter as tk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import threading
-import queue
-
 from tkinter.filedialog import asksaveasfilename
-
+matplotlib.use("TkAgg")  # backend Tkinter
 
 
 
@@ -315,7 +300,6 @@ class Fenetre_Acceuil(tk.Tk):
                         
                         for line in r.iter_lines():
                             if self.stop_training:
-                                print("⚠️ Entraînement annulé par l'utilisateur.")
                                 requests.post(f"{URL}/stop_training")
                                 break
 
