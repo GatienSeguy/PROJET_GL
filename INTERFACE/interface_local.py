@@ -44,6 +44,8 @@ class Parametres_temporels_class():
         self.dates=["2001-01-01", "2025-01-02"] # variable datetime
         self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
+    def generate_json(self,json):
+        pass
 class Parametres_choix_reseau_neurones_class():
     def __init__(self):
         self.modele="MLP" # str ['MLP','LSTM','GRU','CNN']
