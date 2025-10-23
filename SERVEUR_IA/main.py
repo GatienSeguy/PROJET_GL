@@ -39,7 +39,10 @@ from .fonctions_pour_main import(
     filter_series_by_dates,
     build_supervised_tensors_with_step,
     split_train_test,
-    sse
+    sse,
+    normalize_data,
+    denormalize_data,
+    create_inverse_function
 )
 ##### EN attendant c'est ici :
 
@@ -100,7 +103,7 @@ def training(payload: PaquetComplet,payload_model: dict):
 # )
     
 
-    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/EURO.json"  # ton fichier JSON existant
+    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/Boites_per_day.json"  # ton fichier JSON existant
 
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -161,8 +164,31 @@ def training(payload: PaquetComplet,payload_model: dict):
             yield f"data: {json.dumps({'type':'error','message':'(X,y) vide après filtrage/découpage'})}\n\n"
         return StreamingResponse(err(), media_type="text/event-stream")
 
+
+
+### NORMALISATION
+    all_data = torch.cat([X.flatten(), y.flatten()])
+    
+    # Normaliser (vous pouvez choisir "standardization" ou "minmax")
+    all_data_normalized, norm_params = normalize_data(all_data, method="standardization")
+    
+    # Reconstruire X et y normalisés
+    total_X = X.numel()
+    X_normalized = all_data_normalized[:total_X].reshape(X.shape)
+    y_normalized = all_data_normalized[total_X:].reshape(y.shape)
+    
+    # Créer la fonction inverse pour la dénormalisation
+    inverse_fn = create_inverse_function(norm_params)
+
+
+    X, y = X_normalized, y_normalized
+#####
+
+    
+
     # split séquentiel train/test via 'portion_decoupage'
     X_train, y_train, X_test, y_test = split_train_test(X, y, portion_train=portion_decoupage)
+    
 
     # on entraîne sur le split train (garde X_test/y_test pour logs/éval plus tard)
     X, y = X_train, y_train
@@ -410,7 +436,7 @@ def training(payload: PaquetComplet,payload_model: dict):
                 model_trained, X_test, y_test,
                 device=device,
                 batch_size=256,
-                inverse_fn=None,
+                inverse_fn=inverse_fn,
             ):
                 yield f"data: {json.dumps(evt)}\n\n"
                 #print(f"data: {json.dumps(evt)}\n\n")

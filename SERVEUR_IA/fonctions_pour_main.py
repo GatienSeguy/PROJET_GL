@@ -1,10 +1,11 @@
 from typing import List, Optional, Tuple
 import numpy as np
 import torch
-from typing import Optional, Tuple, Literal, List
+from typing import Optional, Tuple, Literal, List,Callable
 from pydantic import BaseModel, Field, conint, confloat
 from datetime import date,datetime
 import json
+
 
 
 def build_supervised_tensors(
@@ -104,3 +105,85 @@ def split_train_test(X, y, portion_train):
 
 def sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
+
+
+
+
+
+
+def normalize_data(data: torch.Tensor, method: str = "standardization") -> Tuple[torch.Tensor, dict]:
+    """
+    Normalise les données et retourne les paramètres de normalisation.
+    
+    Args:
+        data: Tenseur à normaliser
+        method: "standardization" (z-score) ou "minmax"
+    
+    Returns:
+        Tuple (data_normalized, params_dict)
+    """
+    if method == "standardization":
+        mean = data.mean()
+        std = data.std()
+        if std == 0:
+            std = 1.0  # éviter division par zéro
+        normalized = (data - mean) / std
+        params = {"method": "standardization", "mean": mean.item(), "std": std.item()}
+    
+    elif method == "minmax":
+        min_val = data.min()
+        max_val = data.max()
+        if max_val - min_val == 0:
+            normalized = data
+        else:
+            normalized = (data - min_val) / (max_val - min_val)
+        params = {"method": "minmax", "min": min_val.item(), "max": max_val.item()}
+    
+    else:
+        raise ValueError(f"Méthode inconnue: {method}")
+    
+    return normalized, params
+
+
+def denormalize_data(data: torch.Tensor, params: dict) -> torch.Tensor:
+    """
+    Dénormalise les données selon les paramètres fournis.
+    
+    Args:
+        data: Tenseur normalisé
+        params: Dictionnaire avec les paramètres de normalisation
+    
+    Returns:
+        Tenseur dénormalisé
+    """
+    method = params.get("method")
+    
+    if method == "standardization":
+        mean = params["mean"]
+        std = params["std"]
+        return data * std + mean
+    
+    elif method == "minmax":
+        min_val = params["min"]
+        max_val = params["max"]
+        return data * (max_val - min_val) + min_val
+    
+    else:
+        raise ValueError(f"Méthode inconnue: {method}")
+
+
+def create_inverse_function(params: dict) -> Callable:
+    """
+    Crée une fonction de dénormalisation à partir des paramètres.
+    
+    Args:
+        params: Dictionnaire avec les paramètres de normalisation
+    
+    Returns:
+        Fonction qui prend un tenseur et retourne sa version dénormalisée
+    """
+    def inverse_fn(data: torch.Tensor) -> torch.Tensor:
+        return denormalize_data(data, params)
+    
+    return inverse_fn
+
