@@ -1,3 +1,6 @@
+# ====================================
+# IMPORTs
+# ====================================
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 import json 
@@ -36,21 +39,45 @@ last_config_tempo = None
 last_config_TimeSeries = None
 last_config_series = None  
 
+
 # ====================================
 # ROUTES
 # ====================================
 
+######################################################
+#    User Interface <-> Serveur IA <-> Serveur Data  #
+######################################################
 @app.post("/train_full")
 def training(payload: PaquetComplet,payload_model: dict):
-    
-    
+#Récupération des données
+    cfg: PaquetComplet = payload
+
+##### TEMPORAIRE : attente du serveur data
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     series = TimeSeriesData(**data)
 
-    #Récupération des données
-    cfg: PaquetComplet = payload
+    #--------------------------------------------
+    # ----- Date début / Fin  + Nom data   ------
+    # -------------------------------------------
+    date_debut="1000-01-01 00:00:00"
+    date_fin="5000-01-01 00:00:00"
+    name="None"
+
+    if cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.dates:
+        date_debut = cfg.Parametres_temporels.dates[0]
+        date_fin = cfg.Parametres_temporels.dates[1]
+
+    # if cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.name:
+    #     name = cfg.Parametres_temporels.name
+
+    #.... justqu"a : series = (demande a serveur data le jeu de data "nom" entre debut et fin)
+
+#####
+
+
+    
 
     model_type = cfg.Parametres_choix_reseau_neurones.modele.lower()
     
@@ -65,12 +92,11 @@ def training(payload: PaquetComplet,payload_model: dict):
 
 
     #-------------------------------
-    # ----- TEMPO  -----------------
+    # ----- Prediction  ------------
     # ------------------------------
     horizon = 1
     if cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.horizon:
         horizon = max(1, int(cfg.Parametres_temporels.horizon))
-    
 
 
     #-------------------------
@@ -385,8 +411,9 @@ def training(payload: PaquetComplet,payload_model: dict):
 
 
 
-
-
+# ====================================
+# Page web
+# ====================================
 @app.get("/")
 def accueil():
     response = {"message": "Serveur IA actif !"}
