@@ -15,16 +15,14 @@ matplotlib.use("TkAgg")  # backend Tkinter
 
 
 
-<<<<<<< HEAD
 # URL = "http://192.168.1.94:8000" 
 #URL = "http://192.168.27.66:8000"
 URL = "http://192.168.1.193:8000"
 # URL = "http://138.231.149.81:8000"
-=======
+
 # URL = "http://192.168.27.66:8000"
 
-URL = "http://192.168.1.170:8000"
->>>>>>> 6dc3f73e5ebe53e88d370ce93813dfece9f4364c
+# URL = "http://192.168.1.170:8000"
 
 
 # Paramètres et variables
