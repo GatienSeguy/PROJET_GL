@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 from ..models.optim import make_loss, make_optimizer
 from ..models.model_MLP import MLP
-
+import time
 
 def _build_mlp_safely(in_dim: int, out_dim: int, **kwargs):
     """
@@ -105,6 +105,7 @@ def train_MLP(
 
     last_avg = None
     for epoch in range(1, epochs + 1):
+        epoch_start = time.time()
         total, n = 0.0, 0
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
@@ -116,10 +117,10 @@ def train_MLP(
             total += loss.item() * xb.size(0)
             n += xb.size(0)
         last_avg = total / max(1, n) if n > 0 else 0.0
-
+        epoch_duration = time.time() - epoch_start
         k = 1
         if epoch % k == 0:
-            yield {"epochs": epoch, "avg_loss": float(last_avg)}
+            yield {"epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : epoch_duration}
 
         print(f"[{epoch:03d}/{epochs}] loss={last_avg:.6f}")
 

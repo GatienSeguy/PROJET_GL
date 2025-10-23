@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 from ..models.optim import make_loss, make_optimizer
 from ..models.model_LSTM import LSTM 
-
+import time
 
 
 def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
@@ -168,6 +168,7 @@ def train_LSTM(
     # Boucle d'entraînement
     last_avg = None
     for epoch in range(1, epochs + 1):
+        epoch_start = time.time()
         model.train()
         total, n = 0.0, 0
 
@@ -202,10 +203,11 @@ def train_LSTM(
             n += bs
 
         last_avg = total / max(1, n)
+        epoch_duration = time.time() - epoch_start
 
         k = 1
         if epoch % k == 0:
-            yield {"epochs": epoch, "avg_loss": float(last_avg)}
+            yield {"epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : epoch_duration}
 
         print(f"[LSTM {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 

@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 from ..models.optim import make_loss, make_optimizer
 from ..models.model_CNN import CNN 
-
+import time
 
 def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
     """
@@ -106,6 +106,7 @@ def train_CNN(
 
     last_avg = None
     for epoch in range(1, epochs + 1):
+        epoch_start = time.time()
         model.train()
         total, n = 0.0, 0
         
@@ -129,9 +130,10 @@ def train_CNN(
             n += xb.size(0)
 
         last_avg = total / max(1, n)
+        epoch_duration = time.time() - epoch_start
 
         if epoch % 1 == 0:
-            yield {"epochs": epoch, "avg_loss": float(last_avg)}
+             yield {"epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : epoch_duration}
 
         print(f"[CNN {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
