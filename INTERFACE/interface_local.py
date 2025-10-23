@@ -15,10 +15,16 @@ matplotlib.use("TkAgg")  # backend Tkinter
 
 
 
+<<<<<<< HEAD
 # URL = "http://192.168.1.94:8000" 
-URL = "http://192.168.27.66:8000"
-# URL = "http://192.168.1.169:8000"
+#URL = "http://192.168.27.66:8000"
+URL = "http://192.168.1.193:8000"
 # URL = "http://138.231.149.81:8000"
+=======
+# URL = "http://192.168.27.66:8000"
+
+URL = "http://192.168.1.170:8000"
+>>>>>>> 6dc3f73e5ebe53e88d370ce93813dfece9f4364c
 
 
 # Paramètres et variables
@@ -402,6 +408,15 @@ class Cadre_Entrainement(tk.Frame):
             fg="#34495e"
         )
         self.label_epoch.pack(side="left", padx=10)
+
+        self.label_epoch_s = tk.Label(
+            self.info_frame,
+            text="Epochs/seconde: -",
+            font=("Helvetica", 12, "bold"),
+            bg=self.cadres_bg,
+            fg="#34495e"
+        )
+        self.label_epoch.pack(side="left", padx=10)
         
         self.label_loss = tk.Label(
             self.info_frame,
@@ -530,6 +545,7 @@ class Cadre_Entrainement(tk.Frame):
                 
                 # Mettre à jour les labels
                 self.label_epoch.config(text=f"Epoch: {epoch}")
+                # self.label_epoch_s.config(text=f"Epochs/seconde: {epoch_s}")
                 self.label_loss.config(text=f"Loss: {loss:.6f}")
                 # Mettre à jour la barre de progression
                 self.progress_bar['value'] = (epoch / self.total_epochs) * 100

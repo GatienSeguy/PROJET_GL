@@ -104,7 +104,7 @@ def training(payload: PaquetComplet,payload_model: dict):
 # )
     
 
-    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/BITCOIN.json"  # ton fichier JSON existant
+    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/Boites_per_day.json"  # ton fichier JSON existant
 
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -350,6 +350,7 @@ def training(payload: PaquetComplet,payload_model: dict):
     # --------------------------------------
     # ----- Device ------------------------
     # --------------------------------------
+    #device = "cuda"
     device = "cpu"
 
 
