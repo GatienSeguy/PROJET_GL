@@ -491,7 +491,6 @@ class Cadre_Entrainement(tk.Frame):
         self.is_training = True
         self.epochs = []
         self.losses = []
-        self.is_log.set(False)
         self.total_epochs = Parametres_entrainement.nb_epochs
         
         self.progress_bar['value']=0
