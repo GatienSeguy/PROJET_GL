@@ -22,8 +22,6 @@ URL = "http://192.168.1.193:8000"
 
 # URL = "http://192.168.27.66:8000"
 
-# URL = "http://192.168.1.170:8000"
-
 
 # Paramètres et variables
 
