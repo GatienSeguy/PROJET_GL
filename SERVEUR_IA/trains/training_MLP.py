@@ -85,7 +85,7 @@ def train_MLP(
     if y.ndim == 1:
         y = y.unsqueeze(1)
 
-    loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True)
+    loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True,drop_last=True)
 
     model = _build_mlp_safely(
         in_dim=X.shape[1],
@@ -115,7 +115,7 @@ def train_MLP(
             optimizer.step()
             total += loss.item() * xb.size(0)
             n += xb.size(0)
-        last_avg = total / max(1, n)
+        last_avg = total / max(1, n) if n > 0 else 0.0
 
         k = 1
         if epoch % k == 0:
