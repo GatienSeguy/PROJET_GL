@@ -23,6 +23,9 @@ class MLP(nn.Module):
     activation : str
         "relu", "gelu" ou "tanh" (liste fermée de choix IRMA).
 
+     use_batchnorm : bool
+        Si True, utilise BatchNorm1d dans les blocs internes.
+
     Formes attendues
     ----------------
     Entrée  x : (B, in_dim)
@@ -35,7 +38,8 @@ class MLP(nn.Module):
         hidden_size: int, #
         out_dim: int,
         num_blocks: int = 2,#
-        activation: str = "relu"#
+        activation: str = "relu",
+        use_batchnorm: bool = False 
     ) -> None:
         super().__init__()
         assert in_dim > 0 and hidden_size > 0 and out_dim > 0, "Dims > 0"
@@ -54,7 +58,10 @@ class MLP(nn.Module):
         # --- Blocs internes (ex. MLP résumés ici) ---
         blocks = []
         for _ in range(num_blocks - 1):
-            blocks += [nn.Linear(hidden_size, hidden_size), nn.BatchNorm1d(hidden_size), self._new_act()]
+            blocks.append(nn.Linear(hidden_size, hidden_size))
+            if use_batchnorm:
+                blocks.append(nn.BatchNorm1d(hidden_size))
+            blocks.append(self._new_act())
         self.backbone = nn.Sequential(*blocks)  # peut être vide si num_blocks=1
 
         # --- Projection finale ---

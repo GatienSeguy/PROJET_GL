@@ -66,10 +66,10 @@ def test_model(
         abserr_sum += diff.abs().sum(dim=0)     # Somme sur batch, garde dims
 
         # ──── STREAMER y / yhat PAIRE PAR PAIRE ────
-        for i in range(yb_cpu.shape[0]):
+        for i in range(1,yb_cpu.shape[0]):
             yield {
                 "type": "test_pair",
-                "y": yb_cpu[i].tolist(),
+                "y": yb_cpu[i-1].tolist(),
                 "yhat": yhat_cpu[i].tolist(),
             }
 
