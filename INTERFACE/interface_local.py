@@ -25,6 +25,9 @@ from matplotlib.animation import FuncAnimation
 import threading
 import queue
 
+from tkinter.filedialog import asksaveasfilename
+
+
 
 
 # URL = "http://192.168.1.94:8000" 
@@ -130,6 +133,7 @@ class Fenetre_Acceuil(tk.Tk):
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
+        self.stop_training = False  # drapeau d’annulation
         self.Payload={}
         self.Fenetre_Params_instance = None
         self.Fenetre_Params_horizon_instance = None
@@ -205,6 +209,7 @@ class Fenetre_Acceuil(tk.Tk):
         section_actions.pack(fill="x", pady=(20, 0))
 
         self.bouton(section_actions, "🚀 Envoyer la configuration au serveur", self.EnvoyerConfig, bg="#d4efdf", fg="#145a32")
+        self.bouton(section_actions, "🛑 Annuler l'entraînement", self.annuler_entrainement, bg="#f9e79f", fg="#7d6608")
         self.bouton(section_actions, "❌ Quitter", self.destroy, bg="#f5b7b1", fg="#641e16")
 
         self.update_idletasks()
@@ -214,6 +219,15 @@ class Fenetre_Acceuil(tk.Tk):
         self.state('zoomed')
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
+
+    def annuler_entrainement(self):
+        """Annule l'entraînement sans fermer le programme."""
+        if not self.stop_training:
+            self.stop_training = True
+            messagebox.showinfo("Annulation", "L'entraînement en cours a été annulé.")
+        else:
+            messagebox.showwarning("Info", "Aucun entraînement en cours ou déjà annulé.")
+
 
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
@@ -270,6 +284,7 @@ class Fenetre_Acceuil(tk.Tk):
 
     def EnvoyerConfig(self):
         if self.Cadre_results_Entrainement.is_training==False:
+            self.stop_training = False
             """Envoie la configuration au serveur et affiche l'entraînement en temps réel"""
             
             # Démarrer l'affichage de l'entraînement
@@ -297,6 +312,11 @@ class Fenetre_Acceuil(tk.Tk):
                         print("Content-Type:", r.headers.get("content-type"))
                         
                         for line in r.iter_lines():
+                            if self.stop_training:
+                                print("⚠️ Entraînement annulé par l'utilisateur.")
+                                requests.post(f"{URL}/stop_training")
+                                break
+
                             if not line:
                                 continue
                             
@@ -626,6 +646,15 @@ class Cadre_Testing(tk.Frame):
         )
         self.titre.pack(pady=(0, 10))
 
+    def save_figure(self,fig):
+        file_path = asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG", "*.png"), ("PDF", "*.pdf"), ("SVG", "*.svg"), ("Tous les fichiers", "*.*")],
+            title="Enregistrer la figure"
+        )
+        if file_path:
+            fig.savefig(file_path)
+
     def plot_predictions(self, y_true_pairs, y_pred_pairs):
         for widget in self.winfo_children():
             widget.destroy()
@@ -749,6 +778,28 @@ class Cadre_Testing(tk.Frame):
         canvas = FigureCanvasTkAgg(fig, master=self)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True,padx=(0,10))
+
+
+       
+        # Bouton de sauvegarde stylisé
+        bouton_sauvegarde = tk.Button(
+            self,
+            text="💾 Enregistrer la figure",
+            font=("Helvetica", 11, "bold"),
+            bg="#2E86AB",           # Bleu profond pour contraster
+            fg="white",             # Texte blanc lisible
+            activebackground="#1B4F72",  # Survol plus foncé
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=6,
+            command=lambda: self.save_figure(fig)
+        )
+        bouton_sauvegarde.pack(pady=(10, 5))
+
+
+
         
         # Afficher
         #plt.show()
