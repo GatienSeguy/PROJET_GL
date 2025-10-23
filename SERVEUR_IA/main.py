@@ -16,8 +16,11 @@ from .models.optim import make_loss,make_optimizer
 from .trains.training_MLP import train_MLP
 from .trains.training_CNN import train_CNN
 from .trains.training_LSTM import train_LSTM
+# from .trains.training_LSTM_apple import train_LSTM2
 
 from .test.testing import test_model
+
+from .launcher_serveur import json_path
 
 from .classes import (
     TimeSeriesData,
@@ -80,31 +83,8 @@ last_config_series = None
 
 @app.post("/train_full")
 def training(payload: PaquetComplet,payload_model: dict):
-# def training(payload: PaquetComplet):
-
-#     series: TimeSeriesData = 
-# En attendant la requête entre serveur de data on implémente en dur dans le code la serie temporelle
-#     series = TimeSeriesData(
-#     timestamps=[
-#         datetime.fromisoformat("2025-01-01T00:00:00"),
-#         datetime.fromisoformat("2025-01-01T01:00:00"),
-#         datetime.fromisoformat("2025-01-01T02:00:00"),
-#         datetime.fromisoformat("2025-01-01T03:00:00"),
-#         datetime.fromisoformat("2025-01-01T04:00:00"),
-#         datetime.fromisoformat("2025-01-01T05:00:00"),
-#         datetime.fromisoformat("2025-01-01T06:00:00"),
-#         datetime.fromisoformat("2025-01-01T07:00:00"),
-#         datetime.fromisoformat("2025-01-01T08:00:00"),
-#         datetime.fromisoformat("2025-01-01T09:00:00"),
-#         datetime.fromisoformat("2025-01-01T10:00:00"),
-#         datetime.fromisoformat("2025-01-01T11:00:00"),
-#     ],
-#     values=[12.4, 12.7, 13.0, 12.9, 13.2, 13.5, 13.4, 13.7, 14.0, 13.9, 14.2, 14.5]
-# )
     
-
-    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/Boites_per_day.json"  # ton fichier JSON existant
-
+    
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -113,11 +93,6 @@ def training(payload: PaquetComplet,payload_model: dict):
 
     #Récupération des données
     cfg: PaquetComplet = payload
-
-    # float
-    # if cfg.Parametres_optimisateur and cfg.Parametres_optimisateur.learning_rate is not None:
-    #     cfg.Parametres_optimisateur.learning_rate = float(cfg.Parametres_optimisateur.learning_rate)
-
 
     model_type = cfg.Parametres_choix_reseau_neurones.modele.lower()
     
@@ -349,6 +324,7 @@ def training(payload: PaquetComplet,payload_model: dict):
     # --------------------------------------
     # ----- Device ------------------------
     # --------------------------------------
+    #device = "cuda"
     device = "cpu"
 
 
@@ -412,6 +388,39 @@ def training(payload: PaquetComplet,payload_model: dict):
                 epochs=epochs,
                 device=device,
             )
+
+            # device = "mps"
+
+            # gen = train_LSTM2(
+            #     X, y,
+            #     # --- Architecture ---
+            #     hidden_size=hidden_size,
+            #     nb_couches=nb_couches,
+            #     bidirectional=bidirectional,
+            #     batch_first=True,
+                
+            #     # --- Loss / Optim ---
+            #     loss_name=loss_name,
+            #     optimizer_name=optimizer_name,
+            #     learning_rate=learning_rate,
+            #     weight_decay=weight_decay,
+                
+            #     # --- Training ---
+            #     batch_size=batch_size,
+            #     epochs=epochs,
+            #     device=device,
+                
+            #     # --- Optimisations M3 Pro (nouveaux paramètres) ---
+            #     num_workers=4,              # Parallélisation sur 4 cœurs
+            #     pin_memory=False,            # Accélère les transferts CPU->GPU
+            #     persistent_workers=True,    # Garde les workers actifs entre epochs
+            #     prefetch_factor=2,          # Précharge 2 batches à l'avance
+                
+            #     # --- Comportement ---
+            #     take_last_if_needed=True,
+            #     verbose=True,               # Affiche les infos de progression
+            # )
+
         else:
             yield sse({"type":"error","message": f"Modèle inconnu: {model_name}"})
             return
