@@ -19,13 +19,11 @@ class TimeSeriesData(BaseModel):
 
 
 
-
 class Parametres_temporels(BaseModel):
     horizon: Optional[int] = Field(None, description="Nombre de pas temporels à prédire")
     dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
     pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
     portion_decoupage: Optional[confloat(gt=0, lt=1)] = Field(None, description="Proportion de découpage train/test")
-
 
 
 ##### Nouvelles calsses
@@ -171,7 +169,6 @@ class PaquetComplet(BaseModel):
     # Parametres_archi_reseau_MLP: Optional[Parametres_archi_reseau_MLP]
     # Parametres_archi_reseau_CNN: Optional[Parametres_archi_reseau_CNN]
     # Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
-    
     
 
 

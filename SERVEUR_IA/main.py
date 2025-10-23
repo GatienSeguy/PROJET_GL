@@ -182,7 +182,6 @@ def training(payload: PaquetComplet,payload_model: dict):
             X_test = X_test.unsqueeze(1)
     
     
-    
     def split_info():
         msg = {
             "type": "info",
