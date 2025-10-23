@@ -269,111 +269,94 @@ class Fenetre_Acceuil(tk.Tk):
         return self.config_specifique
 
     def EnvoyerConfig(self):
-        """Envoie la configuration au serveur et affiche l'entraînement en temps réel"""
-        
-        # Démarrer l'affichage de l'entraînement
-        self.Cadre_results_Entrainement.start_training()
-        
-        # Préparer les payloads
-        payload_global = self.Formatter_JSON_global()
-        payload_model = self.Formatter_JSON_specif()
-        
-        # Avant d'envoyer le payload
-        print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
-        
-        def run_training():
-            """Fonction pour exécuter l'entraînement dans un thread séparé"""
-            y=[]
-            yhat=[]
-            try:
-                with requests.post(
-                    f"{URL}/train_full", 
-                    json={"payload": payload_global, "payload_model": payload_model}, 
-                    stream=True,
-                    timeout=None
-                ) as r:
-                    r.raise_for_status()
-                    print("Content-Type:", r.headers.get("content-type"))
-                    
-                    for line in r.iter_lines():
-                        if not line:
-                            continue
+        if self.Cadre_results_Entrainement.is_training==False:
+            """Envoie la configuration au serveur et affiche l'entraînement en temps réel"""
+            
+            # Démarrer l'affichage de l'entraînement
+            self.Cadre_results_Entrainement.start_training()
+            
+            # Préparer les payloads
+            payload_global = self.Formatter_JSON_global()
+            payload_model = self.Formatter_JSON_specif()
+            
+            # Avant d'envoyer le payload
+            print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
+            
+            def run_training():
+                """Fonction pour exécuter l'entraînement dans un thread séparé"""
+                y=[]
+                yhat=[]
+                try:
+                    with requests.post(
+                        f"{URL}/train_full", 
+                        json={"payload": payload_global, "payload_model": payload_model}, 
+                        stream=True,
+                        timeout=None
+                    ) as r:
+                        r.raise_for_status()
+                        print("Content-Type:", r.headers.get("content-type"))
                         
-                        if line.startswith(b"data: "):
-                            try:
-                                msg = json.loads(line[6:].decode("utf-8"))
-                                print("EVENT:", msg)
-                                
-                                # Traiter les différents types de messages
-                                if msg.get("type") == "epoch":
-                                    # Message d'epoch avec loss
-                                    epoch = msg.get("epoch")
-                                    avg_loss = msg.get("avg_loss")
-                                    
-                                    if epoch is not None and avg_loss is not None:
-                                        # Ajouter le point au graphique
-                                        self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
-                                
-                                elif "epochs" in msg and "avg_loss" in msg:
-                                    # Format alternatif (comme dans votre exemple)
-                                    epoch = msg.get("epochs")
-                                    avg_loss = msg.get("avg_loss")
-                                    
-                                    if epoch is not None and avg_loss is not None:
-                                        self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
-                                
-                                elif msg.get("type") == "test_pair":
-                                    y.append(msg.get("y"))
-                                    yhat.append(msg.get("yhat"))
-                                    
-                                elif msg.get("type") == "test_final":
-                                    self.Cadre_results_Metrics.afficher_Metrics(msg.get("metrics"))
-                                    
-                                elif msg.get("type") == "error":
-                                    # Afficher les erreurs
-                                    print(f"ERREUR: {msg.get('message')}")
-                                    messagebox.showerror("Erreur", msg.get('message', 'Erreur inconnue'))
-                                    break
-                                
-                                elif msg.get("type")=="fin_test":
-                                    # Entraînement terminé
-                                    self.Cadre_results_Testing.plot_predictions(y,yhat)
-                                    break
-                            
-                            except json.JSONDecodeError as e:
-                                print(f"Erreur de décodage JSON: {e}")
+                        for line in r.iter_lines():
+                            if not line:
                                 continue
+                            
+                            if line.startswith(b"data: "):
+                                try:
+                                    msg = json.loads(line[6:].decode("utf-8"))
+                                    print("EVENT:", msg)
+                                    
+                                    # Traiter les différents types de messages
+                                    if msg.get("type") == "epoch":
+                                        # Message d'epoch avec loss
+                                        epoch = msg.get("epoch")
+                                        avg_loss = msg.get("avg_loss")
+                                        
+                                        if epoch is not None and avg_loss is not None:
+                                            # Ajouter le point au graphique
+                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
+                                    
+                                    elif "epochs" in msg and "avg_loss" in msg:
+                                        # Format alternatif (comme dans votre exemple)
+                                        epoch = msg.get("epochs")
+                                        avg_loss = msg.get("avg_loss")
+                                        
+                                        if epoch is not None and avg_loss is not None:
+                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
+                                    
+                                    elif msg.get("type") == "test_pair":
+                                        y.append(msg.get("y"))
+                                        yhat.append(msg.get("yhat"))
+                                        
+                                    elif msg.get("type") == "test_final":
+                                        self.Cadre_results_Metrics.afficher_Metrics(msg.get("metrics"))
+                                        
+                                    elif msg.get("type") == "error":
+                                        # Afficher les erreurs
+                                        print(f"ERREUR: {msg.get('message')}")
+                                        messagebox.showerror("Erreur", msg.get('message', 'Erreur inconnue'))
+                                        break
+                                    
+                                    elif msg.get("type")=="fin_test":
+                                        # Entraînement terminé
+                                        self.Cadre_results_Testing.plot_predictions(y,yhat)
+                                        break
+                                
+                                except json.JSONDecodeError as e:
+                                    print(f"Erreur de décodage JSON: {e}")
+                                    continue
+                
+                except requests.exceptions.RequestException as e:
+                    print(f"Erreur de connexion: {e}")
+                    messagebox.showerror("Erreur de connexion", f"Impossible de se connecter au serveur:\n{str(e)}")
+                
+                finally:
+                    # Arrêter l'affichage de l'entraînement
+                    self.Cadre_results_Entrainement.stop_training()
             
-            except requests.exceptions.RequestException as e:
-                print(f"Erreur de connexion: {e}")
-                messagebox.showerror("Erreur de connexion", f"Impossible de se connecter au serveur:\n{str(e)}")
-            
-            finally:
-                # Arrêter l'affichage de l'entraînement
-                self.Cadre_results_Entrainement.stop_training()
-        
-        # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
-        training_thread = threading.Thread(target=run_training, daemon=True)
-        training_thread.start()
+            # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
+            training_thread = threading.Thread(target=run_training, daemon=True)
+            training_thread.start()
 
-
-
-    # def EnvoyerConfig(self):
-    #     payload_global = self.Formatter_JSON_global()
-    #     payload_model = self.Formatter_JSON_specif()
-    #     # Avant d’envoyer le payload
-    #     print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
-    #     with requests.post(f"{URL}/train_full", json={"payload": payload_global, "payload_model": payload_model}, stream=True) as r:
-    #         r.raise_for_status()
-    #         print("Content-Type:", r.headers.get("content-type"))
-    #         for line in r.iter_lines():
-    #             if not line:
-    #                 continue
-    #             if line.startswith(b"data: "):
-    #                 msg = json.loads(line[6:].decode("utf-8"))
-    #                 print("EVENT:", msg)
-    #                 if msg.get("done"):
-    #                     break
 
 class Cadre_Entrainement(tk.Frame):
     def __init__(self, app, master=None):
@@ -770,7 +753,6 @@ class Cadre_Testing(tk.Frame):
         # Afficher
         #plt.show()
 
-
 class Cadre_Metrics(tk.Frame):
     def __init__(self, app, master=None):
         super().__init__(master)
@@ -787,6 +769,8 @@ class Cadre_Metrics(tk.Frame):
         )
         self.titre.pack(pady=(0, 10))
     def afficher_Metrics(self,metrics):
+        for widget in self.winfo_children():
+            widget.destroy()
         for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
             label = tk.Label(self, text=f"{metric}: {val:.8f}", font=("Helvetica", 16, "bold"), bg=self.cadres_bg)
             label.pack(anchor="w", padx=15, pady=5)
