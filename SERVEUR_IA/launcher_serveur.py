@@ -17,7 +17,7 @@ import subprocess
 from pathlib import Path
 import socket
 
-json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/Boites_per_day.json"  # ton fichier JSON existant
+json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/EURO.json"  # ton fichier JSON existant
 
 
 def get_local_ip():

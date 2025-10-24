@@ -85,7 +85,7 @@ def train_LSTM(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: str = "cpu",
+    device: str = "mps",
 
     # --- COMPORTEMENT SORTIE ---
     # Si y est 2D (B, out_dim) et X 3D (B, T, in_dim), on utilise la dernière sortie temporelle.

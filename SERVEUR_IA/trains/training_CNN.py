@@ -69,7 +69,7 @@ def train_CNN(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: str = "cpu",
+    device: str = "mps",
 ):
     """
     Entraîne un CNN1D.

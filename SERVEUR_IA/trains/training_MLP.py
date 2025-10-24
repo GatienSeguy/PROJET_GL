@@ -80,7 +80,7 @@ def train_MLP(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: str = "cpu",
+    device: str = "msp",
 ):
     if y.ndim == 1:
         y = y.unsqueeze(1)
