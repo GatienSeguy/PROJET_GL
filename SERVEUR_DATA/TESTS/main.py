@@ -10,7 +10,7 @@ import json
 # CONFIGURATION
 # ====================================
 MODELS_DIR = "saved_models"
-DATA_DIR = "data"
+DATA_DIR = "Datas"
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 

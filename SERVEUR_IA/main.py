@@ -39,6 +39,7 @@ last_config_tempo = None
 last_config_TimeSeries = None
 last_config_series = None  
 
+json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/Boites_per_day.json" 
 
 # ====================================
 # ROUTES
