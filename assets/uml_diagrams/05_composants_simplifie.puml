@@ -56,8 +56,7 @@ database "Stockage" {
 ' === Relations entre composants ===
 user -down-> ui : interactions
 
-httpclient -right-> api : HTTP/REST
-+ SSE
+httpclient -right-> api : HTTP/REST\n+ SSE
 note on link
   Protocoles :
   - POST /train_full (SSE)

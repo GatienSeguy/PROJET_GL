@@ -41,7 +41,7 @@ class UMLDiagramGenerator:
     
     def generate_class_diagram_ui(self):
         """Diagramme de classes : Interface Utilisateur"""
-        diagram = """@startuml diagramme_classes_UI
+        diagram = r"""@startuml diagramme_classes_UI
 !theme plain
 skinparam classAttributeIconSize 0
 skinparam backgroundColor #FFFFFF
@@ -680,7 +680,7 @@ end note
     
     def generate_sequence_diagram(self):
         """Diagramme de séquence : Entraînement complet"""
-        diagram = """@startuml diagramme_sequence_entrainement
+        diagram = r"""@startuml diagramme_sequence_entrainement
 !theme plain
 skinparam backgroundColor #FFFFFF
 skinparam sequenceMessageAlign center
@@ -793,7 +793,28 @@ SSE -> UI : data: {"type":"test_metrics", "mse":0.052, "mae":0.183, ...}
 UI -> UI : Affiche métriques dans onglet Testing
 deactivate IA
 
-== Phase 8 : Sauvegarde ==
+== Phase 9 : Prédiction future (Horizon paramétré) ==
+Utilisateur -> UI : Définit horizon H
+UI -> IA : POST /predict\n(model_id, horizon=H, params_temporels)
+activate IA
+IA -> Prep : Prépare entrée\n(dernières observations, fenêtres)
+activate Prep
+Prep --> IA : x_0, inverse_fn
+deactivate Prep
+
+loop Pour t = 1..H
+    IA -> IA : y_pred_t = model(x_t)
+    IA -> IA : Dénormalisation\ninverse_fn(y_pred_t)
+    IA -> SSE : Stream prédiction future
+    SSE -> UI : data: {"type":"forecast_step","t":t,"y_pred":...}
+    IA -> IA : Met à jour x_{t+1}\n(roll/auto-régression)
+end
+
+IA --> UI : Série de prédictions\n[{t, y_pred}]
+UI -> UI : Affiche graphique futur
+deactivate IA
+
+== Phase 9 : Sauvegarde ==
 IA -> IA : Prépare contexte complet\n(archi, params, metrics, history)
 IA -> Data : POST /models\n(state_dict + context)
 activate Data
@@ -817,7 +838,7 @@ Utilisateur -> UI : Consulte résultats
     
     def generate_component_diagram(self):
         """Diagramme de composants : Architecture globale simplifiée"""
-        diagram = """@startuml diagramme_composants_simplifie
+        diagram = r"""@startuml diagramme_composants_simplifie
 !theme plain
 skinparam backgroundColor #FFFFFF
 skinparam componentStyle rectangle
@@ -930,7 +951,7 @@ end note
     
     def generate_use_case_diagram(self):
         """Diagramme de cas d'utilisation"""
-        diagram = """@startuml diagramme_cas_utilisation
+        diagram = r"""@startuml diagramme_cas_utilisation
 !theme plain
 skinparam backgroundColor #FFFFFF
 skinparam usecaseBackgroundColor LightYellow
@@ -945,13 +966,13 @@ actor "Serveur IA" as ia
 actor "Serveur Data" as data
 
 rectangle "MLApp - Application de Prédiction" {
-    
-    ' === Gestion des Données ===
-    package "Gestion des Données" {
-        usecase "Importer Dataset" as UC1
-        usecase "Sélectionner Dataset" as UC2
-        usecase "Filtrer Temporellement" as UC3
-        usecase "Visualiser Données" as UC4
+
+    package "Configuration du Modèle" {
+        usecase "Choisir Architecture\n(MLP/CNN/LSTM)" as UC5
+        usecase "Configurer\nHyperparamètres" as UC6
+        usecase "Définir Paramètres\nTemporels" as UC7
+        usecase "Sélectionner\nFonction de Perte" as UC8
+        usecase "Configurer\nOptimiseur" as UC9
     }
     
     ' === Configuration ===

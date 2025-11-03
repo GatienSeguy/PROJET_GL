@@ -13,67 +13,51 @@ actor "Serveur IA" as ia
 actor "Serveur Data" as data
 
 rectangle "MLApp - Application de Prédiction" {
-    
-    ' === Gestion des Données ===
-    package "Gestion des Données" {
-        usecase "Importer Dataset" as UC1
-        usecase "Sélectionner Dataset" as UC2
-        usecase "Filtrer Temporellement" as UC3
-        usecase "Visualiser Données" as UC4
+
+    package "Configuration du Modèle" {
+        usecase "Choisir Architecture\n(MLP/CNN/LSTM)" as UC5
+        usecase "Configurer\nHyperparamètres" as UC6
+        usecase "Définir Paramètres\nTemporels" as UC7
+        usecase "Sélectionner\nFonction de Perte" as UC8
+        usecase "Configurer\nOptimiseur" as UC9
     }
     
     ' === Configuration ===
     package "Configuration du Modèle" {
-        usecase "Choisir Architecture
-(MLP/CNN/LSTM)" as UC5
-        usecase "Configurer
-Hyperparamètres" as UC6
-        usecase "Définir Paramètres
-Temporels" as UC7
-        usecase "Sélectionner
-Fonction de Perte" as UC8
-        usecase "Configurer
-Optimiseur" as UC9
+        usecase "Choisir Architecture\n(MLP/CNN/LSTM)" as UC5
+        usecase "Configurer\nHyperparamètres" as UC6
+        usecase "Définir Paramètres\nTemporels" as UC7
+        usecase "Sélectionner\nFonction de Perte" as UC8
+        usecase "Configurer\nOptimiseur" as UC9
     }
     
     ' === Entraînement ===
     package "Entraînement & Monitoring" {
-        usecase "Lancer
-Entraînement" as UC10
-        usecase "Visualiser Loss
-en Temps Réel" as UC11
+        usecase "Lancer\nEntraînement" as UC10
+        usecase "Visualiser Loss\nen Temps Réel" as UC11
         usecase "Suivre Progression" as UC12
-        usecase "Annuler
-Entraînement" as UC13
+        usecase "Annuler\nEntraînement" as UC13
     }
     
     ' === Évaluation ===
     package "Évaluation & Test" {
-        usecase "Tester Modèle
-Automatiquement" as UC14
-        usecase "Consulter Métriques
-(MSE, MAE, R²)" as UC15
-        usecase "Visualiser
-Prédictions vs Réel" as UC16
+        usecase "Tester Modèle\nAutomatiquement" as UC14
+        usecase "Consulter Métriques\n(MSE, MAE, R²)" as UC15
+        usecase "Visualiser\nPrédictions vs Réel" as UC16
     }
     
     ' === Prédiction ===
     package "Prédiction Future" {
-        usecase "Définir Horizon
-de Prédiction" as UC17
-        usecase "Générer Prédictions
-Futures" as UC18
+        usecase "Définir Horizon\nde Prédiction" as UC17
+        usecase "Générer Prédictions\nFutures" as UC18
         usecase "Exporter Résultats" as UC19
     }
     
     ' === Sauvegarde ===
     package "Gestion des Modèles" {
-        usecase "Sauvegarder Modèle
-+ Contexte" as UC20
-        usecase "Charger Modèle
-Existant" as UC21
-        usecase "Lister Modèles
-Disponibles" as UC22
+        usecase "Sauvegarder Modèle\n+ Contexte" as UC20
+        usecase "Charger Modèle\nExistant" as UC21
+        usecase "Lister Modèles\nDisponibles" as UC22
         usecase "Comparer Modèles" as UC23
     }
 }
