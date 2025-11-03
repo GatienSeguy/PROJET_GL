@@ -1,0 +1,151 @@
+@startuml diagramme_sequence_entrainement
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam sequenceMessageAlign center
+
+title Diagramme de Séquence - Entraînement Complet avec Streaming
+
+actor Utilisateur
+participant "UI
+(Tkinter)" as UI
+participant "Serveur IA
+(FastAPI)" as IA
+participant "Training
+Engine" as Engine
+participant "Data
+Preprocessor" as Prep
+participant "Model
+Factory" as Factory
+participant "SSE
+Streamer" as SSE
+participant "Serveur Data
+(REST API)" as Data
+
+== Phase 1 : Configuration ==
+Utilisateur -> UI : Configure paramètres
+(modèle, hyperparamètres, etc.)
+UI -> UI : Valide configuration
+UI -> UI : Crée PaquetComplet (JSON)
+
+== Phase 2 : Lancement Entraînement ==
+Utilisateur -> UI : Clique "Lancer Entraînement"
+UI -> IA : POST /train_full
+(PaquetComplet + payload_model)
+activate IA
+
+== Phase 3 : Récupération Dataset ==
+IA -> Data : GET /datasets/{id}
+activate Data
+Data -> Data : Charge dataset
+Data --> IA : TimeSeriesData
+(timestamps, values)
+deactivate Data
+
+== Phase 4 : Préparation des Données ==
+IA -> Prep : filter_series_by_dates()
+activate Prep
+Prep --> IA : timestamps_filtrés, values_filtrés
+deactivate Prep
+
+IA -> Prep : build_supervised_tensors()
+activate Prep
+Prep --> IA : X, y (tenseurs)
+deactivate Prep
+
+IA -> Prep : normalize_data()
+activate Prep
+Prep --> IA : X_norm, y_norm, params_norm
+deactivate Prep
+
+IA -> Prep : split_train_test()
+activate Prep
+Prep --> IA : X_train, y_train, X_test, y_test
+deactivate Prep
+
+IA -> SSE : Stream événement "split"
+SSE -> UI : data: {"type":"info", "n_train":800, "n_test":200}
+UI -> UI : Affiche info split
+
+== Phase 5 : Instanciation Modèle ==
+IA -> Factory : create(model_type, config)
+activate Factory
+Factory -> Factory : Valide configuration
+Factory -> Factory : Instancie MLPModel/CNNModel/LSTMModel
+Factory --> IA : model (BaseModel)
+deactivate Factory
+
+IA -> Engine : __init__(model, criterion, optimizer, device)
+activate Engine
+
+== Phase 6 : Entraînement avec Streaming ==
+loop Pour chaque epoch (1 à nb_epochs)
+    Engine -> Engine : Forward pass
+y_pred = model(X_train)
+    Engine -> Engine : Calcul loss
+loss = criterion(y_pred, y_train)
+    Engine -> Engine : Backward pass
+loss.backward()
+    Engine -> Engine : Gradient clipping (si activé)
+    Engine -> Engine : optimizer.step()
+    Engine -> Engine : Calcul gradient_norm
+    
+    Engine --> IA : Événement epoch
+{"epoch", "loss", "gradient_norm"}
+    IA -> SSE : format_sse(événement)
+    SSE -> UI : data: {"type":"train", "epoch":1, "loss":0.45}
+    UI -> UI : Met à jour graphique
+    UI -> UI : Met à jour barre progression
+    
+    alt Si bouton Annuler cliqué
+        Utilisateur -> UI : Clique "Annuler"
+        UI -> IA : Interruption signal
+        IA -> Engine : Stop training
+        note right: Entraînement arrêté
+à la fin de l'epoch courante
+    end
+end
+
+Engine --> IA : Modèle entraîné + historique
+deactivate Engine
+
+== Phase 7 : Test Automatique ==
+IA -> IA : test_model(model, X_test, y_test, inverse_fn)
+activate IA
+
+loop Pour chaque échantillon de test
+    IA -> IA : y_pred = model(X_test[i])
+    IA -> IA : Dénormalisation
+inverse_fn(y_test[i]), inverse_fn(y_pred)
+    IA -> SSE : Stream prédiction
+    SSE -> UI : data: {"type":"test_prediction", "y_true":10.5, "y_pred":10.3}
+    UI -> UI : Affiche dans tableau/graphique
+end
+
+IA -> IA : Calcul métriques finales
+(MSE, MAE, RMSE, MAPE, R²)
+IA -> SSE : Stream métriques
+SSE -> UI : data: {"type":"test_metrics", "mse":0.052, "mae":0.183, ...}
+UI -> UI : Affiche métriques dans onglet Testing
+deactivate IA
+
+== Phase 8 : Sauvegarde ==
+IA -> IA : Prépare contexte complet
+(archi, params, metrics, history)
+IA -> Data : POST /models
+(state_dict + context)
+activate Data
+Data -> Data : Génère UUID
+Data -> Data : Sauvegarde fichier .pth
+Data -> Data : Sauvegarde contexte JSON
+Data --> IA : {"id": "uuid-1234", "created_at": "..."}
+deactivate Data
+
+IA -> SSE : Stream événement "complete"
+SSE -> UI : data: {"type":"complete", "model_id":"uuid-1234"}
+UI -> UI : Affiche confirmation
+UI -> UI : Active onglet Prediction
+deactivate IA
+
+Utilisateur -> UI : Consulte résultats
+
+@enduml
