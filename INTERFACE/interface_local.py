@@ -15,12 +15,8 @@ matplotlib.use("TkAgg")  # backend Tkinter
 
 
 
-# URL = "http://192.168.1.94:8000" 
-#URL = "http://192.168.27.66:8000"
-URL = "http://192.168.1.180:8000"
-# URL = "http://138.231.149.81:8000"
-
-# URL = "http://192.168.27.66:8000"
+URL = "http://192.168.27.66:8000"
+#URL = "http://192.168.1.180:8000"
 
 
 # Paramètres et variables
@@ -217,7 +213,6 @@ class Fenetre_Acceuil(tk.Tk):
         else:
             messagebox.showwarning("Info", "Aucun entraînement en cours ou déjà annulé.")
 
-
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
             parent, text=texte, font=self.font_bouton, command=commande,
@@ -318,18 +313,20 @@ class Fenetre_Acceuil(tk.Tk):
                                         # Message d'epoch avec loss
                                         epoch = msg.get("epoch")
                                         avg_loss = msg.get("avg_loss")
+                                        epoch_s = msg.get("epoch_s")
                                         
                                         if epoch is not None and avg_loss is not None:
                                             # Ajouter le point au graphique
-                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
+                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss,epoch_s)
                                     
                                     elif "epochs" in msg and "avg_loss" in msg:
                                         # Format alternatif (comme dans votre exemple)
                                         epoch = msg.get("epochs")
                                         avg_loss = msg.get("avg_loss")
+                                        epoch_s = msg.get("epoch_s")
                                         
                                         if epoch is not None and avg_loss is not None:
-                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss)
+                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss,epoch_s)
                                     
                                     elif msg.get("type") == "test_pair":
                                         y.append(msg.get("y"))
@@ -412,7 +409,7 @@ class Cadre_Entrainement(tk.Frame):
             bg=self.cadres_bg,
             fg="#34495e"
         )
-        self.label_epoch.pack(side="left", padx=10)
+        self.label_epoch_s.pack(side="left", padx=10)
         
         self.label_loss = tk.Label(
             self.info_frame,
@@ -520,9 +517,9 @@ class Cadre_Entrainement(tk.Frame):
         # Démarrer la mise à jour périodique
         self.update_plot()
     
-    def add_data_point(self, epoch, loss):
+    def add_data_point(self, epoch, loss,epoch_s):
         """Ajoute un nouveau point de données"""
-        self.data_queue.put((epoch, loss))
+        self.data_queue.put((epoch, loss,epoch_s))
     
     def update_plot(self):
         self.Log_scale_possible=True
@@ -534,14 +531,14 @@ class Cadre_Entrainement(tk.Frame):
         updated = False
         while not self.data_queue.empty():
             try:
-                epoch, loss = self.data_queue.get_nowait()
+                epoch, loss, epoch_s = self.data_queue.get_nowait()
                 self.epochs.append(epoch)
                 self.losses.append(loss)
                 updated = True
                 
                 # Mettre à jour les labels
                 self.label_epoch.config(text=f"Epoch: {epoch}")
-                # self.label_epoch_s.config(text=f"Epochs/seconde: {epoch_s}")
+                self.label_epoch_s.config(text=f"Epochs/seconde: {epoch_s:.2f}")
                 self.label_loss.config(text=f"Loss: {loss:.6f}")
                 # Mettre à jour la barre de progression
                 self.progress_bar['value'] = (epoch / self.total_epochs) * 100
