@@ -7,8 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Union, Dict, Any
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 import os, json, hashlib, math
+
+from .classes import DatasetIn, DatasetOut
+
+# python -m uvicorn SERVEUR_DATA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
 # --------------------------
 # Répertoires de stockage
@@ -44,48 +48,65 @@ def json_load(path: str) -> Any:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# --------------------------
-# Modèles Pydantic
-# --------------------------
-class DatasetIn(BaseModel):
-    # name obligatoire et UNIQUE (vérifié dans l'endpoint)
-    name: str = Field(..., description="Nom lisible (obligatoire et unique)")
-    dates: Optional[List[Union[str, None]]] = None
-    timestamps: Optional[List[Union[str, float, int, None]]] = None
-    values: List[Union[float, int, None]] = Field(..., description="Liste des valeurs; null accepté (sera filtré).")
-    meta: Optional[Dict[str, Any]] = Field(default_factory=dict)
+def _to_dt(x: str) -> datetime:
+    """
+    Parse robuste d'une date ISO (gère 'Z', offset, sous-secondes).
+    Retourne un datetime naïf en UTC pour comparaison simple.
+    """
+    s = str(x).strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(s)
+    except Exception as e:
+        raise ValueError(f"Format de date invalide: {x}") from e
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
-    @field_validator("name")
-    @classmethod
-    def name_not_blank(cls, v: str):
-        if not isinstance(v, str) or not v.strip():
-            raise ValueError("name est obligatoire et ne doit pas être vide.")
-        return v
+def _filter_record_by_dates(record: Dict[str, Any], start: str, end: str) -> Dict[str, Any]:
+    """
+    Filtre record['data'] pour ne garder que start <= t <= end.
+    record: {"id","name","time_kind","data":[{"t":..., "v":...},...],...}
+    start/end: ISO strings
+    Retour: record cloné avec 'data' borné + 'slice' meta.
+    """
+    if not record or "data" not in record:
+        raise ValueError("Record invalide (clé 'data' manquante).")
 
-    @field_validator("dates", "timestamps", mode="before")
-    @classmethod
-    def empty_to_none(cls, v):
-        return v if v not in ([], (), "", None) else None
+    t0 = _to_dt(start)
+    t1 = _to_dt(end)
+    if t1 < t0:
+        t0, t1 = t1, t0
 
-    @field_validator("values")
-    @classmethod
-    def values_not_empty(cls, v: List[Union[float, int, None]]):
-        if not isinstance(v, list) or len(v) == 0:
-            raise ValueError("values ne doit pas être vide.")
-        return v
+    out_data = []
+    for p in record.get("data", []):
+        t = p.get("t")
+        if t is None:
+            continue
+        try:
+            if isinstance(t, (int, float)):
+                dt = datetime.fromtimestamp(float(t))
+            else:
+                dt = _to_dt(str(t))
+        except Exception:
+            continue
+        if t0 <= dt <= t1:
+            try:
+                v = float(p.get("v"))
+            except Exception:
+                continue
+            out_data.append({"t": t, "v": v})
 
-class DatasetOut(BaseModel):
-    id: str
-    name: Optional[str] = None
-    n_points: int
-    time_kind: Optional[str] = None   # "dates" | "timestamps" | None
-    preview: Dict[str, Any]
-    meta: Dict[str, Any]
+    new_rec = dict(record)
+    new_rec["data"] = out_data
+    new_rec["slice"] = {"start": start, "end": end, "n_points": len(out_data)}
+    return new_rec
 
 # --------------------------
 # App
 # --------------------------
-app = FastAPI(title="Unified Storage Server", version="1.2")
+app = FastAPI(title="Unified Storage Server", version="1.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -148,9 +169,9 @@ def _model_name_exists(name: str) -> bool:
 def _dataset_name_exists(name: str) -> bool:
     return len(_datasets_by_name(name)) > 0
 
-# --------------------------
+# ==========================
 # MODELS: upload, list, download, by-name
-# --------------------------
+# ==========================
 @app.post("/models/upload")
 async def upload_model(
     file: UploadFile = File(...),
@@ -228,12 +249,14 @@ def download_latest_model(logical_name: str):
         raise HTTPException(status_code=404, detail="Fichier binaire introuvable.")
     return FileResponse(bin_path, filename=meta["original_filename"])
 
-# --------------------------
-# DATASETS: post JSON, list, get, by-name
-# --------------------------
+# ==========================
+# DATASETS: post JSON, list, get, by-name, slice
+# ==========================
 @app.post("/datasets", response_model=DatasetOut)
 def add_dataset(payload: DatasetIn):
     # unicité du nom
+    if not payload.name or not payload.name.strip():
+        raise HTTPException(status_code=400, detail="Le nom du dataset (name) est obligatoire.")
     if _dataset_name_exists(payload.name):
         raise HTTPException(status_code=409, detail=f"Nom de dataset déjà utilisé: '{payload.name}'")
 
@@ -348,6 +371,61 @@ def download_latest_dataset_file(ds_name: str):
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Fichier dataset introuvable.")
     return FileResponse(path, filename=f"{ds_id}.json", media_type="application/json")
+
+# --- SLICE par nom + dates (GET)
+@app.get("/datasets/by-name/{ds_name}/slice")
+def get_dataset_slice(ds_name: str, start: str, end: str):
+    """
+    Renvoie le DERNIER dataset pour ce nom, découpé entre [start, end].
+    start/end: ISO strings ('YYYY-MM-DD', 'YYYY-MM-DDTHH:MM:SSZ', etc.)
+    """
+    items = _datasets_by_name(ds_name)
+    if not items:
+        raise HTTPException(status_code=404, detail="Aucun dataset pour ce nom.")
+
+    latest = items[0]
+    ds_id = latest.get("id")
+    if not ds_id:
+        raise HTTPException(status_code=500, detail="Dataset corrompu (id manquant).")
+
+    path = os.path.join(DATASETS_DIR, f"{ds_id}.json")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Fichier dataset introuvable.")
+
+    record = json_load(path)
+    try:
+        sliced = _filter_record_by_dates(record, start, end)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return sliced
+
+# --- SLICE par payload (POST)
+class SliceIn(BaseModel):
+    name: str = Field(..., description="Nom du dataset")
+    dates: List[str] = Field(..., min_items=2, max_items=2, description="[start, end]")
+
+@app.post("/datasets/slice")
+def post_dataset_slice(payload: SliceIn):
+    items = _datasets_by_name(payload.name)
+    if not items:
+        raise HTTPException(status_code=404, detail="Aucun dataset pour ce nom.")
+
+    latest = items[0]
+    ds_id = latest.get("id")
+    if not ds_id:
+        raise HTTPException(status_code=500, detail="Dataset corrompu (id manquant).")
+
+    path = os.path.join(DATASETS_DIR, f"{ds_id}.json")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Fichier dataset introuvable.")
+
+    record = json_load(path)
+    start, end = payload.dates[0], payload.dates[1]
+    try:
+        sliced = _filter_record_by_dates(record, start, end)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return sliced
 
 # ==========================
 # INVENTORY (listes combinées)

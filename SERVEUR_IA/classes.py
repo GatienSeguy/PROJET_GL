@@ -1,6 +1,7 @@
 from typing import Optional, Tuple, Literal, List
 from pydantic import BaseModel, Field, conint, confloat
 from datetime import datetime
+
 # ====================================
 # MODÈLES PYDANTIC - Classes
 # ====================================
@@ -157,6 +158,10 @@ class Parametres_archi_reseau_LSTM(BaseModel):
 
 
 
+class Tx_choix_dataset(BaseModel):
+    dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
+    name: Optional[str] = Field(None, description="Nom du fichier à utiliser")
+
 
 
 class PaquetComplet(BaseModel):
@@ -166,12 +171,9 @@ class PaquetComplet(BaseModel):
     Parametres_optimisateur: Optional[Parametres_optimisateur]
     Parametres_entrainement: Optional[Parametres_entrainement]
     Parametres_visualisation_suivi: Optional[Parametres_visualisation_suivi]
+    # Tx_choix_dataset: Optional[Tx_choix_dataset]
     # Parametres_archi_reseau_MLP: Optional[Parametres_archi_reseau_MLP]
     # Parametres_archi_reseau_CNN: Optional[Parametres_archi_reseau_CNN]
     # Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
     
 
-
-class Tx_choix_dataset(BaseModel):
-    dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
-    name: Optional[str] = Field(None, description="Nom du fichier à utiliser")
