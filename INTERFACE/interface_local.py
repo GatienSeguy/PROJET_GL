@@ -213,7 +213,6 @@ class Fenetre_Acceuil(tk.Tk):
         else:
             messagebox.showwarning("Info", "Aucun entraînement en cours ou déjà annulé.")
 
-
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
             parent, text=texte, font=self.font_bouton, command=commande,
