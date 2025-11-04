@@ -27,7 +27,7 @@ class TimeSeriesData:
 # CONFIGURATION
 # ====================================
 
-DATASETS_DIR = os.getenv("DATASETS_DIR", "./datasets")
+DATASETS_DIR = os.getenv("DATASETS_DIR", "SERVEUR_DATA/store/datasets")
 
 # python -m uvicorn SERVEUR_DATA.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
