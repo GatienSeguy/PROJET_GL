@@ -452,6 +452,9 @@ class Cadre_Entrainement(ctk.CTkFrame):
         super().__init__(master)
         self.configure(fg_color=master.cget("fg_color"))
 
+        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
+        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
+
         # self.cadres_bg = app.cadres_bg
         # self.configure(fg_color=self.cadres_bg)
         
@@ -508,20 +511,24 @@ class Cadre_Entrainement(ctk.CTkFrame):
         self.label_status.pack(side="right", padx=10)
         
         # Création du graphique matplotlib avec style moderne
-        self.fig = Figure(figsize=(10, 6)) #,dpi=100
+        self.fig = Figure(figsize=(10, 6),facecolor=self.fg_color,dpi=200) #,dpi=100
         self.ax = self.fig.add_subplot(111)
         
         # Style du graphique
-        # self.ax.set_facecolor(self.cadres_bg)
-        self.ax.grid(True, linestyle='--', alpha=0.3) #, color='#95a5a6'
-        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold') #, color='#2c3e50'
-        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold') #, color='#2c3e50'
-        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', pad=20) #, color='#2c3e50'
+        self.ax.tick_params(axis='x', colors='#DCE4EE')
+        self.ax.tick_params(axis='y', colors='#DCE4EE')
+        for spine in self.ax.spines.values():
+            spine.set_color('#DCE4EE')
+
+        self.ax.set_facecolor(self.fg_color)
+        self.ax.grid(True, linestyle='--', alpha=0.3,color='#DCE4EE') #, color='#95a5a6'
+        self.ax.set_xlabel('Epoch', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_ylabel('Loss', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_title('Évolution de la Loss', fontsize=16, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
         
         # Ligne de tracé (sera mise à jour)
-        self.line, = self.ax.plot([], [], 'o-', linewidth=2.5, markersize=6, 
-                                   color='#3498db', markerfacecolor='#e74c3c',
-                                   markeredgewidth=2, markeredgecolor='#c0392b')
+        self.line, = self.ax.plot([], [],'o-', linewidth=2.5,
+                                   color="#e74c3c", markerfacecolor="#9c9c9c")
         
         # Canvas pour afficher le graphique
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
@@ -578,14 +585,20 @@ class Cadre_Entrainement(ctk.CTkFrame):
         # Réinitialiser le graphique
         self.ax.clear()
         # self.ax.set_facecolor(self.cadres_bg)
-        self.ax.grid(True, linestyle='--', alpha=0.3) #, color='#95a5a6'
-        self.ax.grid(True, which='minor', linestyle='--',alpha=0.3) #Grille log , color='#95a5a6'
-        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold') #, color='#2c3e50'
-        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold') #, color='#2c3e50'
-        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', pad=20) #, color='#2c3e50'
-        self.line, = self.ax.plot([], [], 'o-', linewidth=2.5, markersize=6,
-                                   color='#3498db', markerfacecolor='#e74c3c',
-                                   markeredgewidth=2, markeredgecolor='#c0392b')
+        # Style du graphique
+        # self.ax.tick_params(axis='x', colors='#DCE4EE')
+        # self.ax.tick_params(axis='y', colors='#DCE4EE')
+        # for spine in self.ax.spines.values():
+        #     spine.set_color('#DCE4EE')
+
+        self.ax.set_facecolor(self.fg_color)
+        self.ax.grid(True, linestyle='--', alpha=0.3,color='#DCE4EE') #, color='#95a5a6'
+        self.ax.set_xlabel('Epoch', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_ylabel('Loss', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_title('Évolution de la Loss', fontsize=16, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
+        
+        self.line, = self.ax.plot([], [],'o-', linewidth=2.5,
+                                   color="#e74c3c", markerfacecolor="#9c9c9c",)
         
         self.label_status.configure(text="🚀 En cours...",text_color="#27ae60")
         self.canvas.draw()
@@ -706,6 +719,9 @@ class Cadre_Testing(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
         self.configure(fg_color=master.cget("fg_color"))
+        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
+        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
+        
 
         # Titre
         self.titre = ctk.CTkLabel(
@@ -743,13 +759,13 @@ class Cadre_Testing(ctk.CTkFrame):
             yp = yp.squeeze(1)
 
         # Création du graphique matplotlib avec style moderne
-        fig = Figure(facecolor=self.cadres_bg)
+        fig = Figure(facecolor=self.fg_color)
         ax = fig.add_subplot(111)
         
         
         # Style du graphique
-        ax.set_facecolor(self.cadres_bg)
-        ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
+        ax.set_facecolor(self.fg_color)
+        ax.grid(True, linestyle='--', alpha=0.3, color='#DCE4EE')
         
         if yt.ndim == 1:
             x = np.arange(len(yt))
@@ -768,7 +784,7 @@ class Cadre_Testing(ctk.CTkFrame):
                     zorder=2)
             
             ax.plot(x, yp, 
-                    color='#A23B72', 
+                    color="#e74c3c", 
                     linewidth=2, 
                     marker='s', 
                     markersize=4, 
@@ -834,13 +850,13 @@ class Cadre_Testing(ctk.CTkFrame):
         ax.set_axisbelow(True)
 
         
-        ax.set_facecolor(self.cadres_bg)
+        ax.set_facecolor(self.fg_color)
         ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
         
         
         # Ajuster les marges
         fig.tight_layout()
-        fig.patch.set_facecolor(self.cadres_bg)
+        fig.patch.set_facecolor(self.fg_color)
         
 
 
@@ -873,56 +889,50 @@ class Cadre_Testing(ctk.CTkFrame):
         # Afficher
         #plt.show()
 
-class Cadre_Metrics(tk.Frame):
+class Cadre_Metrics(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.cadres_bg = app.cadres_bg
-        self.configure(bg=self.cadres_bg)
-
+        self.configure(fg_color=master.cget("fg_color"))
+        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
+        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
+        
         # Titre
         self.titre = tk.Label(
             self, 
             text="📊 Affichage des metrics", 
             font=("Helvetica", 16, "bold"),
-            bg=self.cadres_bg,
-            fg="#2c3e50"
         )
         self.titre.pack(pady=(0, 10))
+
     def afficher_Metrics(self,metrics):
         for widget in self.winfo_children():
             widget.destroy()
         for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
-            label = tk.Label(self, text=f"{metric}: {val:.8f}", font=("Helvetica", 16, "bold"), bg=self.cadres_bg)
+            label = tk.Label(self, text=f"{metric}: {val:.8f}", font=("Helvetica", 16, "bold"), bg=self.fg_color)
             label.pack(anchor="w", padx=15, pady=5)
 
-
-        pass
-
-class Cadre_Prediction(tk.Frame):
+class Cadre_Prediction(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.cadres_bg = app.cadres_bg
-        self.configure(bg=self.cadres_bg)
-
+        self.configure(fg_color=master.cget("fg_color"))
+        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
+        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
+        
         # Titre
         self.titre = tk.Label(
             self, 
             text="📊 Affichage de la prédiction", 
             font=("Helvetica", 16, "bold"),
-            bg=self.cadres_bg,
-            fg="#2c3e50"
         )
         self.titre.pack(pady=(0, 10))
 
 
 # Créer la fenêtre de paramétrage du modèle
-class Fenetre_Params(tk.Toplevel):
+class Fenetre_Params(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        self.cadre_bg=app.cadres_bg
-        self.fenetre_bg=app.fenetre_bg
-        self.title("🧠 Paramétrage du Réseau de Neuronnes")
-        self.configure(bg=self.fenetre_bg)
+        self.title("⚙️ Paramètres du Modèle")
+        
         # Polices
         self.font_titre = ("Helvetica", 18, "bold")
         self.font_section = ("Helvetica", 14, "bold")

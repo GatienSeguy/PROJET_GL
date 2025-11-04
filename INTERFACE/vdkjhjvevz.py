@@ -1,13 +1,16 @@
 import customtkinter as ctk
 
-class App(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-        self.title("Fenêtre Zoomée")
-        self.after(100, lambda: self.state("zoomed"))
 
-        self.bind("<F11>", lambda event: self.attributes("-fullscreen", True))
-        self.bind("<Escape>", lambda event: self.attributes("-fullscreen", False))
+# Créer la fenêtre principale
+app = ctk.CTk()
+app.title("Fenêtre CTk par défaut")
+app.geometry("400x200")
 
-app = App()
+# Ajouter un label
+label = ctk.CTkLabel(app, text="👋 Bonjour depuis CustomTkinter !", font=("Roboto", 18))
+label.pack(pady=40)
+couleur_texte = label.cget("text_color")
+print(couleur_texte)
+
+# Lancer la boucle principale
 app.mainloop()
