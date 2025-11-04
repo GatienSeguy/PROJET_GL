@@ -16,8 +16,9 @@ matplotlib.use("TkAgg")  # backend Tkinter
 import customtkinter as ctk
 
 
-#URL = "http://192.168.27.66:8000"
-URL = "http://138.231.149.81:8000"
+
+URL = "http://192.168.27.66:8000"
+# URL = "http://138.231.149.81:8000"
 
 
 # Paramètres et variables
@@ -112,6 +113,15 @@ Parametres_optimisateur=Parametres_optimisateur_class()
 Parametres_entrainement=Parametres_entrainement_class()
 Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 
+# Couleurs style IRMA Conseil
+BG_DARK = "#2c3e50"
+BG_CARD = "#34495e"
+BG_INPUT = "#273747"
+TEXT_PRIMARY = "#ecf0f1"
+TEXT_SECONDARY = "#bdc3c7"
+ACCENT_PRIMARY = "#e74c3c"
+ACCENT_SECONDARY = "#3498db"
+BORDER_COLOR = "#4a5f7f"
 
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
@@ -127,9 +137,12 @@ class Fenetre_Acceuil(ctk.CTk):
         self.feur_instance = None
 
         ctk.CTk.__init__(self)
+        self.grid_columnconfigure(0, weight=0, minsize=600)  # largeur fixe
+        self.grid_columnconfigure(1, weight=1)                # extensible
+        self.grid_rowconfigure(0, weight=1)
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
         #self.configure(bg=self.fenetre_bg)
-        self.geometry("1200x700")
+        # self.geometry("1200x700")
 
         #feur
         # style = ttk.Style()
@@ -145,67 +158,148 @@ class Fenetre_Acceuil(ctk.CTk):
 
 
         # Polices
-        self.font_titre = ("Roboto Medium", 20,"bold")
-        self.font_section = ("Roboto Medium", 16,"bold")
-        self.font_bouton = ("Roboto", 13)
+        self.font_titre = ("Roboto Medium", 28,"bold")
+        self.font_section = ("Roboto Medium", 24,"bold")
+        self.font_bouton = ("Roboto", 20)
 
         # Cadre principal de configuration
-        self.cadre = ctk.CTkFrame(self, width=200, corner_radius=10)
-        self.cadre.pack(side="left",fill="y", padx=10, pady=10)
+        self.cadre = ctk.CTkFrame(self, corner_radius=10)
+        self.cadre.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.cadre.grid_columnconfigure(0, weight=1)
+
+
+
 
         # Cadre des résultats
-        self.Cadre_results_global=tk.Frame(self, bg=self.cadres_bg, highlightbackground="black", highlightthickness=2)
-        self.Cadre_results_global.pack(side="right",fill="both", expand=True, padx=10, pady=20)
+        # self.Cadre_results_global = ctk.CTkFrame(self, corner_radius=10)
+        # self.Cadre_results_global.grid(row=0, column=1, sticky="nsew", padx=(0,20), pady=20)
+    
+        self.Results_notebook = ctk.CTkTabview(self,corner_radius=10)
+        self.Results_notebook.grid(row=0, column=1, sticky="nsew", padx=(0,20),pady=(0,20))
 
-        self.Results_notebook = ttk.Notebook(self.Cadre_results_global, style='TNotebook')
-        self.Results_notebook.pack(expand=True, fill='both')
+        #Créer les onglets
+        self.Results_notebook.add("Training")
+        self.Results_notebook.add("Testing")
+        self.Results_notebook.add("Metrics")
+        self.Results_notebook.add("Prediction")
 
-        self.Cadre_results_Entrainement = Cadre_Entrainement(self,self.Cadre_results_global)
-        self.Results_notebook.add(self.Cadre_results_Entrainement, text="Training")
-
-        self.Cadre_results_Testing = Cadre_Testing(self,self.Cadre_results_global)
-        self.Results_notebook.add(self.Cadre_results_Testing, text="Testing")
-
-        self.Cadre_results_Metrics = Cadre_Metrics(self,self.Cadre_results_global)
-        self.Results_notebook.add(self.Cadre_results_Metrics, text="Metrics")
-
-        self.Cadre_results_Prediction = Cadre_Prediction(self,self.Cadre_results_global)
-        self.Results_notebook.add(self.Cadre_results_Prediction, text="Prediction")
+        # Créer les cadres dans les onglets
+        self.Cadre_results_Entrainement = Cadre_Entrainement(
+            self, self.Results_notebook.tab("Training")
+        )
+        self.Cadre_results_Entrainement.pack(fill="both", expand=True)
+        self.Cadre_results_Testing = Cadre_Testing(
+            self, self.Results_notebook.tab("Testing")
+        )
+        self.Cadre_results_Metrics = Cadre_Metrics(
+            self, self.Results_notebook.tab("Metrics")
+        )
+        self.Cadre_results_Prediction = Cadre_Prediction(
+            self, self.Results_notebook.tab("Prediction")
+        )
 
 
         # Titre
-        tk.Label(self.cadre, text="MLApp", font=self.font_titre, bg=self.cadres_bg, fg="#2c3e50").pack(pady=(0, 20))
+        ctk.CTkLabel(
+            self.cadre, 
+            text="MLApp", 
+            font=("Roboto Medium", 30)
+        ).pack(pady=(20, 10))
+        # Sous-titre
+        ctk.CTkLabel(
+            self.cadre,
+            text="Machine Learning Application",
+            font=("Roboto", 20)
+        ).pack(pady=(0, 40))
+
 
         # Section 1 : Modèle
-        section_modele = tk.LabelFrame(self.cadre, text="🧬 Modèle", font=self.font_section, bg=self.cadres_bg, fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
-        section_modele.pack(fill="x", pady=10)
+        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=self.font_section)
+        Titre_frame_Modele.pack()
+        Label_frame_Modele.pack(fill="both",padx=10)
+        Label_frame_Modele.grid_columnconfigure(0, weight=1)
+        Label_frame_Modele.grid_rowconfigure(0, weight=1)
+        
+        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
 
-        self.bouton(section_modele, "📂 Charger Modèle", self.test)
-        self.bouton(section_modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele)
 
         # Section 2 : Données
-        section_data = tk.LabelFrame(self.cadre, text="📊 Données", font=self.font_section, bg=self.cadres_bg, fg="#34495e", padx=15, pady=10, bd=2, relief="groove")
-        section_data.pack(fill="x", pady=10)
+        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=self.font_section)
+        Titre_frame_Donnees.pack(pady=(30,0))
+        Label_frame_Donnees.pack(fill="both",padx=10)
+        Label_frame_Donnees.grid_columnconfigure(0, weight=1)
+        Label_frame_Donnees.grid_rowconfigure(0, weight=1)
 
-        self.bouton(section_data, "📁 Choix Dataset", self.Parametrer_dataset)
-        self.bouton(section_data, "📅 Paramétrer Horizon", self.Parametrer_horizon)
+
+        self.bouton(Label_frame_Donnees, "📁 Choix Dataset", self.Parametrer_dataset,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        
 
         # Section 3 : Actions
-        section_actions = tk.Frame(self.cadre, bg="#f0f4f8")
-        section_actions.pack(fill="x", pady=(20, 0))
+        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=self.cadre.cget("fg_color")) #fg_color=root.cget('fg_color')
+        section_actions.pack(side="bottom",fill="both",pady=(0,10),padx=10)
+        section_actions.grid_columnconfigure(0, weight=1)
+        section_actions.grid_columnconfigure(1, weight=1)
+        section_actions.grid_rowconfigure(0, weight=1)
+        section_actions.grid_rowconfigure(1, weight=1)
 
-        self.bouton(section_actions, "🚀 Envoyer la configuration au serveur", self.EnvoyerConfig, bg="#d4efdf", fg="#145a32")
-        self.bouton(section_actions, "🛑 Annuler l'entraînement", self.annuler_entrainement, bg="#f9e79f", fg="#7d6608")
-        self.bouton(section_actions, "❌ Quitter", self.destroy, bg="#f5b7b1", fg="#641e16")
+        # self.bouton(section_actions, "🚀 Envoyer la configuration au serveur", self.EnvoyerConfig, bg="#d4efdf", fg="#145a32")
+        # self.bouton(section_actions, "🛑 Annuler l'entraînement", self.annuler_entrainement, bg="#f9e79f", fg="#7d6608")
+        # self.bouton(section_actions, "❌ Quitter", self.destroy, bg="#f5b7b1", fg="#641e16")
+        
+        start_btn = self.bouton(section_actions, "🚀 Start", self.EnvoyerConfig, height=60, bg="#d4efdf", fg="#145a32", font=("Roboto", 20))
+        stop_btn = self.bouton(section_actions, "🛑 Stop", self.annuler_entrainement, height=60, bg="#f9e79f", fg="#7d6608", font=("Roboto", 20))
+        quit_btn = self.bouton(section_actions, "❌ Quitter", self.destroy, height=60, bg="#f5b7b1", fg="#641e16", font=("Roboto", 20))
 
-        self.update_idletasks()
-        self.geometry(f"520x{self.winfo_reqheight()}")
+        # Alignement horizontal
+        start_btn.grid(row=0, column=0, padx=10, pady=(10,0),sticky="nsew")
+        stop_btn.grid(row=0, column=1, padx=10, pady=(10,0),sticky="nsew")
+        quit_btn.grid(row=1, column=0, columnspan=2, padx=10, pady=(20,10),sticky="nsew")
+
+
+
+
+        # self.update_idletasks()
+        # self.geometry(f"520x{self.winfo_reqheight()}")
 
         #self.attributes('-fullscreen', True)  # Enable fullscreen
-        self.state('zoomed')
+        self.after(100, lambda: self.state("zoomed"))
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
 
+    def label_frame(self, root, title, font, width=200, height=200):
+        # Crée un cadre avec un titre simulant un LabelFrame
+        frame = ctk.CTkFrame(root, width=width, height=height, corner_radius=10, fg_color=root.cget('fg_color'), border_width=2, border_color="gray")
+        #frame.pack_propagate(False)
+
+        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font)
+        return frame, title_label
+    
+    def bouton(self, parent, texte, commande,padx=5, pady=20,bg=None, fg=None, font=None, width=None, height=None,pack=False):
+        """Crée un bouton avec le style CustomTkinter par défaut"""
+        btn = ctk.CTkButton(
+            parent,
+            text=texte,
+            command=commande
+        )
+
+        if font==None:
+            btn.configure(font=self.font_bouton)
+        else:
+            btn.configure(font=font)
+        if bg!=None:
+            btn.configure(fg_color=bg)
+        if fg!=None:
+            btn.configure(text_color=fg)
+        if height!=None:
+            btn.configure(height=height)
+        if width!=None:
+            btn.configure(width=width)
+        if pack==True:
+            btn.pack(fill="x",pady=pady, padx=padx)
+        return btn
+    
     def annuler_entrainement(self):
         """Annule l'entraînement sans fermer le programme."""
         if not self.stop_training:
@@ -213,17 +307,6 @@ class Fenetre_Acceuil(ctk.CTk):
             messagebox.showinfo("Annulation", "L'entraînement en cours a été annulé.")
         else:
             messagebox.showwarning("Info", "Aucun entraînement en cours ou déjà annulé.")
-
-    def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
-        bouton = tk.Button(
-            parent, text=texte, font=self.font_bouton, command=commande,
-            bg=bg, fg=fg, relief="raised", bd=2, height=2
-        )
-        bouton.pack(fill="x", pady=5)
-
-        # Effet de survol
-        bouton.bind("<Enter>", lambda e: bouton.config(bg="#d6eaf8"))
-        bouton.bind("<Leave>", lambda e: bouton.config(bg=bg))
 
     def test(self):
         print("test")
@@ -364,82 +447,76 @@ class Fenetre_Acceuil(ctk.CTk):
             training_thread.start()
 
 
-class Cadre_Entrainement(tk.Frame):
+class Cadre_Entrainement(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.cadres_bg = app.cadres_bg
-        self.configure(bg=self.cadres_bg)
+        self.configure(fg_color=master.cget("fg_color"))
+
+        # self.cadres_bg = app.cadres_bg
+        # self.configure(fg_color=self.cadres_bg)
         
         # Variables pour stocker les données
         self.epochs = []
         self.losses = []
         self.data_queue = queue.Queue()
         self.is_training = False
-        self.is_log=tk.BooleanVar(value=False)
+        self.is_log=ctk.BooleanVar(value=False)
         
         # Titre
-        self.titre = tk.Label(
+        self.titre = ctk.CTkLabel(
             self, 
             text="📊 Suivi de l'Entraînement en Temps Réel", 
             font=("Helvetica", 16, "bold"),
-            bg=self.cadres_bg,
-            fg="#2c3e50"
         )
         self.titre.pack(pady=(0, 10))
 
         self.progress_bar = ttk.Progressbar(self, length=800, mode='determinate')        
         
         # Frame pour les informations
-        self.info_frame = tk.Frame(self, bg=self.cadres_bg)
+        # self.info_frame = ctk.CTkFrame(self)
+        self.info_frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
         self.info_frame.pack(fill="x", pady=(0, 10))
         
+        
         # Labels d'information
-        self.label_epoch = tk.Label(
+        self.label_epoch = ctk.CTkLabel(
             self.info_frame,
             text="Epoch: -",
             font=("Helvetica", 12, "bold"),
-            bg=self.cadres_bg,
-            fg="#34495e"
         )
         self.label_epoch.pack(side="left", padx=10)
 
-        self.label_epoch_s = tk.Label(
+        self.label_epoch_s = ctk.CTkLabel(
             self.info_frame,
             text="Epochs/seconde: -",
             font=("Helvetica", 12, "bold"),
-            bg=self.cadres_bg,
-            fg="#34495e"
         )
         self.label_epoch_s.pack(side="left", padx=10)
         
-        self.label_loss = tk.Label(
+        self.label_loss = ctk.CTkLabel(
             self.info_frame,
             text="Loss: -",
             font=("Helvetica", 12, "bold"),
-            bg=self.cadres_bg,
-            fg="#e74c3c"
         )
         self.label_loss.pack(side="left", padx=10)
         
-        self.label_status = tk.Label(
+        self.label_status = ctk.CTkLabel(
             self.info_frame,
             text="⏸️ En attente",
             font=("Helvetica", 12),
-            bg=self.cadres_bg,
-            fg="#7f8c8d"
         )
         self.label_status.pack(side="right", padx=10)
         
         # Création du graphique matplotlib avec style moderne
-        self.fig = Figure(figsize=(10, 6), facecolor=self.cadres_bg)
+        self.fig = Figure(figsize=(10, 6)) #,dpi=100
         self.ax = self.fig.add_subplot(111)
         
         # Style du graphique
-        self.ax.set_facecolor(self.cadres_bg)
-        self.ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
-        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold', color='#2c3e50')
-        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold', color='#2c3e50')
-        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', color='#2c3e50', pad=20)
+        # self.ax.set_facecolor(self.cadres_bg)
+        self.ax.grid(True, linestyle='--', alpha=0.3) #, color='#95a5a6'
+        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold') #, color='#2c3e50'
+        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold') #, color='#2c3e50'
+        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', pad=20) #, color='#2c3e50'
         
         # Ligne de tracé (sera mise à jour)
         self.line, = self.ax.plot([], [], 'o-', linewidth=2.5, markersize=6, 
@@ -454,9 +531,9 @@ class Cadre_Entrainement(tk.Frame):
         
 
 
-        tk.Checkbutton(self, text="📈 Échelle Logarithmique", variable=self.is_log,
-                    bg=self.cadres_bg,fg="black", font=("Helvetica", 14, "bold"), 
-                    selectcolor="white",command=self.Log_scale).pack(side="left",pady=(10,0))
+        ctk.CTkCheckBox(self, text="📈 Échelle Logarithmique", variable=self.is_log,
+                    font=("Helvetica", 14, "bold"),
+                    command=self.Log_scale).pack(side="left",pady=(10,0))
         
         # Ajustement automatique des marges
         self.fig.tight_layout()
@@ -500,17 +577,17 @@ class Cadre_Entrainement(tk.Frame):
 
         # Réinitialiser le graphique
         self.ax.clear()
-        self.ax.set_facecolor(self.cadres_bg)
-        self.ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
-        self.ax.grid(True, which='minor', linestyle='--',alpha=0.3, color='#95a5a6') #Grille log
-        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold', color='#2c3e50')
-        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold', color='#2c3e50')
-        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', color='#2c3e50', pad=20)
+        # self.ax.set_facecolor(self.cadres_bg)
+        self.ax.grid(True, linestyle='--', alpha=0.3) #, color='#95a5a6'
+        self.ax.grid(True, which='minor', linestyle='--',alpha=0.3) #Grille log , color='#95a5a6'
+        self.ax.set_xlabel('Epoch', fontsize=12, fontweight='bold') #, color='#2c3e50'
+        self.ax.set_ylabel('Loss', fontsize=12, fontweight='bold') #, color='#2c3e50'
+        self.ax.set_title('Évolution de la Loss', fontsize=14, fontweight='bold', pad=20) #, color='#2c3e50'
         self.line, = self.ax.plot([], [], 'o-', linewidth=2.5, markersize=6,
                                    color='#3498db', markerfacecolor='#e74c3c',
                                    markeredgewidth=2, markeredgecolor='#c0392b')
         
-        self.label_status.config(text="🚀 En cours...", fg="#27ae60")
+        self.label_status.configure(text="🚀 En cours...",text_color="#27ae60")
         self.canvas.draw()
         
 
@@ -538,9 +615,9 @@ class Cadre_Entrainement(tk.Frame):
                 updated = True
                 
                 # Mettre à jour les labels
-                self.label_epoch.config(text=f"Epoch: {epoch}")
-                self.label_epoch_s.config(text=f"Epochs/seconde: {epoch_s:.2f}")
-                self.label_loss.config(text=f"Loss: {loss:.6f}")
+                self.label_epoch.configure(text=f"Epoch: {epoch}")
+                self.label_epoch_s.configure(text=f"Epochs/seconde: {epoch_s:.2f}")
+                self.label_loss.configure(text=f"Loss: {loss:.6f}")
                 # Mettre à jour la barre de progression
                 self.progress_bar['value'] = (epoch / self.total_epochs) * 100
             except queue.Empty:
@@ -585,8 +662,8 @@ class Cadre_Entrainement(tk.Frame):
                 self.losses.append(loss)
                 
                 # Mettre à jour les labels
-                self.label_epoch.config(text=f"Epoch: {epoch}")
-                self.label_loss.config(text=f"Loss: {loss:.6f}")
+                self.label_epoch.configure(text=f"Epoch: {epoch}")
+                self.label_loss.configure(text=f"Loss: {loss:.6f}")
                 # Mettre à jour la barre de progression
                 self.progress_bar['value'] = (epoch / self.total_epochs) * 100
             except queue.Empty:
@@ -617,27 +694,24 @@ class Cadre_Entrainement(tk.Frame):
         
         self.is_training = False
         self.progress_bar.pack_forget()
-        self.label_status.config(text="✅ Terminé", fg="#27ae60")
+        self.label_status.configure(text="✅ Terminé", text_color="#27ae60")
         
         # Afficher les statistiques finales
         if len(self.losses) > 0:
             final_loss = self.losses[-1]
             min_loss = min(self.losses)
-            self.label_loss.config(text=f"Loss finale: {final_loss:.6f} (min: {min_loss:.6f})")
+            self.label_loss.configure(text=f"Loss finale: {final_loss:.6f} (min: {min_loss:.6f})")
 
-class Cadre_Testing(tk.Frame):
+class Cadre_Testing(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.cadres_bg = app.cadres_bg
-        self.configure(bg=self.cadres_bg)
+        self.configure(fg_color=master.cget("fg_color"))
 
         # Titre
-        self.titre = tk.Label(
+        self.titre = ctk.CTkLabel(
             self, 
             text="📊 Suivi de la phase de test", 
             font=("Helvetica", 16, "bold"),
-            bg=self.cadres_bg,
-            fg="#2c3e50"
         )
         self.titre.pack(pady=(0, 10))
 

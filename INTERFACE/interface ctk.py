@@ -122,6 +122,13 @@ Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 
 # Créer la fenêtre d'accueil avec CustomTkinter
 class Fenetre_Acceuil(ctk.CTk):
+    def label_frame(self, root, width, height, title, font):
+        # Crée un cadre avec un titre simulant un LabelFrame
+        frame = ctk.CTkFrame(root, corner_radius=10, fg_color=root.cget('fg_color'), border_width=2, border_color="gray")
+        #frame.pack_propagate(False)
+
+        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font)
+        return frame, title_label
     def __init__(self):
         self.stop_training = False  # drapeau d'annulation
         self.Payload={}
@@ -186,16 +193,13 @@ class Fenetre_Acceuil(ctk.CTk):
         ).pack(pady=(0, 20))
 
         # Section 1 : Modèle
-        ctk.CTkLabel(
-            self.cadre,
-            text="🧬 Modèle",
-            font=self.font_section,
-            anchor="w"
-        ).pack(fill="x", pady=(10, 5), padx=20)
+        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, width=280, height=150, title="🧬 Modèle", font=self.font_section)
+        Titre_frame_Modele.pack()
+        Label_frame_Modele.pack(fill="both",padx=10)
+        
 
-        self.bouton(self.cadre, "📂 Charger Modèle", self.test)
-        self.bouton(self.cadre, "⚙️ Paramétrer Modèle", self.Parametrer_modele)
-
+        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,padx=20,pady=(20,0),pack=True)
+        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,padx=20,pady=(20,20),pack=True)
         # Section 2 : Données
         ctk.CTkLabel(
             self.cadre,
@@ -204,51 +208,72 @@ class Fenetre_Acceuil(ctk.CTk):
             anchor="w"
         ).pack(fill="x", pady=(20, 5), padx=20)
 
-        self.bouton(self.cadre, "📁 Choix Dataset", self.Parametrer_dataset)
-        self.bouton(self.cadre, "📅 Paramétrer Horizon", self.Parametrer_horizon)
+        self.bouton(self.cadre, "📁 Choix Dataset", self.Parametrer_dataset,padx=20,pady=(20,0),pack=True)
+        self.bouton(self.cadre, "📅 Paramétrer Horizon", self.Parametrer_horizon,padx=20,pady=(20,20),pack=True)
 
         # Section 3 : Actions
-        ctk.CTkLabel(
-            self.cadre,
-            text="🚀 Actions",
-            font=self.font_section,
-            anchor="w"
-        ).pack(fill="x", pady=(20, 5), padx=20)
+        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10) #fg_color=root.cget('fg_color')
+        section_actions.pack(fill="both", pady=(20, 0))
 
-        # Bouton Lancer l'entraînement
-        self.bouton_lancer = ctk.CTkButton(
-            self.cadre,
-            text="🚀 Lancer l'entraînement",
-            font=self.font_bouton,
-            height=40,
-            command=self.lancer_entrainement
-        )
-        self.bouton_lancer.pack(fill="x", pady=5, padx=20)
+        # self.bouton(section_actions, "🚀 Envoyer la configuration au serveur", self.EnvoyerConfig, bg="#d4efdf", fg="#145a32")
+        # self.bouton(section_actions, "🛑 Annuler l'entraînement", self.annuler_entrainement, bg="#f9e79f", fg="#7d6608")
+        # self.bouton(section_actions, "❌ Quitter", self.destroy, bg="#f5b7b1", fg="#641e16")
+        
+        start_btn = self.bouton(section_actions, "🚀 Start", self.test, width=100, height=60, bg="#d4efdf", fg="#145a32", font=("Roboto", 20))
+        stop_btn = self.bouton(section_actions, "🛑 Stop", self.annuler_entrainement, width=100, height=60, bg="#f9e79f", fg="#7d6608", font=("Roboto", 20))
+        quit_btn = self.bouton(section_actions, "❌ Quitter", self.destroy, width=210, height=60, bg="#f5b7b1", fg="#641e16", font=("Roboto", 20))
 
-        # Bouton Annuler
-        self.bouton_annuler = ctk.CTkButton(
-            self.cadre,
-            text="⛔ Annuler l'entraînement",
-            font=self.font_bouton,
-            height=40,
-            state="disabled",
-            fg_color="transparent",
-            border_width=2,
-            text_color=("gray10", "gray90"),
-            command=self.annuler_entrainement
-        )
-        self.bouton_annuler.pack(fill="x", pady=5, padx=20)
+        # Alignement horizontal
+        start_btn.grid(row=0, column=0, padx=5, pady=5)
+        stop_btn.grid(row=0, column=1, padx=5, pady=5)
+        quit_btn.grid(row=1, column=0, columnspan=2, padx=5, pady=(20,5))
 
-    def bouton(self, parent, texte, commande):
+        # # Bouton Lancer l'entraînement
+        # self.bouton_lancer = ctk.CTkButton(
+        #     self.cadre,
+        #     text="🚀 Lancer l'entraînement",
+        #     font=self.font_bouton,
+        #     height=40,
+        #     command=self.lancer_entrainement
+        # )
+        # self.bouton_lancer.pack(fill="x", pady=5, padx=20)
+
+        # # Bouton Annuler
+        # self.bouton_annuler = ctk.CTkButton(
+        #     self.cadre,
+        #     text="⛔ Annuler l'entraînement",
+        #     font=self.font_bouton,
+        #     height=40,
+        #     state="disabled",
+        #     fg_color="transparent",
+        #     border_width=2,
+        #     text_color=("gray10", "gray90"),
+        #     command=self.annuler_entrainement
+        # )
+        # self.bouton_annuler.pack(fill="x", pady=5, padx=20)
+    
+    def bouton(self, parent, texte, commande,padx=5, pady=20,bg=None, fg=None, font=None, width=None, height=None,pack=False):
         """Crée un bouton avec le style CustomTkinter par défaut"""
         btn = ctk.CTkButton(
             parent,
             text=texte,
-            font=self.font_bouton,
-            height=35,
             command=commande
         )
-        btn.pack(fill="x", pady=5, padx=20)
+
+        if font==None:
+            btn.configure(font=self.font_bouton)
+        else:
+            btn.configure(font=font)
+        if bg!=None:
+            btn.configure(fg_color=bg)
+        if fg!=None:
+            btn.configure(text_color=fg)
+        if height!=None:
+            btn.configure(height=height)
+        if width!=None:
+            btn.configure(width=width)
+        if pack==True:
+            btn.pack(fill="x",pady=pady, padx=padx)
         return btn
 
     def test(self):
