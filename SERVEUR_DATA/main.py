@@ -1,516 +1,519 @@
-# main.py
-from __future__ import annotations
+# ====================================
+# IMPORTs
+# ====================================
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from typing import List, Dict, Any, Optional, Tuple
+import json
+import os
+from datetime import datetime
+from dataclasses import dataclass, asdict
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Union, Dict, Any
-from uuid import uuid4
-from datetime import datetime, timezone
-import os, json, hashlib, math
+# ====================================
+# MODELS / DATACLASSES
+# ====================================
 
-from .classes import DatasetIn, DatasetOut
+@dataclass
+class TimeSeriesData:
+    """Représente une série temporelle"""
+    timestamps: List[str]
+    values: List[float]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire pour sérialisation JSON"""
+        return asdict(self)
 
-# python -m uvicorn SERVEUR_DATA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
+# ====================================
+# CONFIGURATION
+# ====================================
 
-# --------------------------
-# Répertoires de stockage
-# --------------------------
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-STORE_DIR = os.path.join(BASE_DIR, "store")
-MODELS_DIR = os.path.join(STORE_DIR, "models")
-DATASETS_DIR = os.path.join(STORE_DIR, "datasets")
-os.makedirs(MODELS_DIR, exist_ok=True)
-os.makedirs(DATASETS_DIR, exist_ok=True)
+DATASETS_DIR = os.getenv("DATASETS_DIR", "SERVEUR_DATA/store/datasets")
 
-# --------------------------
-# Petits utilitaires
-# --------------------------
-def _norm(s: Optional[str]) -> Optional[str]:
-    if s is None:
-        return None
-    # trim + collapse spaces + lower
-    return " ".join(s.split()).strip().lower()
+# python -m uvicorn SERVEUR_DATA.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
-def sha256_of_file(path: str, chunk_size: int = 1 << 20) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(chunk_size), b""):
-            h.update(chunk)
-    return h.hexdigest()
+app = FastAPI()
 
-def json_dump(path: str, obj: Any) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=2)
 
-def json_load(path: str) -> Any:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+# ====================================
+# CLASSE GESTION DONNÉES
+# ====================================
 
-def _to_dt(x: str) -> datetime:
-    """
-    Parse robuste d'une date ISO (gère 'Z', offset, sous-secondes).
-    Retourne un datetime naïf en UTC pour comparaison simple.
-    """
-    s = str(x).strip()
-    if s.endswith("Z"):
-        s = s[:-1] + "+00:00"
-    try:
-        dt = datetime.fromisoformat(s)
-    except Exception as e:
-        raise ValueError(f"Format de date invalide: {x}") from e
-    if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-    return dt
-
-def _filter_record_by_dates(record: Dict[str, Any], start: str, end: str) -> Dict[str, Any]:
-    """
-    Filtre record['data'] pour ne garder que start <= t <= end.
-    record: {"id","name","time_kind","data":[{"t":..., "v":...},...],...}
-    start/end: ISO strings
-    Retour: record cloné avec 'data' borné + 'slice' meta.
-    """
-    if not record or "data" not in record:
-        raise ValueError("Record invalide (clé 'data' manquante).")
-
-    t0 = _to_dt(start)
-    t1 = _to_dt(end)
-    if t1 < t0:
-        t0, t1 = t1, t0
-
-    out_data = []
-    for p in record.get("data", []):
-        t = p.get("t")
-        if t is None:
-            continue
+class DataStorageManager:
+    """Gère le stockage et la récupération des fichiers de données"""
+    
+    def __init__(self, datasets_dir: str = DATASETS_DIR):
+        """Initialise le gestionnaire de stockage"""
+        self.datasets_dir = datasets_dir
+        self._ensure_datasets_dir_exists()
+    
+    def _ensure_datasets_dir_exists(self):
+        """Crée le répertoire des datasets s'il n'existe pas"""
+        if not os.path.exists(self.datasets_dir):
+            os.makedirs(self.datasets_dir)
+    
+    def _get_dataset_filepath(self, dataset_name: str) -> str:
+        """Retourne le chemin complet d'un fichier dataset"""
+        return os.path.join(self.datasets_dir, f"{dataset_name}.json")
+    
+    def list_available_datasets(self) -> List[str]:
+        """
+        Récupère la liste des noms des datasets disponibles
+        
+        Returns:
+            List[str]: Liste des noms de datasets (sans extension .json)
+            
+        Raises:
+            Exception: En cas d'erreur d'accès au répertoire
+        """
         try:
-            if isinstance(t, (int, float)):
-                dt = datetime.fromtimestamp(float(t))
-            else:
-                dt = _to_dt(str(t))
-        except Exception:
-            continue
-        if t0 <= dt <= t1:
+            if not os.path.exists(self.datasets_dir):
+                return []
+            
+            files = os.listdir(self.datasets_dir)
+            datasets = [f.replace('.json', '') for f in files if f.endswith('.json')]
+            return sorted(datasets)
+        
+        except Exception as e:
+            raise Exception(f"Erreur lors de la lecture du répertoire datasets: {str(e)}")
+    
+    def dataset_exists(self, dataset_name: str) -> bool:
+        """Vérifie si un dataset existe"""
+        filepath = self._get_dataset_filepath(dataset_name)
+        return os.path.exists(filepath)
+    
+    def load_dataset_raw(self, dataset_name: str) -> Dict[str, Any]:
+        """
+        Charge les données brutes d'un dataset depuis le fichier JSON
+        
+        Args:
+            dataset_name (str): Nom du dataset
+        
+        Returns:
+            Dict: Contenu du fichier JSON
+            
+        Raises:
+            FileNotFoundError: Si le dataset n'existe pas
+            ValueError: Si le format JSON est invalide
+        """
+        filepath = self._get_dataset_filepath(dataset_name)
+        
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Dataset '{dataset_name}' non trouvé")
+        
+        try:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            return data
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Format JSON invalide pour '{dataset_name}': {str(e)}")
+    
+    def save_dataset(self, dataset_name: str, data: Dict[str, Any]):
+        """
+        Sauvegarde un dataset dans le répertoire
+        
+        Args:
+            dataset_name (str): Nom du dataset
+            data (Dict): Données à sauvegarder
+        """
+        filepath = self._get_dataset_filepath(dataset_name)
+        
+        try:
+            with open(filepath, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            raise Exception(f"Erreur lors de la sauvegarde du dataset: {str(e)}")
+
+
+# ====================================
+# CLASSE TRAITEMENT DONNÉES
+# ====================================
+
+class DataProcessor:
+    """Traite et filtre les données de séries temporelles"""
+    
+    @staticmethod
+    def validate_time_series_data(data: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Valide que les données ont le bon format
+        
+        Args:
+            data (Dict): Données à valider
+        
+        Returns:
+            Tuple[bool, str]: (est_valide, message_erreur)
+        """
+        if "timestamps" not in data:
+            return False, "Champ 'timestamps' manquant"
+        
+        if "values" not in data:
+            return False, "Champ 'values' manquant"
+        
+        if not isinstance(data["timestamps"], list):
+            return False, "'timestamps' doit être une liste"
+        
+        if not isinstance(data["values"], list):
+            return False, "'values' doit être une liste"
+        
+        if len(data["timestamps"]) != len(data["values"]):
+            return False, "Nombre de timestamps et values différents"
+        
+        if len(data["timestamps"]) == 0:
+            return False, "Données vides"
+        
+        return True, ""
+    
+    @staticmethod
+    def parse_date(date_str: str) -> datetime:
+        """
+        Parse une date en différents formats
+        
+        Args:
+            date_str (str): Date en string
+        
+        Returns:
+            datetime: Objet datetime
+            
+        Raises:
+            ValueError: Si le format est non reconnu
+        """
+        formats = ["%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y"]
+        
+        for fmt in formats:
             try:
-                v = float(p.get("v"))
-            except Exception:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
                 continue
-            out_data.append({"t": t, "v": v})
+        
+        raise ValueError(f"Format de date non reconnu: {date_str}")
+    
+    @staticmethod
+    def filter_by_dates(
+        timestamps: List[str],
+        values: List[float],
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None
+    ) -> Tuple[List[str], List[float]]:
+        """
+        Filtre les données par plage de dates
+        
+        Args:
+            timestamps (List[str]): Liste des timestamps
+            values (List[float]): Liste des valeurs
+            date_start (str, optional): Date de début (YYYY-MM-DD)
+            date_end (str, optional): Date de fin (YYYY-MM-DD)
+        
+        Returns:
+            Tuple[List, List]: Données filtrées (timestamps, values)
+            
+        Raises:
+            ValueError: Si les dates sont invalides
+        """
+        if date_start is None and date_end is None:
+            return timestamps, values
+        
+        filtered_timestamps = []
+        filtered_values = []
+        
+        try:
+            start = DataProcessor.parse_date(date_start) if date_start else None
+            end = DataProcessor.parse_date(date_end) if date_end else None
+            
+            for ts, val in zip(timestamps, values):
+                ts_date = DataProcessor.parse_date(ts)
+                
+                if start and ts_date < start:
+                    continue
+                if end and ts_date > end:
+                    continue
+                
+                filtered_timestamps.append(ts)
+                filtered_values.append(val)
+        
+        except ValueError as e:
+            raise ValueError(f"Erreur lors du filtrage par dates: {str(e)}")
+        
+        return filtered_timestamps, filtered_values
+    
+    @staticmethod
+    def create_time_series_data(
+        timestamps: List[str],
+        values: List[float]
+    ) -> TimeSeriesData:
+        """Crée un objet TimeSeriesData"""
+        return TimeSeriesData(timestamps=timestamps, values=values)
 
-    new_rec = dict(record)
-    new_rec["data"] = out_data
-    new_rec["slice"] = {"start": start, "end": end, "n_points": len(out_data)}
-    return new_rec
 
-# --------------------------
-# App
-# --------------------------
-app = FastAPI(title="Unified Storage Server", version="1.3")
+# ====================================
+# CLASSE ORCHESTRATION
+# ====================================
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
-)
+class DataService:
+    """Service principal pour la gestion des données"""
+    
+    def __init__(self, datasets_dir: str = DATASETS_DIR):
+        """Initialise le service"""
+        self.storage = DataStorageManager(datasets_dir)
+        self.processor = DataProcessor()
+    
+    def get_datasets_list(self) -> List[str]:
+        """
+        Récupère la liste de tous les datasets disponibles
+        
+        Returns:
+            List[str]: Liste des noms de datasets
+        """
+        return self.storage.list_available_datasets()
+    
+    def fetch_dataset(
+        self,
+        dataset_name: str,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None
+    ) -> TimeSeriesData:
+        """
+        Récupère un dataset avec filtrage optionnel par dates
+        
+        Args:
+            dataset_name (str): Nom du dataset
+            date_start (str, optional): Date de début
+            date_end (str, optional): Date de fin
+        
+        Returns:
+            TimeSeriesData: Les données filtrées
+            
+        Raises:
+            FileNotFoundError: Si le dataset n'existe pas
+            ValueError: Si les données sont invalides
+        """
+        # Charger les données brutes
+        raw_data = self.storage.load_dataset_raw(dataset_name)
+        
+        # Valider le format
+        is_valid, error_msg = self.processor.validate_time_series_data(raw_data)
+        if not is_valid:
+            raise ValueError(f"Format de données invalide: {error_msg}")
+        
+        # Filtrer par dates
+        timestamps, values = self.processor.filter_by_dates(
+            raw_data["timestamps"],
+            raw_data["values"],
+            date_start,
+            date_end
+        )
+        
+        if not timestamps:
+            raise ValueError(f"Aucune donnée trouvée pour la plage {date_start} à {date_end}")
+        
+        # Créer et retourner l'objet TimeSeriesData
+        return self.processor.create_time_series_data(timestamps, values)
+    
+    def add_dataset(self, dataset_name: str, data: Dict[str, Any]):
+        """
+        Ajoute un nouveau dataset
+        
+        Args:
+            dataset_name (str): Nom du dataset
+            data (Dict): Données au format {"timestamps": [...], "values": [...]}
+            
+        Raises:
+            ValueError: Si les données ne sont pas valides
+        """
+        is_valid, error_msg = self.processor.validate_time_series_data(data)
+        if not is_valid:
+            raise ValueError(f"Format de données invalide: {error_msg}")
+        
+        self.storage.save_dataset(dataset_name, data)
 
-# --------------------------
-# Health
-# --------------------------
-@app.get("/health")
-def health():
-    return {"status": "ok", "time": datetime.utcnow().isoformat() + "Z"}
 
-# --------------------------
-# Helpers internes (listing/lookup)
-# --------------------------
-def _iter_models_meta() -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
-    for name in os.listdir(MODELS_DIR):
-        if name.endswith(".json"):
-            p = os.path.join(MODELS_DIR, name)
-            try:
-                out.append(json_load(p))
-            except Exception:
-                continue
-    return out
+# ====================================
+# ROUTES
+# ====================================
 
-def _find_model_meta_by_id(model_id: str) -> Optional[Dict[str, Any]]:
-    for meta in _iter_models_meta():
-        if meta.get("id") == model_id:
-            return meta
-    return None
+# Initialiser le service
+data_service = DataService()
 
-def _models_by_logical_name(logical_name: str) -> List[Dict[str, Any]]:
-    target = _norm(logical_name)
-    items = [m for m in _iter_models_meta() if _norm(m.get("logical_name")) == target]
-    items.sort(key=lambda m: m.get("created_utc", ""), reverse=True)
-    return items
 
-def _iter_dataset_records() -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
-    for name in os.listdir(DATASETS_DIR):
-        if name.endswith(".json"):
-            p = os.path.join(DATASETS_DIR, name)
-            try:
-                out.append(json_load(p))
-            except Exception:
-                continue
-    return out
-
-def _datasets_by_name(ds_name: str) -> List[Dict[str, Any]]:
-    target = _norm(ds_name)
-    items = [d for d in _iter_dataset_records() if _norm(d.get("name")) == target]
-    items.sort(key=lambda d: d.get("created_utc", ""), reverse=True)
-    return items
-
-def _model_name_exists(name: str) -> bool:
-    return len(_models_by_logical_name(name)) > 0
-
-def _dataset_name_exists(name: str) -> bool:
-    return len(_datasets_by_name(name)) > 0
-
-# ==========================
-# MODELS: upload, list, download, by-name
-# ==========================
-@app.post("/models/upload")
-async def upload_model(
-    file: UploadFile = File(...),
-    name: str = Form(...),  # nom logique OBLIGATOIRE et UNIQUE
-):
-    if not name.strip():
-        raise HTTPException(status_code=400, detail="Le nom du modèle (name) est obligatoire et ne doit pas être vide.")
-    if _model_name_exists(name):
-        raise HTTPException(status_code=409, detail=f"Nom de modèle déjà utilisé: '{name}'")
-
-    allowed_ext = {".pth", ".pt", ".onnx", ".bin", ".safetensors", ".joblib", ".pkl"}
-    _, ext = os.path.splitext(file.filename)
-    if ext.lower() not in allowed_ext:
-        raise HTTPException(status_code=400, detail=f"Extension non autorisée: {ext}")
-
-    uid = uuid4().hex
-    safe_name = f"{uid}__{os.path.basename(file.filename)}"
-    out_path = os.path.join(MODELS_DIR, safe_name)
-
-    # Écriture en chunks
-    with open(out_path, "wb") as f:
-        while chunk := await file.read(1 << 20):
-            f.write(chunk)
-
-    meta = {
-        "id": uid,
-        "logical_name": name,
-        "logical_name_norm": _norm(name),
-        "original_filename": file.filename,
-        "stored_filename": safe_name,
-        "size_bytes": os.path.getsize(out_path),
-        "sha256": sha256_of_file(out_path),
-        "created_utc": datetime.utcnow().isoformat() + "Z",
-    }
-    json_dump(out_path + ".json", meta)
-    return {"message": "Modèle sauvegardé", "id": uid, "meta": meta}
-
-@app.get("/models")
-def list_models():
-    items = _iter_models_meta()
-    items.sort(key=lambda m: m.get("created_utc", ""), reverse=True)
-    return {"models": items}
-
-@app.get("/models/{model_id}/download")
-def download_model(model_id: str):
-    meta = _find_model_meta_by_id(model_id)
-    if not meta:
-        raise HTTPException(status_code=404, detail="Modèle introuvable.")
-    bin_path = os.path.join(MODELS_DIR, meta["stored_filename"])
-    if not os.path.exists(bin_path):
-        raise HTTPException(status_code=404, detail="Fichier binaire introuvable.")
-    return FileResponse(bin_path, filename=meta["original_filename"])
-
-# --- Recherche par nom (modèles)
-@app.get("/models/by-name/{logical_name}")
-def list_models_by_name(logical_name: str):
-    items = _models_by_logical_name(logical_name)
-    return {"models": items}
-
-@app.get("/models/by-name/{logical_name}/latest")
-def get_latest_model_meta(logical_name: str):
-    items = _models_by_logical_name(logical_name)
-    if not items:
-        raise HTTPException(status_code=404, detail="Aucun modèle pour ce nom logique.")
-    return items[0]
-
-@app.get("/models/by-name/{logical_name}/download")
-def download_latest_model(logical_name: str):
-    items = _models_by_logical_name(logical_name)
-    if not items:
-        raise HTTPException(status_code=404, detail="Aucun modèle pour ce nom logique.")
-    meta = items[0]
-    bin_path = os.path.join(MODELS_DIR, meta["stored_filename"])
-    if not os.path.exists(bin_path):
-        raise HTTPException(status_code=404, detail="Fichier binaire introuvable.")
-    return FileResponse(bin_path, filename=meta["original_filename"])
-
-# ==========================
-# DATASETS: post JSON, list, get, by-name, slice
-# ==========================
-@app.post("/datasets", response_model=DatasetOut)
-def add_dataset(payload: DatasetIn):
-    # unicité du nom
-    if not payload.name or not payload.name.strip():
-        raise HTTPException(status_code=400, detail="Le nom du dataset (name) est obligatoire.")
-    if _dataset_name_exists(payload.name):
-        raise HTTPException(status_code=409, detail=f"Nom de dataset déjà utilisé: '{payload.name}'")
-
-    time_kind = "dates" if payload.dates else ("timestamps" if payload.timestamps else None)
-
-    times = payload.dates if payload.dates is not None else payload.timestamps
-    if times is not None and len(times) != len(payload.values):
-        raise HTTPException(status_code=400, detail="Longueurs incohérentes entre time et values.")
-
-    pairs = []
-    if times is None:
-        for i, v in enumerate(payload.values):
-            if v is None or (isinstance(v, float) and math.isnan(v)):
-                continue
-            pairs.append((i, float(v)))
-    else:
-        for t, v in zip(times, payload.values):
-            if v is None or (isinstance(v, float) and math.isnan(v)):
-                continue
-            pairs.append((t, float(v)))
-
-    if not pairs:
-        raise HTTPException(status_code=400, detail="Aucun point valide après filtrage (toutes valeurs nulles ?).")
-
-    ds_id = uuid4().hex
-    record = {
-        "id": ds_id,
-        "name": payload.name,
-        "name_norm": _norm(payload.name),
-        "time_kind": time_kind,
-        "data": [{"t": t, "v": v} for (t, v) in pairs],
-        "meta": payload.meta or {},
-        "created_utc": datetime.utcnow().isoformat() + "Z",
-    }
-
-    out_json = os.path.join(DATASETS_DIR, f"{ds_id}.json")
-    json_dump(out_json, record)
-
-    preview = {
-        "head": record["data"][:5],
-        "tail": record["data"][-5:],
-        "min": min(d["v"] for d in record["data"]),
-        "max": max(d["v"] for d in record["data"]),
-    }
-    return DatasetOut(
-        id=ds_id,
-        name=payload.name,
-        n_points=len(record["data"]),
-        time_kind=time_kind,
-        preview=preview,
-        meta=record["meta"],
-    )
-
-@app.get("/datasets")
-def list_datasets():
-    items = []
-    for rec in _iter_dataset_records():
-        items.append({
-            "id": rec.get("id"),
-            "name": rec.get("name"),
-            "n_points": len(rec.get("data", [])),
-            "time_kind": rec.get("time_kind"),
-            "created_utc": rec.get("created_utc"),
-        })
-    items.sort(key=lambda r: r.get("created_utc", ""), reverse=True)
-    return {"datasets": items}
-
-@app.get("/datasets/{dataset_id}")
-def get_dataset(dataset_id: str):
-    path = os.path.join(DATASETS_DIR, f"{dataset_id}.json")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Dataset introuvable.")
-    return json_load(path)
-
-@app.get("/datasets/{dataset_id}/download")
-def download_dataset_file(dataset_id: str):
-    path = os.path.join(DATASETS_DIR, f"{dataset_id}.json")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Dataset introuvable.")
-    return FileResponse(path, filename=f"{dataset_id}.json", media_type="application/json")
-
-# --- Recherche par nom (datasets)
-@app.get("/datasets/by-name/{ds_name}")
-def list_datasets_by_name(ds_name: str):
-    items = _datasets_by_name(ds_name)
-    out = [{
-        "id": it.get("id"),
-        "name": it.get("name"),
-        "n_points": len(it.get("data", [])),
-        "time_kind": it.get("time_kind"),
-        "created_utc": it.get("created_utc"),
-    } for it in items]
-    return {"datasets": out}
-
-@app.get("/datasets/by-name/{ds_name}/latest")
-def get_latest_dataset(ds_name: str):
-    items = _datasets_by_name(ds_name)
-    if not items:
-        raise HTTPException(status_code=404, detail="Aucun dataset pour ce nom.")
-    return items[0]
-
-@app.get("/datasets/by-name/{ds_name}/download")
-def download_latest_dataset_file(ds_name: str):
-    items = _datasets_by_name(ds_name)
-    if not items:
-        raise HTTPException(status_code=404, detail="Aucun dataset pour ce nom.")
-    latest = items[0]
-    ds_id = latest.get("id")
-    if not ds_id:
-        raise HTTPException(status_code=500, detail="Dataset corrompu (id manquant).")
-    path = os.path.join(DATASETS_DIR, f"{ds_id}.json")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Fichier dataset introuvable.")
-    return FileResponse(path, filename=f"{ds_id}.json", media_type="application/json")
-
-# --- SLICE par nom + dates (GET)
-@app.get("/datasets/by-name/{ds_name}/slice")
-def get_dataset_slice(ds_name: str, start: str, end: str):
+@app.get("/datasets/list")
+def get_datasets_list():
     """
-    Renvoie le DERNIER dataset pour ce nom, découpé entre [start, end].
-    start/end: ISO strings ('YYYY-MM-DD', 'YYYY-MM-DDTHH:MM:SSZ', etc.)
+    Liste tous les datasets disponibles
+    
+    Response:
+    {
+        "status": "success",
+        "datasets": ["EURO", "GOLD", "BITCOIN", ...]
+    }
     """
-    items = _datasets_by_name(ds_name)
-    if not items:
-        raise HTTPException(status_code=404, detail="Aucun dataset pour ce nom.")
-
-    latest = items[0]
-    ds_id = latest.get("id")
-    if not ds_id:
-        raise HTTPException(status_code=500, detail="Dataset corrompu (id manquant).")
-
-    path = os.path.join(DATASETS_DIR, f"{ds_id}.json")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Fichier dataset introuvable.")
-
-    record = json_load(path)
     try:
-        sliced = _filter_record_by_dates(record, start, end)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return sliced
+        datasets = data_service.get_datasets_list()
+        
+        return {
+            "status": "success",
+            "datasets": datasets,
+            "count": len(datasets)
+        }
+    
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": str(e)
+            }
+        )
 
-# --- SLICE par payload (POST)
-class SliceIn(BaseModel):
-    name: str = Field(..., description="Nom du dataset")
-    dates: List[str] = Field(..., min_items=2, max_items=2, description="[start, end]")
 
-@app.post("/datasets/slice")
-def post_dataset_slice(payload: SliceIn):
-    items = _datasets_by_name(payload.name)
-    if not items:
-        raise HTTPException(status_code=404, detail="Aucun dataset pour ce nom.")
-
-    latest = items[0]
-    ds_id = latest.get("id")
-    if not ds_id:
-        raise HTTPException(status_code=500, detail="Dataset corrompu (id manquant).")
-
-    path = os.path.join(DATASETS_DIR, f"{ds_id}.json")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Fichier dataset introuvable.")
-
-    record = json_load(path)
-    start, end = payload.dates[0], payload.dates[1]
+@app.post("/datasets/fetch")
+def fetch_dataset(request_payload: dict):
+    """
+    Récupère un dataset spécifique avec filtrage optionnel par dates
+    
+    Request body:
+    {
+        "name": "EURO",
+        "dates": ["2020-01-01", "2023-12-31"]  // optionnel
+    }
+    
+    Response:
+    {
+        "status": "success",
+        "data": {
+            "timestamps": ["2020-01-01", ...],
+            "values": [1.10, ...]
+        }
+    }
+    """
     try:
-        sliced = _filter_record_by_dates(record, start, end)
+        # Validation de la requête
+        if "name" not in request_payload:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "error",
+                    "message": "Champ 'name' manquant"
+                }
+            )
+        
+        dataset_name = request_payload["name"]
+        
+        # Extraction optionnelle des dates
+        date_start = None
+        date_end = None
+        
+        if "dates" in request_payload and isinstance(request_payload["dates"], list):
+            if len(request_payload["dates"]) >= 1:
+                date_start = request_payload["dates"][0]
+            if len(request_payload["dates"]) >= 2:
+                date_end = request_payload["dates"][1]
+        
+        # Récupérer le dataset
+        time_series = data_service.fetch_dataset(dataset_name, date_start, date_end)
+        
+        return {
+            "status": "success",
+            "data": time_series.to_dict()
+        }
+    
+    except FileNotFoundError as e:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status": "error",
+                "message": str(e)
+            }
+        )
+    
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return sliced
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "message": str(e)
+            }
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": str(e)
+            }
+        )
 
-# ==========================
-# INVENTORY (listes combinées)
-# ==========================
-@app.get("/inventory")
-def inventory():
-    models = []
-    for meta in _iter_models_meta():
-        models.append({
-            "id": meta.get("id"),
-            "logical_name": meta.get("logical_name"),
-            "original_filename": meta.get("original_filename"),
-            "size_bytes": meta.get("size_bytes"),
-            "sha256": meta.get("sha256"),
-            "created_utc": meta.get("created_utc"),
-        })
-    models.sort(key=lambda m: m.get("created_utc", ""), reverse=True)
 
-    datasets = []
-    for rec in _iter_dataset_records():
-        datasets.append({
-            "id": rec.get("id"),
-            "name": rec.get("name"),
-            "n_points": len(rec.get("data", [])),
-            "time_kind": rec.get("time_kind"),
-            "created_utc": rec.get("created_utc"),
-            "meta": rec.get("meta", {}),
-        })
-    datasets.sort(key=lambda r: r.get("created_utc", ""), reverse=True)
-
-    return {
-        "nb_models": len(models),
-        "nb_datasets": len(datasets),
-        "models": models,
-        "datasets": datasets,
+@app.post("/datasets/add")
+def add_dataset(request_payload: dict):
+    """
+    Ajoute un nouveau dataset au serveur
+    
+    Request body:
+    {
+        "name": "NOUVEAU",
+        "data": {
+            "timestamps": ["2020-01-01", ...],
+            "values": [1.10, ...]
+        }
     }
-
-@app.get("/inventory/by-name")
-def inventory_by_name(model_name: Optional[str] = None, dataset_name: Optional[str] = None):
-    if model_name:
-        models = [{
-            "id": m.get("id"),
-            "logical_name": m.get("logical_name"),
-            "original_filename": m.get("original_filename"),
-            "size_bytes": m.get("size_bytes"),
-            "sha256": m.get("sha256"),
-            "created_utc": m.get("created_utc"),
-        } for m in _models_by_logical_name(model_name)]
-    else:
-        models = []
-
-    if dataset_name:
-        ds_items = _datasets_by_name(dataset_name)
-        datasets = [{
-            "id": d.get("id"),
-            "name": d.get("name"),
-            "n_points": len(d.get("data", [])),
-            "time_kind": d.get("time_kind"),
-            "created_utc": d.get("created_utc"),
-            "meta": d.get("meta", {}),
-        } for d in ds_items]
-    else:
-        datasets = []
-
-    return {
-        "model_name": model_name,
-        "dataset_name": dataset_name,
-        "models": models,
-        "datasets": datasets,
-        "nb_models": len(models),
-        "nb_datasets": len(datasets),
+    
+    Response:
+    {
+        "status": "success",
+        "message": "Dataset 'NOUVEAU' ajouté avec succès"
     }
+    """
+    try:
+        if "name" not in request_payload:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "error",
+                    "message": "Champ 'name' manquant"
+                }
+            )
+        
+        if "data" not in request_payload:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "error",
+                    "message": "Champ 'data' manquant"
+                }
+            )
+        
+        dataset_name = request_payload["name"]
+        data = request_payload["data"]
+        
+        # Ajouter le dataset
+        data_service.add_dataset(dataset_name, data)
+        
+        return {
+            "status": "success",
+            "message": f"Dataset '{dataset_name}' ajouté avec succès"
+        }
+    
+    except ValueError as e:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "message": str(e)
+            }
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": str(e)
+            }
+        )
 
-# ==========================
-# Vérification disponibilité noms
-# ==========================
-@app.get("/names/check")
-def check_names(model_name: Optional[str] = None, dataset_name: Optional[str] = None):
-    out: Dict[str, Any] = {}
-    if model_name is not None:
-        out["model_name"] = model_name
-        out["model_available"] = not _model_name_exists(model_name)
-    if dataset_name is not None:
-        out["dataset_name"] = dataset_name
-        out["dataset_available"] = not _dataset_name_exists(dataset_name)
-    if not out:
-        return {"detail": "Fournir model_name et/ou dataset_name en query string."}
-    return out
+
+
+@app.get("/")
+def root():
+    """Vérification de l'état du serveur"""
+    response = {"message": "Serveur DATA actif !"}
+    return response

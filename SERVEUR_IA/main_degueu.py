@@ -1,0 +1,417 @@
+# ====================================
+# IMPORTs
+# ====================================
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import json 
+import torch
+
+#Train Modele
+from .trains.training_MLP import train_MLP
+from .trains.training_CNN import train_CNN
+from .trains.training_LSTM import train_LSTM
+
+from .test.testing import test_model
+
+from .launcher_serveur import json_path
+
+from typing import List, Optional, Dict, Any
+
+from .classes import (
+    TimeSeriesData,
+    Parametres_archi_reseau_MLP,
+    Parametres_archi_reseau_CNN,
+    Parametres_archi_reseau_LSTM,
+    PaquetComplet)
+
+from .fonctions_pour_main import(
+    filter_series_by_dates,
+    build_supervised_tensors_with_step,
+    split_train_test,
+    sse,
+    normalize_data,
+    create_inverse_function
+)
+
+import os
+import requests
+
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.27.66:8001")
+
+
+# python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
+
+app = FastAPI()
+
+last_config_tempo = None
+last_config_TimeSeries = None
+last_config_series = None  
+
+# ====================================
+# ROUTES
+# ====================================
+
+######################################################
+#    User Interface <-> Serveur IA <-> Serveur Data  #
+######################################################
+@app.post("/train_full")
+def training(payload: PaquetComplet,payload_model: dict):
+#Récupération des données
+    cfg: PaquetComplet = payload
+
+
+    #-------------------------------
+    # ----- Data  ------------------
+    #-------------------------------
+    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/Datas/EURO.json" 
+
+    with open(json_path, 'r') as f:
+        data_json = json.load(f)
+
+    series = TimeSeriesData(**data_json)
+
+    
+    #-------------------------------
+    # ----- Modèle  ----------------
+    #-------------------------------
+
+    model_type = cfg.Parametres_choix_reseau_neurones.modele.lower()
+    
+    if model_type == "mlp":
+        cfg_model = Parametres_archi_reseau_MLP(**payload_model)
+    elif model_type == "cnn":
+        cfg_model = Parametres_archi_reseau_CNN(**payload_model)
+    elif model_type == "lstm":
+        cfg_model = Parametres_archi_reseau_LSTM(**payload_model)
+    else:
+        raise ValueError(f"Modèle inconnu: {model_type}")
+
+
+    #-------------------------------
+    # ----- Prediction  ------------
+    # ------------------------------
+    horizon = 1
+    if cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.horizon:
+        horizon = max(1, int(cfg.Parametres_temporels.horizon))
+
+
+    #-------------------------
+    # ----- (X,y) ------------
+    #-------------------------
+    #Récupération des paramètres
+    dates = cfg.Parametres_temporels.dates if (cfg and cfg.Parametres_temporels) else None
+    pas_temporel = int(cfg.Parametres_temporels.pas_temporel) if (cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.pas_temporel is not None) else 1
+    portion_decoupage = float(cfg.Parametres_temporels.portion_decoupage) if (cfg and cfg.Parametres_temporels and cfg.Parametres_temporels.portion_decoupage is not None) else 0.8
+
+    #Split sur les dates début et fin
+    ts_filt, vals_filt = filter_series_by_dates(series.timestamps, series.values, dates)
+
+    #On build X,y en tenseur pour toch
+    X, y = build_supervised_tensors_with_step(
+        vals_filt,
+        horizon=horizon,
+        step=pas_temporel,
+    )
+
+
+    if X.numel() == 0:
+        def err():
+            yield f"data: {json.dumps({'type':'error','message':'(X,y) vide après filtrage/découpage'})}\n\n"
+        return StreamingResponse(err(), media_type="text/event-stream")
+
+
+# NORMALISATION
+    all_data = torch.cat([X.flatten(), y.flatten()])
+    
+    # Normaliser (vous pouvez choisir "standardization" ou "minmax")
+    all_data_normalized, norm_params = normalize_data(all_data, method="standardization")
+    
+    # Reconstruire X et y normalisés
+    total_X = X.numel()
+    X_normalized = all_data_normalized[:total_X].reshape(X.shape)
+    y_normalized = all_data_normalized[total_X:].reshape(y.shape)
+    
+    # Créer la fonction inverse pour la dénormalisation
+    inverse_fn = create_inverse_function(norm_params)
+
+
+    X, y = X_normalized, y_normalized
+#####
+
+    
+    # split séquentiel train/test via 'portion_decoupage'
+    X_train, y_train, X_test, y_test = split_train_test(X, y, portion_train=portion_decoupage)
+    
+
+    # on entraîne sur le split train (garde X_test/y_test pour logs/éval plus tard)
+    X, y = X_train, y_train
+
+
+    if model_type == "lstm":
+        if X.ndim == 2:
+            X = X.unsqueeze(1)  # (B, T) -> (B, T, 1)
+        if X_test.ndim == 2:
+            X_test = X_test.unsqueeze(1)
+
+
+    elif model_type == "cnn":
+        if X.ndim == 2:
+            X = X.unsqueeze(1)  # (B, seq_len) -> (B, 1, seq_len)
+        if X_test.ndim == 2:
+            X_test = X_test.unsqueeze(1)
+    
+    
+    def split_info():
+        msg = {
+            "type": "info",
+            "phase": "split",
+            "n_train": int(X_train.shape[0]),
+            "n_test": int(X_test.shape[0]),
+        }
+        yield f"data: {json.dumps(msg)}\n\n"
+
+
+
+    #---------------------------------
+    # ----- ARCHI --------------------
+    #---------------------------------
+    if cfg and cfg.Parametres_choix_reseau_neurones:
+            if cfg.Parametres_choix_reseau_neurones.modele:
+                model= cfg.Parametres_choix_reseau_neurones.modele.lower()
+    
+    #CLASS MODEL MLP
+    if model =='mlp':
+        hidden_size = 128
+        nb_couches = 2
+        dropout_rate = 0.0
+        activation = "relu"
+        use_batchnorm = False
+        kernel_size = None
+        stride = None
+        padding = None
+        if cfg_model.hidden_size is not None:
+            hidden_size = int(cfg_model.hidden_size)
+        if cfg_model.nb_couches is not None:
+            nb_couches = int(cfg_model.nb_couches)
+        if cfg_model.dropout_rate is not None:
+            dropout_rate = float(cfg_model.dropout_rate)
+        if cfg_model.fonction_activation is not None:
+            act_map = {
+                "ReLU": "relu",
+                "GELU": "gelu",
+                "tanh": "tanh",
+                "sigmoid": "sigmoid",
+                "leaky_relu": "leaky_relu",
+            }
+            activation = act_map.get(cfg_model.fonction_activation, "relu")
+
+
+    #CLASS MODEL CNN
+    if model =='cnn':
+        hidden_size = 128
+        nb_couches = 2
+        dropout_rate = 0.0
+        activation = "relu"
+        use_batchnorm = False
+        kernel_size = 3
+        stride = 1
+        padding = 1
+
+        if cfg_model.hidden_size is not None:
+            hidden_size = int(cfg_model.hidden_size)
+        
+        if cfg_model.nb_couches is not None:
+            nb_couches = int(cfg_model.nb_couches)
+
+        if cfg_model.fonction_activation is not None:
+            act_map = {
+                "ReLU": "relu",
+                "GELU": "gelu",
+                "tanh": "tanh",
+                "sigmoid": "sigmoid",
+                "leaky_relu": "leaky_relu",
+            }
+            activation = act_map.get(cfg_model.fonction_activation, "relu")
+        
+        if cfg_model.kernel_size is not None:
+            kernel_size = int(cfg_model.kernel_size)
+        
+        if cfg_model.stride is not None:
+            stride = int(cfg_model.stride)
+        
+        if cfg_model.padding is not None:
+            padding = int(cfg_model.padding)
+
+
+    #CLASS MODEL LSTM
+    if model =='lstm':
+        hidden_size = 128
+        nb_couches = 2
+        bidirectional = False
+        batch_first = True
+
+        if cfg_model.hidden_size is not None:
+            hidden_size = int(cfg_model.hidden_size)
+            
+        if cfg_model.nb_couches is not None:
+            nb_couches = int(cfg_model.nb_couches)
+
+        if cfg_model.bidirectional is not None:
+            bidirectional = bool(cfg_model.bidirectional)
+
+        if cfg_model.batch_first is not None:
+            batch_first = bool(cfg_model.batch_first)
+         
+            
+    #---------------------------------
+    # ----- LOSS  --------------------
+    # ---------------------------------
+    loss_name = "mse"
+    if cfg and cfg.Parametres_choix_loss_fct and cfg.Parametres_choix_loss_fct.fonction_perte:
+        loss_name = cfg.Parametres_choix_loss_fct.fonction_perte.lower()
+
+
+    # ----------------------------------
+    # ----- OPTIM  --------------------
+    # ----------------------------------
+    optimizer_name = "adam"
+    learning_rate = 1e-3
+    weight_decay = 0.0
+    if cfg and cfg.Parametres_optimisateur:
+        if cfg.Parametres_optimisateur.optimisateur:
+            optimizer_name = cfg.Parametres_optimisateur.optimisateur.lower()
+        if cfg.Parametres_optimisateur.learning_rate is not None:
+            learning_rate = float(cfg.Parametres_optimisateur.learning_rate)
+        if cfg.Parametres_optimisateur.decroissance is not None:
+            weight_decay = float(cfg.Parametres_optimisateur.decroissance)
+
+
+    #--------------------------------------
+    # ----- TRAIN -------------------------
+    #--------------------------------------
+    epochs = 10
+    batch_size = 64
+    if cfg and cfg.Parametres_entrainement:
+        if cfg.Parametres_entrainement.nb_epochs is not None:
+            epochs = int(cfg.Parametres_entrainement.nb_epochs)
+        if cfg.Parametres_entrainement.batch_size is not None:
+            batch_size = int(cfg.Parametres_entrainement.batch_size)
+
+
+    # --------------------------------------
+    # ----- Device ------------------------
+    # --------------------------------------
+    device = "mps"
+
+
+    #--------------------------------------
+    # ---------- Entraînement ------------
+    #--------------------------------------
+    def event_gen():
+        for msg in split_info():
+            yield msg
+        if cfg and cfg.Parametres_choix_reseau_neurones:
+            if cfg.Parametres_choix_reseau_neurones.modele:
+                model_name= cfg.Parametres_choix_reseau_neurones.modele.lower()
+        
+         # 2) construire le générateur d'entraînement
+        
+        #CLASS MODEL MLP
+        if model_name == "mlp":
+            gen = train_MLP(
+                X, y,
+                hidden_size=hidden_size,
+                nb_couches=nb_couches,
+                dropout_rate=dropout_rate,
+                activation=activation,
+                use_batchnorm=use_batchnorm,
+                loss_name=loss_name,
+                optimizer_name=optimizer_name,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                batch_size=batch_size,
+                epochs=epochs,
+                device=device,
+            )
+        
+        #CLASS MODEL CNN
+        elif model_name == "cnn":
+            gen = train_CNN(
+                X, y,
+                hidden_size=hidden_size,
+                nb_couches=nb_couches,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                activation=activation,
+                use_batchnorm=use_batchnorm,
+                loss_name=loss_name,
+                optimizer_name=optimizer_name,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                batch_size=batch_size,
+                epochs=epochs,
+                device=device,
+            )
+        
+        #CLASS MODEL LSTM
+        elif model_name == "lstm":
+            gen = train_LSTM(
+                X, y,
+                hidden_size=hidden_size,
+                nb_couches=nb_couches,
+                bidirectional=bidirectional,
+                batch_first=True,
+                loss_name=loss_name,
+                optimizer_name=optimizer_name,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                batch_size=batch_size,
+                epochs=epochs,
+                device=device,
+            )
+
+        else:
+            yield sse({"type":"error","message": f"Modèle inconnu: {model_name}"})
+            return
+        
+        model_trained = None
+        try:
+            while True:
+                msg = next(gen)
+                
+                yield sse(msg)
+        except StopIteration as e:
+            # Le modèle est retourné via StopIteration.value
+            model_trained = e.value
+    
+
+    #--------------------------------------
+    # -------------Tests ------------------
+    #--------------------------------------
+        # Test en streaming : y / yhat par paire + métriques finales
+        if model_trained is not None:
+            print(f"[DÉBUT TEST] Modèle: {type(model_trained).__name__}")
+
+            for evt in test_model(
+                model_trained, X_test, y_test,
+                device=device,
+                batch_size=256,
+                inverse_fn=inverse_fn,
+            ):
+                yield f"data: {json.dumps(evt)}\n\n"
+        else:
+            yield sse({"type":"warn","message":"Modèle non récupéré (test sauté)."})
+    
+    return StreamingResponse(event_gen(), media_type="text/event-stream")
+
+
+
+# ====================================
+# Page web
+# ====================================
+@app.get("/")
+def accueil():
+    response = {"message": "Serveur IA actif !"}
+    return response
+

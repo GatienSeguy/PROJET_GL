@@ -1,3 +1,6 @@
+# ====================================
+# IMPORTs
+# ====================================
 from typing import List, Optional, Tuple
 import numpy as np
 import torch
@@ -6,8 +9,13 @@ from pydantic import BaseModel, Field, conint, confloat
 from datetime import date,datetime
 import json
 
+# ====================================
+# FONCTIONS UTILITAIRES
+# ====================================
 
-
+# ====================================
+# CONSTRUCTION DES TENSEURS SUPERVISÉS
+# ====================================
 def build_supervised_tensors(
     values: List[Optional[float]],
     window_len: int = 1,
@@ -40,18 +48,18 @@ def build_supervised_tensors(
     y = torch.tensor(np.array(y_list, dtype=np.float32))
     return X, y
 
-
-
-
-
-
-
+# ====================================
+# FILTRES DE DATES
+# ====================================
 def _parse_any_datetime(s: str) -> datetime:
     try:
         return datetime.fromisoformat(s)
     except Exception:
         return datetime.strptime(s, "%Y-%m-%d")
-
+    
+# ====================================
+# FILTRAGE DES SÉRIES PAR DATES
+# ====================================
 def filter_series_by_dates(timestamps, values, dates):
     if not dates or len(dates) < 2 or dates[0] is None or dates[1] is None:
         return timestamps, values
@@ -66,6 +74,9 @@ def filter_series_by_dates(timestamps, values, dates):
             val_out.append(v)
     return ts_out, val_out
 
+# ====================================
+# CONSTRUCTION DES TENSEURS SUPERVISÉS AVEC STEP
+# ====================================
 def build_supervised_tensors_with_step(values, window_len=1, horizon=1, step=1):
     if step <= 0: step = 1
     n = len(values)
@@ -93,6 +104,9 @@ def build_supervised_tensors_with_step(values, window_len=1, horizon=1, step=1):
     y = torch.tensor(np.array(y_list, dtype=np.float32))
     return X, y
 
+# ====================================
+# SPLIT TRAIN TEST
+# ====================================
 def split_train_test(X, y, portion_train):
     p = portion_train if (portion_train is not None and 0.0 < portion_train < 1.0) else 0.8
     n = X.shape[0]
@@ -101,26 +115,18 @@ def split_train_test(X, y, portion_train):
     n_train = max(1, min(n-1, int(n * p))) if n >= 2 else n
     return X[:n_train], y[:n_train], X[n_train:], y[n_train:]
 
-
-
+# ====================================
+# SERVER-SENT EVENTS FORMAT
+# ====================================
 def sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
-
-
-
-
-
+# ====================================
+# NORMALISATION / DÉNORMALISATION
+# ====================================
 def normalize_data(data: torch.Tensor, method: str = "standardization") -> Tuple[torch.Tensor, dict]:
     """
     Normalise les données et retourne les paramètres de normalisation.
-    
-    Args:
-        data: Tenseur à normaliser
-        method: "standardization" (z-score) ou "minmax"
-    
-    Returns:
-        Tuple (data_normalized, params_dict)
     """
     if method == "standardization":
         mean = data.mean()
@@ -148,13 +154,6 @@ def normalize_data(data: torch.Tensor, method: str = "standardization") -> Tuple
 def denormalize_data(data: torch.Tensor, params: dict) -> torch.Tensor:
     """
     Dénormalise les données selon les paramètres fournis.
-    
-    Args:
-        data: Tenseur normalisé
-        params: Dictionnaire avec les paramètres de normalisation
-    
-    Returns:
-        Tenseur dénormalisé
     """
     method = params.get("method")
     
@@ -171,16 +170,12 @@ def denormalize_data(data: torch.Tensor, params: dict) -> torch.Tensor:
     else:
         raise ValueError(f"Méthode inconnue: {method}")
 
-
+# ====================================
+# CRÉATION FONCTION INVERSE
+# ====================================
 def create_inverse_function(params: dict) -> Callable:
     """
     Crée une fonction de dénormalisation à partir des paramètres.
-    
-    Args:
-        params: Dictionnaire avec les paramètres de normalisation
-    
-    Returns:
-        Fonction qui prend un tenseur et retourne sa version dénormalisée
     """
     def inverse_fn(data: torch.Tensor) -> torch.Tensor:
         return denormalize_data(data, params)
