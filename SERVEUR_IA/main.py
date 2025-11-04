@@ -47,36 +47,6 @@ last_config_tempo = None
 last_config_TimeSeries = None
 last_config_series = None  
 
-# json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/Datas/Boites_per_day.json" 
-
-# ====================================
-# Utilitaires
-# ====================================
-
-###################
-def _http_get_file_json(url: str, timeout: int = 60) -> Dict[str, Any]:
-    r = requests.get(url, timeout=timeout)
-    r.raise_for_status()
-    try:
-        return r.json()
-    except Exception:
-        return json.loads(r.content.decode("utf-8"))
-
-def _fetch_dataset_record_by_name(name: str) -> Dict[str, Any]:
-    url = f"{DATA_SERVER_URL}/datasets/by-name/{quote(name)}/store/dataset"
-    return _http_get_file_json(url)
-
-def _record_to_timeseries(record: Dict[str, Any]) -> Dict[str, list[Any]]:
-    data = record.get("data") or []
-    ts, vals = [], []
-    for p in data:
-        if "t" in p and "v" in p and p["v"] is not None:
-            ts.append(p["t"])
-            vals.append(float(p["v"]))
-    return {"timestamps": ts, "values": vals}
-
-####################
-
 # ====================================
 # ROUTES
 # ====================================
@@ -89,50 +59,12 @@ def training(payload: PaquetComplet,payload_model: dict):
 #Récupération des données
     cfg: PaquetComplet = payload
 
-################
-    # --------------------------------------------
-    # ----- Date début / fin + nom dataset ------
-    # -------------------------------------------
-    ds_name: Optional[str] = None
-    dates_range: Optional[List[str]] = None
-    if cfg and getattr(cfg, "Tx_choix_dataset", None):
-        ds_name = getattr(cfg.Tx_choix_dataset, "name", None)
-        dates_range = getattr(cfg.Tx_choix_dataset, "dates", None)  # ["YYYY-MM-DD", "YYYY-MM-DD"]
+    json_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/Datas/EURO.json" 
 
-    # Fallback si dates non fournies
-    if not dates_range or len(dates_range) < 2:
-        dates_range = ["1000-01-01 00:00:00", "5000-01-01 00:00:00"]
+    with open(json_path, 'r') as f:
+        data_json = json.load(f)
 
-    # ====== Récupération des données ======
-    series_dict: Optional[Dict[str, List[Any]]] = None
-    if ds_name:
-        try:
-            # On demande le FICHIER STOCKÉ côté Data
-            record = _fetch_dataset_record_by_name(ds_name)
-            converted = _record_to_timeseries(record)
-            series_dict = {"timestamps": converted["timestamps"], "values": converted["values"]}
-            print(f"[IA] Dataset '{ds_name}' récupéré (store/datasets) : {len(converted['values'])} points.")
-        except Exception as e:
-            print(f"[IA] ⚠️ Echec récupération '{ds_name}' depuis Serveur Data: {e}")
-
-    if series_dict is None:
-        # Fallback local si pas de nom ou erreur réseau
-        with open(json_path, "r", encoding="utf-8") as f:
-            data_local = json.load(f)
-        series_dict = {
-            "timestamps": data_local.get("timestamps") or data_local.get("dates") or [],
-            "values": data_local.get("values") or []
-        }
-        print(f"[IA] Fallback local '{json_path}' ({len(series_dict['values'])} points).")
-
-    # Construction TimeSeriesData
-    series = TimeSeriesData(**series_dict)
-
-    # Filtrage par dates côté IA (découpe entre start/end)
-    ts_filt, vals_filt = filter_series_by_dates(series.timestamps, series.values, dates_range)
-
-#######################
-
+    series = TimeSeriesData(**data_json)
     #-------------------------------
     # ----- Modèle  ----------------
     #-------------------------------
