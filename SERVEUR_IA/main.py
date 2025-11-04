@@ -48,19 +48,74 @@ last_config_series = None
 
 
 # ====================================
+# CLASSE GESTION DATASETS
+# ====================================
+class DatasetManager:
+    """Gère la communication avec le serveur Data"""
+    
+    def __init__(self, data_server_url: str = DATA_SERVER_URL):
+        """Initialise le gestionnaire de datasets"""
+        self.data_server_url = data_server_url
+    
+    def get_available_datasets(self) -> List[str]:
+        """
+        Récupère la liste des noms de datasets disponibles depuis le serveur Data
+        """
+        try:
+            url = f"{self.data_server_url}/datasets/list"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            return data.get("datasets", [])
+        
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Erreur lors de la récupération des datasets: {str(e)}")
+    
+    def fetch_dataset(self, dataset_name: str, date_start: str, date_end: str) -> TimeSeriesData:
+        """
+        Récupère un dataset du serveur Data pour une plage de dates donnée
+        """
+        try:
+            url = f"{self.data_server_url}/datasets/fetch"
+            
+            payload = {
+                "name": dataset_name,
+                "dates": [date_start, date_end]
+            }
+            
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            
+            data_json = response.json()
+            
+            # Validation et conversion en TimeSeriesData
+            if "timestamps" not in data_json or "values" not in data_json:
+                raise ValueError(f"Format de données invalide reçu du serveur Data")
+            
+            time_series = TimeSeriesData(**data_json)
+            return time_series
+        
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Erreur lors de la récupération du dataset '{dataset_name}': {str(e)}")
+        except ValueError as e:
+            raise Exception(f"Format de données invalide: {str(e)}")
+
+
+# ====================================
 # CLASSE PRINCIPALE
 # ====================================
 class TrainingPipeline:
     """Pipeline d'entraînement pour les réseaux de neurones"""
     
-    def __init__(self, payload: PaquetComplet, payload_model: dict):
+    def __init__(self, payload: PaquetComplet, payload_model: dict,time_series_data: Optional[TimeSeriesData] = None):
         """Initialise le pipeline avec les configurations"""
         self.cfg = payload
         self.payload_model = payload_model
         self.device = "mps"
         
         # Variables d'état
-        self.series = None
+        self.series = time_series_data
         self.cfg_model = None
         self.X = None
         self.y = None
@@ -76,7 +131,17 @@ class TrainingPipeline:
     # 1) CHARGEMENT DES DONNÉES
     # ====================================
     def load_data(self) -> TimeSeriesData:
-        """Charge les données depuis le fichier JSON"""
+        """
+        Charge les données
+        
+        Si un dataset a été passé au constructeur, l'utilise.
+        Sinon, charge depuis le fichier JSON par défaut.
+        """
+        if self.series is not None:
+            # Dataset déjà fourni (récupéré via /datasets/fetch)
+            return self.series
+        
+        # Fallback : charger depuis fichier JSON TEMPORAIRE
         json_file_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/Datas/EURO.json"
         
         with open(json_file_path, 'r') as f:
@@ -491,6 +556,10 @@ class TrainingPipeline:
 # ROUTES
 # ====================================
 
+# ====================================
+# ROUTES - ENTRAÎNEMENT COMPLET
+# ====================================
+
 @app.post("/train_full")
 def training(payload: PaquetComplet, payload_model: dict):
     """Route d'entraînement complet"""
@@ -498,8 +567,80 @@ def training(payload: PaquetComplet, payload_model: dict):
     return StreamingResponse(pipeline.execute_full_pipeline(), media_type="text/event-stream")
 
 
+# ====================================
+# ROUTES - GESTION DATASETS
+# ====================================
+
+@app.get("/datasets/list")
+def get_datasets_list():
+    """
+    Récupère la liste de tous les datasets disponibles
+    Endpoint pour la UI permettant d'afficher les datasets disponibles
+    """
+    try:
+        manager = DatasetManager()
+        datasets = manager.get_available_datasets()
+        
+        return {
+            "status": "success",
+            "datasets": datasets
+        }
+    
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@app.post("/datasets/fetch")
+def fetch_dataset(request_payload: dict):
+    """
+    Récupère un dataset spécifique avec une plage de dates
+    Endpoint pour la UI permettant de charger un dataset avec filtrage de dates
+    """
+    try:
+        # Validation de la requête
+        if "name" not in request_payload:
+            return {
+                "status": "error",
+                "message": "Champ 'name' manquant"
+            }
+        
+        if "dates" not in request_payload or len(request_payload["dates"]) != 2:
+            return {
+                "status": "error",
+                "message": "Champ 'dates' manquant ou invalide (doit contenir [date_debut, date_fin])"
+            }
+        
+        dataset_name = request_payload["name"]
+        date_start, date_end = request_payload["dates"]
+        
+        # Récupération du dataset
+        manager = DatasetManager()
+        time_series = manager.fetch_dataset(dataset_name, date_start, date_end)
+        
+        return {
+            "status": "success",
+            "data": {
+                "timestamps": time_series.timestamps,
+                "values": time_series.values
+            }
+        }
+    
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+# ====================================
+# ROUTES - CHECK SERVEUR IA
+# ====================================
+
 @app.get("/")
-def accueil():
-    """Route d'accueil"""
+def root():
+    """Vérification de l'état du serveur"""
     response = {"message": "Serveur IA actif !"}
     return response
