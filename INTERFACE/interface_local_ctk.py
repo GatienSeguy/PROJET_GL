@@ -947,128 +947,120 @@ class Fenetre_Params(ctk.CTkToplevel):
         # self.geometry("500x1")  # largeur fixe, hauteur minimale
 
         # Frame principal avec scrollbar
-        main_frame = ctk.CTkScrollableFrame(self)
-        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        self.params_frame = ctk.CTkScrollableFrame(self)
+        self.params_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        self.params_frame.grid_columnconfigure(0, weight=1)  # première colonne s'étire
+        self.params_frame.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire aussi
+
         
         # # Titre simulé
         # tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=self.fenetre_bg).pack(anchor="w", pady=(0, 10))
         
-        # Titre
-        ctk.CTkLabel(
-            main_frame,
-            text="⚙️ Configuration",
-            font=("Roboto Medium", 22)
-        ).pack(pady=(10, 30))
-        self.geometry("700x800")
-
         # Polices
         self.font_titre = ("Roboto Medium", 16)
         self.font_label = ("Roboto", 12)
 
-        # Training parameters
-        training_frame = ctk.CTkFrame(main_frame)
-        training_frame.pack(fill="x", pady=10, padx=10)
-        
+        # Titre
         ctk.CTkLabel(
-            training_frame,
+            self.params_frame,
+            text="⚙️ Configuration",
+            font=("Roboto Medium", 22)
+        ).grid(row=0, column=0, columnspan=2,padx=10,pady=(0,20))
+        self.geometry("700x800")
+
+        ctk.CTkLabel(
+            self.params_frame,
             text="📊 Paramètres d'entraînement",
             font=("Roboto Medium", 14)
-        ).pack(pady=(15, 10))
-
-        epochs_frame = ctk.CTkFrame(training_frame, fg_color="transparent")
-        epochs_frame.pack(fill="x", padx=20, pady=5)
+        ).grid(row=1, column=0, columnspan=2,padx=10,pady=(0,20))
         
         ctk.CTkLabel(
-            epochs_frame,
+            self.params_frame,
             text="Nombre d'époques:",
             font=self.font_label
-        ).pack(side="left", padx=(0, 10))
+        ).grid(row=2, column=0, sticky="w",padx=10,pady=(0,20))
         
         self.epochs_var = ctk.StringVar(value=str(Parametres_entrainement.nb_epochs))
         ctk.CTkEntry(
-            epochs_frame,
+            self.params_frame,
             textvariable=self.epochs_var,
             width=150
-        ).pack(side="right")
+        ).grid(row=2, column=1, sticky="e",padx=10,pady=(0,20))
 
-        batch_frame = ctk.CTkFrame(training_frame, fg_color="transparent")
-        batch_frame.pack(fill="x", padx=20, pady=(5, 15))
-        
         ctk.CTkLabel(
-            batch_frame,
+            self.params_frame,
             text="Batch Size:",
             font=self.font_label
-        ).pack(side="left", padx=(0, 10))
+        ).grid(row=3, column=0, sticky="w",padx=10,pady=(0,20))
         
         self.batch_var = ctk.StringVar(value=str(Parametres_entrainement.batch_size))
         ctk.CTkEntry(
-            batch_frame,
+            self.params_frame,
             textvariable=self.batch_var,
             width=150
-        ).pack(side="right")
+        ).grid(row=3, column=1, sticky="e",padx=10,pady=(0,20))
 
-        # Frame pour loss et optimizer
-        loss_optim_frame = ctk.CTkFrame(main_frame)
-        loss_optim_frame.pack(fill="x", pady=10, padx=10)
-        
         ctk.CTkLabel(
-            loss_optim_frame,
+            self.params_frame,
             text="⚙️ Configuration de l'entraînement",
             font=("Roboto Medium", 14)
-        ).pack(pady=(15, 10))
-
-        # Loss function
-        loss_frame = ctk.CTkFrame(loss_optim_frame, fg_color="transparent")
-        loss_frame.pack(fill="x", padx=20, pady=5)
+        ).grid(row=4, column=0, columnspan=2,padx=10,pady=(0,20))
         
         ctk.CTkLabel(
-            loss_frame,
+            self.params_frame,
             text="Fonction de Perte:",
             font=self.font_label
-        ).pack(side="left", padx=(0, 10))
+        ).grid(row=5, column=0, sticky="w",padx=10,pady=(0,20))
         
         self.loss_var = ctk.StringVar(value=Parametres_choix_loss_fct.fonction_perte)
         ctk.CTkOptionMenu(
-            loss_frame,
+            self.params_frame,
             values=["MSE", "MAE", "Huber"],
             variable=self.loss_var,
             width=150
-        ).pack(side="right")
-
-        # Optimizer
-        optim_frame = ctk.CTkFrame(loss_optim_frame, fg_color="transparent")
-        optim_frame.pack(fill="x", padx=20, pady=5)
+        ).grid(row=5, column=1, sticky="e",padx=10,pady=(0,20))
         
         ctk.CTkLabel(
-            optim_frame,
+            self.params_frame,
             text="Optimiseur:",
             font=self.font_label
-        ).pack(side="left", padx=(0, 10))
+        ).grid(row=6, column=0, sticky="w",padx=10,pady=(0,20))
         
         self.optim_var = ctk.StringVar(value=Parametres_optimisateur.optimisateur)
         ctk.CTkOptionMenu(
-            optim_frame,
+            self.params_frame,
             values=["Adam", "SGD", "RMSprop", "Adagrad", "Adadelta"],
             variable=self.optim_var,
             width=150
-        ).pack(side="right")
-
-        # Learning rate
-        lr_frame = ctk.CTkFrame(loss_optim_frame, fg_color="transparent")
-        lr_frame.pack(fill="x", padx=20, pady=5)
+        ).grid(row=6, column=1, sticky="e",padx=10,pady=(0,20))
         
         ctk.CTkLabel(
-            lr_frame,
+            self.params_frame,
             text="Learning Rate:",
             font=self.font_label
-        ).pack(side="left", padx=(0, 10))
+        ).grid(row=7, column=0, sticky="w",padx=10,pady=(0,20))
         
         self.lr_var = ctk.StringVar(value=str(Parametres_optimisateur.learning_rate))
         ctk.CTkEntry(
-            lr_frame,
+            self.params_frame,
             textvariable=self.lr_var,
             width=150
-        ).pack(side="right")
+        ).grid(row=7, column=1, sticky="e",padx=10,pady=(0,20))
+
+
+        self.params_model_frame = ctk.CTkFrame(self.params_frame, corner_radius=10)
+
+        self.model_var = ctk.StringVar(value=Parametres_choix_reseau_neurones.modele)
+        ctk.CTkSegmentedButton(
+            self.params_frame,
+            values=["MLP", "CNN", "LSTM"],
+            variable=self.model_var,
+            command=self.on_model_change
+        ).grid(row=8, column=0, columnspan=2,padx=10,pady=(0,20),sticky="n")
+
+        self.params_model_frame.grid(row=9, column=0, columnspan=2, padx=10, pady=(0,20), sticky="ew")
+        self.params_model_frame.grid_columnconfigure(0, weight=1)  # première colonne s'étire
+        self.params_model_frame.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire aussi
 
         """
         # Cadre des paramètres
@@ -1110,20 +1102,17 @@ class Fenetre_Params(ctk.CTkToplevel):
             command=self.destroy
         ).pack(fill="x", pady=(0, 10))
         """
-        # Boutons
-        button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        button_frame.pack(fill="x", pady=(30, 10))
-
+        last_row=self.params_frame.grid_size()[1]
         ctk.CTkButton(
-            button_frame,
+            self.params_frame,
             text="💾 Sauvegarder",
             font=("Roboto", 13),
             height=40,
             command=self.save_params
-        ).pack(side="left", expand=True, padx=5)
+        ).grid(row=last_row, column=0,padx=10,pady=(50,20),sticky="ew")
 
         ctk.CTkButton(
-            button_frame,
+            self.params_frame,
             text="❌ Annuler",
             font=("Roboto", 13),
             height=40,
@@ -1131,13 +1120,97 @@ class Fenetre_Params(ctk.CTkToplevel):
             border_width=2,
             text_color=("gray10", "gray90"),
             command=self.destroy
-        ).pack(side="right", expand=True, padx=5)
+        ).grid(row=last_row, column=1,padx=10,pady=(50,20),sticky="ew")
+        self.on_model_change(self.model_var.get())
 
         # Afficher les paramètres du modèle sélectionné
         # self.on_model_change(self.model_var.get())
 
         # self.update_idletasks()
         # self.geometry(f"500x{self.winfo_reqheight()}")
+    def save_params(self):
+        pass
+    
+    def on_model_change(self, model_type):
+        """Change les paramètres affichés selon le modèle"""
+        # Effacer les widgets existants
+        for widget in self.params_model_frame.winfo_children():
+            widget.destroy()
+
+        if model_type == "MLP":
+            self.create_mlp_params()
+        elif model_type == "CNN":
+            self.create_cnn_params()
+        elif model_type == "LSTM":
+            self.create_lstm_params()
+
+    def create_mlp_params(self):
+        """Crée les paramètres spécifiques au MLP"""
+        # ctk.CTkLabel(
+        #     self.params_model_frame,
+        #     text="🧠 Paramètres MLP",
+        #     font=("Roboto Medium", 14)
+        # ).grid(row=0, column=0, columnspan=2, pady=(0, 20))
+
+        # Nombre de couches
+        ctk.CTkLabel(self.params_model_frame, text="Nombre de couches:", font=("Roboto", 12)).grid(row=0, column=0, sticky="w",padx=10,pady=(0,20))
+        self.mlp_layers = ctk.StringVar(value=str(Parametres_archi_reseau_MLP.nb_couches))
+        ctk.CTkEntry(self.params_model_frame, textvariable=self.mlp_layers, width=150).grid(row=0, column=1, sticky="e",padx=10,pady=(0,20))
+
+        # Hidden size
+        ctk.CTkLabel(self.params_model_frame, text="Hidden Size:", font=("Roboto", 12)).grid(row=1, column=0, sticky="w",padx=10,pady=(0,20))
+        self.mlp_hidden = ctk.StringVar(value=str(Parametres_archi_reseau_MLP.hidden_size))
+        ctk.CTkEntry(self.params_model_frame, textvariable=self.mlp_hidden, width=150).grid(row=1, column=1, sticky="e",padx=10,pady=(0,20))
+
+        # Dropout
+        ctk.CTkLabel(self.params_model_frame, text="Dropout Rate:", font=("Roboto", 12)).grid(row=2, column=0, sticky="w",padx=10,pady=(0,20))
+        self.mlp_dropout = ctk.StringVar(value=str(Parametres_archi_reseau_MLP.dropout_rate))
+        ctk.CTkEntry(self.params_model_frame, textvariable=self.mlp_dropout, width=150).grid(row=2, column=1, sticky="e",padx=10,pady=(0,20))
+
+        # Activation
+        ctk.CTkLabel(self.params_model_frame, text="Activation:", font=("Roboto", 12)).grid(row=3, column=0, sticky="w",padx=10,pady=(0,20))
+        self.mlp_activation = ctk.StringVar(value=Parametres_archi_reseau_MLP.fonction_activation)
+        ctk.CTkOptionMenu(
+            self.params_model_frame,
+            values=["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"],
+            variable=self.mlp_activation,
+            width=150
+        ).grid(row=3, column=1, sticky="e",padx=10,pady=(0,20))
+
+    def create_cnn_params(self):
+        """Crée les paramètres spécifiques au CNN"""
+        ctk.CTkLabel(
+            self.params_model_frame,
+            text="🔲 Paramètres CNN",
+            font=("Roboto Medium", 14)
+        ).grid(row=0, column=0, columnspan=2,padx=10, pady=(0, 20))
+
+        params = [
+            ("Nombre de couches:", Parametres_archi_reseau_CNN.nb_couches, "cnn_layers"),
+            ("Hidden Size:", Parametres_archi_reseau_CNN.hidden_size, "cnn_hidden"),
+            ("Kernel Size:", Parametres_archi_reseau_CNN.kernel_size, "cnn_kernel"),
+            ("Stride:", Parametres_archi_reseau_CNN.stride, "cnn_stride"),
+            ("Padding:", Parametres_archi_reseau_CNN.padding, "cnn_padding"),
+        ]
+
+        for index,(label, default, attr) in enumerate(params):
+            ctk.CTkLabel(self.params_model_frame, text=label, font=("Roboto", 12)).grid(row=index+1, column=0, sticky="w",padx=10,pady=(5, 15))#,padx=10, pady=(0, 20)
+            var = ctk.StringVar(value=str(default))
+            setattr(self, attr, var)
+            ctk.CTkEntry(self.params_model_frame, textvariable=var, width=150).grid(row=index+1, column=1, sticky="e",padx=10,pady=(5, 15))
+
+        # Activation
+        ctk.CTkLabel(self.params_model_frame, text="Activation:", font=("Roboto", 12)).pack(side="left")
+        self.cnn_activation = ctk.StringVar(value=Parametres_archi_reseau_CNN.fonction_activation)
+        ctk.CTkOptionMenu(
+            self.params_model_frame,
+            values=["ReLU", "GELU", "tanh", "sigmoid"],
+            variable=self.cnn_activation,
+            width=150
+        ).grid(row=len(params)+1, column=1, sticky="e",padx=10,pady=(0,20))
+
+    def create_lstm_params(self):
+        pass    
 
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
