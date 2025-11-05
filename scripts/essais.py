@@ -45,8 +45,8 @@ def get_device(force_cpu: bool = False):
         return torch.device("cpu")
     if torch.cuda.is_available():
         return torch.device("cuda")
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
+    # if torch.backends.mps.is_available():
+    #     return torch.device("mps")
     return torch.device("cpu")
 
 
@@ -55,7 +55,7 @@ def get_device(force_cpu: bool = False):
 # =======================
 class WindowDataset(Dataset):
     """Transforme une série 1D en paires (fenêtre, cible_next_step). X: [seq_len,1], y:[1]"""
-    def _init_(self, series_1d: np.ndarray, window: int):
+    def __init__(self, series_1d: np.ndarray, window: int):
         assert series_1d.ndim == 1, "La série doit être 1D."
         self.x, self.y = [], []
         for i in range(len(series_1d) - window):
@@ -64,10 +64,10 @@ class WindowDataset(Dataset):
         self.x = np.array(self.x, dtype=np.float32)                 # [N, window]
         self.y = np.array(self.y, dtype=np.float32).reshape(-1, 1)  # [N, 1]
 
-    def _len_(self):
+    def __len__(self):
         return len(self.x)
 
-    def _getitem_(self, idx):
+    def __getitem__(self, idx):
         # retourne tensors CPU ; pin_memory + non_blocking gèrent les transferts
         x = torch.from_numpy(self.x[idx][:, None])  # [window,1]
         y = torch.from_numpy(self.y[idx])           # [1]
@@ -79,8 +79,8 @@ class WindowDataset(Dataset):
 # NOTE: on garde les poids RNN en float32
 # =======================
 class RNNRegressor(nn.Module):
-    def _init_(self, rnn_type="lstm", input_size=1, hidden_size=128, num_layers=2, dropout=0.0):
-        super()._init_()
+    def __init__(self, rnn_type="lstm", input_size=1, hidden_size=128, num_layers=2, dropout=0.0):
+        super().__init__()
         rnn_type = rnn_type.lower()
         self.rnn_type = rnn_type
         RNN = nn.LSTM if rnn_type == "lstm" else nn.GRU
@@ -125,6 +125,7 @@ def train(
     compile_model: bool = True,
 ):
     model.to(device)
+    torch.backends.cudnn.benchmark = True
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     loss_fn = nn.MSELoss()
 
@@ -190,16 +191,16 @@ def train(
         if (ep % log_every) == 0 or ep == 1:
             print(f"[Epoch {ep:04d}] train={tr_loss:.6f}")
 
-        # Early stopping (sur train faute de val)
-        if tr_loss < best - 1e-7:
-            best = tr_loss
-            patience = 0
-            best_state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
-        else:
-            patience += 1
-            if patience >= early_patience:
-                print(f"[INFO] Early stop @ epoch {ep} (best train={best:.6f})")
-                break
+        # # Early stopping (sur train faute de val)
+        # if tr_loss < best - 1e-7:
+        #     best = tr_loss
+        #     patience = 0
+        #     best_state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+        # else:
+        #     patience += 1
+        #     if patience >= early_patience:
+        #         print(f"[INFO] Early stop @ epoch {ep} (best train={best:.6f})")
+        #         break
 
     if best_state is not None:
         model.load_state_dict({k: v.to(device) for k, v in best_state.items()})
@@ -256,7 +257,7 @@ def load_series_from_json(path: Path):
 # =======================
 def split_99_1(arr):
     n = len(arr)
-    n_test = max(1, int(math.ceil(0.01 * n)))
+    n_test = max(1, int(math.ceil(0.05 * n)))
     n_train = n - n_test
     return arr[:n_train], arr[n_train:]
 
@@ -266,24 +267,38 @@ def split_99_1(arr):
 # =======================
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--force_cpu", action="store_true")
-    p.add_argument("--data", type=str, default="./Datas/EURO.json")
-    p.add_argument("--window", type=int, default=32)
-    p.add_argument("--hidden", type=int, default=128)
-    p.add_argument("--layers", type=int, default=2)
-    p.add_argument("--dropout", type=float, default=0.0)
-    p.add_argument("--batch", type=int, default=2048)
-    p.add_argument("--epochs", type=int, default=800)
-    p.add_argument("--lr", type=float, default=5e-3)
+
+    # --- Matériel / backend ---
+    p.add_argument("--force_cpu", action="store_true", help="Force l'utilisation du CPU (debug uniquement)")
+    p.add_argument("--num_workers", type=int, default=8, help="Workers DataLoader ; = moitié des cœurs logiques CPU")
+    p.add_argument("--amp_dtype", type=str, default="bf16", choices=["bf16", "fp16", "none"], help="AMP sur CUDA (bf16 conseillé)")
+    p.add_argument("--no_compile", action="store_true", help="Désactive torch.compile (déconseillé, sauf debug)")
+
+    # --- Données ---
+    p.add_argument("--data", type=str, default="./Datas/EURO.json", help="Chemin du fichier de données JSON")
+    p.add_argument("--window", type=int, default=64, help="Taille de la fenêtre de contexte pour la prédiction")
+    p.add_argument("--split_ratio", type=float, default=0.98, help="Fraction train/test (0.98=98/2 split)")
+
+    # --- Modèle ---
+    p.add_argument("--rnn", type=str, default="gru", choices=["lstm", "gru"], help="Type de RNN de base")
+    p.add_argument("--hidden", type=int, default=512, help="Taille des couches cachées (128–1024 selon GPU)")
+    p.add_argument("--layers", type=int, default=3, help="Nombre de couches RNN (2–4 max conseillé)")
+    p.add_argument("--dropout", type=float, default=0.1, help="Dropout léger pour stabilité (0.1–0.3)")
+
+    # --- Entraînement ---
+    p.add_argument("--batch", type=int, default=8192, help="Taille de batch (ajuster selon VRAM)")
+    p.add_argument("--epochs", type=int, default=800, help="Nombre d'epochs max (early stop possible)")
+    p.add_argument("--lr", type=float, default=3e-4, help="Taux d'apprentissage (Adam, entre 1e-4 et 1e-3)")
+    p.add_argument("--grad_clip", type=float, default=1.0, help="Clip des gradients pour stabilité RNN")
+    p.add_argument("--early_patience", type=int, default=0, help="0 = désactive l'early stop")
+    p.add_argument("--log_every", type=int, default=100, help="Affiche les logs toutes les N itérations")
+
+    # --- Divers ---
     p.add_argument("--seed", type=int, default=123)
-    p.add_argument("--plot_path", type=str, default="eurolstm_99_1.png")
-    p.add_argument("--num_workers", type=int, default=8)
-    p.add_argument("--log_every", type=int, default=50)
-    p.add_argument("--early_patience", type=int, default=30)
-    p.add_argument("--rnn", type=str, default="lstm", choices=["lstm", "gru"], help="Choix du RNN de base")
-    p.add_argument("--amp_dtype", type=str, default="bf16", choices=["bf16", "fp16", "none"], help="AMP sur CUDA")
-    p.add_argument("--no_compile", action="store_true", help="Désactive torch.compile")
+    p.add_argument("--plot_path", type=str, default="eurolstm_98_22.png")
+
     args = p.parse_args()
+
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -312,6 +327,7 @@ def main():
 
     # 3) dataset/loader — optimisations CUDA: pin_memory + prefetch
     train_ds = WindowDataset(train_arr, window=args.window)
+
     loader_kwargs = dict(
         batch_size=args.batch,
         shuffle=True,
@@ -396,5 +412,5 @@ def main():
         pass
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
