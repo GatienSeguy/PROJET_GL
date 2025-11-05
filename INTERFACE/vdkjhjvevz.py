@@ -1,16 +1,21 @@
 import customtkinter as ctk
 
+def test_focus(delay_ms):
+    top = ctk.CTkToplevel(app)
+    top.geometry("200x150")
+    top.title(f"Toplevel delay {delay_ms}ms")
 
-# Créer la fenêtre principale
+    # Force le focus après delay_ms millisecondes
+    top.after(delay_ms, lambda: top.focus_force())
+
 app = ctk.CTk()
-app.title("Fenêtre CTk par défaut")
-app.geometry("400x200")
+app.geometry("400x300")
 
-# Ajouter un label
-label = ctk.CTkLabel(app, text="👋 Bonjour depuis CustomTkinter !", font=("Roboto", 18))
-label.pack(pady=40)
-couleur_texte = label.cget("text_color")
-print(couleur_texte)
+# Liste de délais à tester (en ms)
+delays = [0, 5, 10, 20, 50, 100]
 
-# Lancer la boucle principale
+for d in delays:
+    btn = ctk.CTkButton(app, text=f"Ouvrir {d}ms", command=lambda d=d: test_focus(d))
+    btn.pack(pady=5)
+
 app.mainloop()

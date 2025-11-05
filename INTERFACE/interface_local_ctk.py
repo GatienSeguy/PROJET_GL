@@ -511,7 +511,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
         self.label_status.pack(side="right", padx=10)
         
         # Création du graphique matplotlib avec style moderne
-        self.fig = Figure(figsize=(10, 6),facecolor=self.fg_color,dpi=200) #,dpi=100
+        self.fig = Figure(figsize=(10, 6),facecolor=self.fg_color) #,dpi=100
         self.ax = self.fig.add_subplot(111)
         
         # Style du graphique
@@ -931,6 +931,9 @@ class Cadre_Prediction(ctk.CTkFrame):
 class Fenetre_Params(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
+        # self.focus_force()       # force le focus sur la nouvelle fenêtre
+        # self.grab_set()          # empêche de cliquer sur la fenêtre principale tant que le Toplevel est ouvert
+        self.after(100, lambda: self.focus_force())
         self.title("⚙️ Paramètres du Modèle")
         
         # Polices
@@ -941,15 +944,133 @@ class Fenetre_Params(ctk.CTkToplevel):
         
 
 
-        self.geometry("500x1")  # largeur fixe, hauteur minimale
+        # self.geometry("500x1")  # largeur fixe, hauteur minimale
 
-        # Cadre principal de configuration
-        self.cadre = tk.Frame(self, bg=self.fenetre_bg, padx=20, pady=20, highlightbackground="black", highlightthickness=2)
-        self.cadre.pack(fill="both", expand="yes", padx=10, pady=20)
+        # Frame principal avec scrollbar
+        main_frame = ctk.CTkScrollableFrame(self)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Titre simulé
-        tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=self.fenetre_bg).pack(anchor="w", pady=(0, 10))
+        # # Titre simulé
+        # tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=self.fenetre_bg).pack(anchor="w", pady=(0, 10))
+        
+        # Titre
+        ctk.CTkLabel(
+            main_frame,
+            text="⚙️ Configuration",
+            font=("Roboto Medium", 22)
+        ).pack(pady=(10, 30))
+        self.geometry("700x800")
 
+        # Polices
+        self.font_titre = ("Roboto Medium", 16)
+        self.font_label = ("Roboto", 12)
+
+        # Training parameters
+        training_frame = ctk.CTkFrame(main_frame)
+        training_frame.pack(fill="x", pady=10, padx=10)
+        
+        ctk.CTkLabel(
+            training_frame,
+            text="📊 Paramètres d'entraînement",
+            font=("Roboto Medium", 14)
+        ).pack(pady=(15, 10))
+
+        epochs_frame = ctk.CTkFrame(training_frame, fg_color="transparent")
+        epochs_frame.pack(fill="x", padx=20, pady=5)
+        
+        ctk.CTkLabel(
+            epochs_frame,
+            text="Nombre d'époques:",
+            font=self.font_label
+        ).pack(side="left", padx=(0, 10))
+        
+        self.epochs_var = ctk.StringVar(value=str(Parametres_entrainement.nb_epochs))
+        ctk.CTkEntry(
+            epochs_frame,
+            textvariable=self.epochs_var,
+            width=150
+        ).pack(side="right")
+
+        batch_frame = ctk.CTkFrame(training_frame, fg_color="transparent")
+        batch_frame.pack(fill="x", padx=20, pady=(5, 15))
+        
+        ctk.CTkLabel(
+            batch_frame,
+            text="Batch Size:",
+            font=self.font_label
+        ).pack(side="left", padx=(0, 10))
+        
+        self.batch_var = ctk.StringVar(value=str(Parametres_entrainement.batch_size))
+        ctk.CTkEntry(
+            batch_frame,
+            textvariable=self.batch_var,
+            width=150
+        ).pack(side="right")
+
+        # Frame pour loss et optimizer
+        loss_optim_frame = ctk.CTkFrame(main_frame)
+        loss_optim_frame.pack(fill="x", pady=10, padx=10)
+        
+        ctk.CTkLabel(
+            loss_optim_frame,
+            text="⚙️ Configuration de l'entraînement",
+            font=("Roboto Medium", 14)
+        ).pack(pady=(15, 10))
+
+        # Loss function
+        loss_frame = ctk.CTkFrame(loss_optim_frame, fg_color="transparent")
+        loss_frame.pack(fill="x", padx=20, pady=5)
+        
+        ctk.CTkLabel(
+            loss_frame,
+            text="Fonction de Perte:",
+            font=self.font_label
+        ).pack(side="left", padx=(0, 10))
+        
+        self.loss_var = ctk.StringVar(value=Parametres_choix_loss_fct.fonction_perte)
+        ctk.CTkOptionMenu(
+            loss_frame,
+            values=["MSE", "MAE", "Huber"],
+            variable=self.loss_var,
+            width=150
+        ).pack(side="right")
+
+        # Optimizer
+        optim_frame = ctk.CTkFrame(loss_optim_frame, fg_color="transparent")
+        optim_frame.pack(fill="x", padx=20, pady=5)
+        
+        ctk.CTkLabel(
+            optim_frame,
+            text="Optimiseur:",
+            font=self.font_label
+        ).pack(side="left", padx=(0, 10))
+        
+        self.optim_var = ctk.StringVar(value=Parametres_optimisateur.optimisateur)
+        ctk.CTkOptionMenu(
+            optim_frame,
+            values=["Adam", "SGD", "RMSprop", "Adagrad", "Adadelta"],
+            variable=self.optim_var,
+            width=150
+        ).pack(side="right")
+
+        # Learning rate
+        lr_frame = ctk.CTkFrame(loss_optim_frame, fg_color="transparent")
+        lr_frame.pack(fill="x", padx=20, pady=5)
+        
+        ctk.CTkLabel(
+            lr_frame,
+            text="Learning Rate:",
+            font=self.font_label
+        ).pack(side="left", padx=(0, 10))
+        
+        self.lr_var = ctk.StringVar(value=str(Parametres_optimisateur.learning_rate))
+        ctk.CTkEntry(
+            lr_frame,
+            textvariable=self.lr_var,
+            width=150
+        ).pack(side="right")
+
+        """
         # Cadre des paramètres
         self.CadreParams = tk.LabelFrame(
             self.cadre, text="", font=self.font_titre,
@@ -988,9 +1109,35 @@ class Fenetre_Params(ctk.CTkToplevel):
             height=2, bg="#f7b2b2", fg="#842029", relief="raised", bd=3,
             command=self.destroy
         ).pack(fill="x", pady=(0, 10))
+        """
+        # Boutons
+        button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        button_frame.pack(fill="x", pady=(30, 10))
 
-        self.update_idletasks()
-        self.geometry(f"500x{self.winfo_reqheight()}")
+        ctk.CTkButton(
+            button_frame,
+            text="💾 Sauvegarder",
+            font=("Roboto", 13),
+            height=40,
+            command=self.save_params
+        ).pack(side="left", expand=True, padx=5)
+
+        ctk.CTkButton(
+            button_frame,
+            text="❌ Annuler",
+            font=("Roboto", 13),
+            height=40,
+            fg_color="transparent",
+            border_width=2,
+            text_color=("gray10", "gray90"),
+            command=self.destroy
+        ).pack(side="right", expand=True, padx=5)
+
+        # Afficher les paramètres du modèle sélectionné
+        # self.on_model_change(self.model_var.get())
+
+        # self.update_idletasks()
+        # self.geometry(f"500x{self.winfo_reqheight()}")
 
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
