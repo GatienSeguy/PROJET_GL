@@ -134,6 +134,7 @@ class Fenetre_Acceuil(ctk.CTk):
         self.Fenetre_Params_instance = None
         self.Fenetre_Params_horizon_instance = None
         self.Fenetre_Choix_datasets_instance = None
+        self.Fenetre_Choix_metriques_instance = None
         self.feur_instance = None
 
         ctk.CTk.__init__(self)
@@ -235,6 +236,7 @@ class Fenetre_Acceuil(ctk.CTk):
         self.bouton(Label_frame_Donnees, "📁 Choix Dataset", self.Parametrer_dataset,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
         self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
         
+        self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40).pack(fill="both",padx=30,pady=(40,0))
 
         # Section 3 : Actions
         section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=self.cadre.cget("fg_color")) #fg_color=root.cget('fg_color')
@@ -328,6 +330,12 @@ class Fenetre_Acceuil(ctk.CTk):
             self.Fenetre_Choix_datasets_instance = Fenetre_Choix_datasets(self)
         else:
             self.Fenetre_Choix_datasets_instance.lift()  # Ramène la fenêtre secondaire au premier plan
+    
+    def Parametrer_metriques(self):
+        if self.Fenetre_Choix_metriques_instance is None or not self.Fenetre_Choix_metriques_instance.est_ouverte():
+            self.Fenetre_Choix_metriques_instance = Fenetre_Choix_metriques(self)
+        else:
+            self.Fenetre_Choix_metriques_instance.lift()  # Ramène la fenêtre secondaire au premier plan
     
     def Formatter_JSON_global(self):
         self.config_totale={}
@@ -1474,13 +1482,12 @@ class Fenetre_Choix_datasets(tk.Toplevel):
         pass
 
 #Creer la fenêtre de paramètres des visualisations
-# Créer la fenêtre de paramétrage du modèle
-class Fenetre_Params(ctk.CTkToplevel):
+class Fenetre_Choix_metriques(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
         
         self.after(100, lambda: self.focus_force())
-        self.title("⚙️ Paramètres du Modèle")
+        self.title("⚙️ Paramètres des visualisations et des métriques")
         
         # Polices
         self.font_titre = ("Helvetica", 18, "bold")
@@ -1489,8 +1496,8 @@ class Fenetre_Params(ctk.CTkToplevel):
 
         # self.geometry("500x1")  # largeur fixe, hauteur minimale
 
-        # Frame principal avec scrollbar
-        self.params_frame = ctk.CTkScrollableFrame(self)
+        # Frame principale
+        self.params_frame = ctk.CTkFrame(self)
         self.params_frame.pack(fill="both", expand=True, padx=20, pady=20)
         self.params_frame.grid_columnconfigure(0, weight=1)  # première colonne s'étire
         self.params_frame.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire aussi
@@ -1512,9 +1519,10 @@ class Fenetre_Params(ctk.CTkToplevel):
         self.geometry("700x800")
 
 
-        ctk.CTkLabel(self.params_frame, text="Hidden Size:", font=("Roboto", 12)).grid(row=2, column=0, sticky="w",padx=10,pady=(0,20))
-        self.lstm_hidden = ctk.StringVar(value=str(Parametres_archi_reseau_LSTM.hidden_size))
-        ctk.CTkEntry(self.params_frame, textvariable=self.lstm_hidden, width=150).grid(row=2, column=1, sticky="e",padx=10,pady=(0,20))
+        ctk.CTkLabel(self.params_frame, text="Choix des métriques (séparées par des virgules):", font=("Roboto", 12)).grid(row=1, column=0, sticky="w",padx=10,pady=(0,20))
+        # self.lstm_hidden = ctk.StringVar(value=str(Parametres_visualisation_suivi.metriques))
+        self.Params_visualisation_suivi_metriques = tk.StringVar(value=",".join(Parametres_visualisation_suivi.metriques))
+        ctk.CTkEntry(self.params_frame, textvariable=self.Params_visualisation_suivi_metriques, width=150).grid(row=1, column=1, sticky="e",padx=10,pady=(0,20))
 
 
 
@@ -1539,74 +1547,29 @@ class Fenetre_Params(ctk.CTkToplevel):
             text_color=("gray10", "gray90"),
             command=self.destroy
         ).grid(row=last_row, column=1,padx=10,pady=(50,20),sticky="ew")
-        self.on_model_change(self.model_var.get())
+
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+
+        # Applique la largeur fixe et la hauteur calculée
+        self.ajuster_hauteur_auto()
+
+
+    def ajuster_hauteur_auto(self, largeur_fixe=700):
+        self.geometry(f"{largeur_fixe}x1")
+        self.update_idletasks()
+        hauteur = self.winfo_height()
+        self.geometry(f"{largeur_fixe}x{hauteur+40}")
+
     
     def est_ouverte(self):
         return self.winfo_exists()
 
     def save_params(self):
-        Parametres_entrainement.nb_epochs = int(self.epochs_var.get())
-        Parametres_entrainement.batch_size = int(self.batch_var.get())
-        Parametres_choix_loss_fct.fonction_perte = self.loss_var.get()
-        Parametres_optimisateur.optimisateur = self.optim_var.get()
-        Parametres_optimisateur.learning_rate = float(self.lr_var.get())
-
-        Parametres_choix_reseau_neurones.modele = self.model_var.get()
-        if self.model_var.get() == "MLP":
-            Parametres_archi_reseau_MLP.nb_couches = int(self.mlp_layers.get())
-            Parametres_archi_reseau_MLP.hidden_size = int(self.mlp_hidden.get())
-            Parametres_archi_reseau_MLP.dropout_rate = float(self.mlp_dropout.get())
-            Parametres_archi_reseau_MLP.fonction_activation = self.mlp_activation.get()
-        elif self.model_var.get() == "CNN":
-            Parametres_archi_reseau_CNN.nb_couches = int(self.cnn_layers.get())
-            Parametres_archi_reseau_CNN.hidden_size = int(self.cnn_hidden.get())
-            Parametres_archi_reseau_CNN.kernel_size = int(self.cnn_kernel.get())
-            Parametres_archi_reseau_CNN.stride = int(self.cnn_stride.get())
-            Parametres_archi_reseau_CNN.padding = int(self.cnn_padding.get())
-            Parametres_archi_reseau_CNN.fonction_activation = self.cnn_activation.get()
-        elif self.model_var.get() == "LSTM":
-            Parametres_archi_reseau_LSTM.nb_couches = int(self.lstm_layers.get())
-            Parametres_archi_reseau_LSTM.hidden_size = int(self.lstm_hidden.get())
-            Parametres_archi_reseau_LSTM.batch_first = self.lstm_batch_first.get()
-            Parametres_archi_reseau_LSTM.bidirectional = self.lstm_bidirectional.get()
+        Parametres_visualisation_suivi.metriques = [m.strip() for m in self.Params_visualisation_suivi_metriques.get().split(",") if m.strip()]
         self.destroy()
 
-    def Params_visualisation_suivi(self):
-        # Variables pour les paramètres
-        Params_visualisation_suivi_metriques = tk.StringVar(value=",".join(Parametres_visualisation_suivi.metriques)) # list de fonctions ['MSE','MAE'...]
-
-        def Save_quit():
-            Parametres_visualisation_suivi.metriques = [m.strip() for m in Params_visualisation_suivi_metriques.get().split(",") if m.strip()]
-            fenetre_params_visualisation_suivi.destroy()
-        
-        def Quit():
-            Params_visualisation_suivi_metriques.set(",".join(Parametres_visualisation_suivi.metriques))
-            fenetre_params_visualisation_suivi.destroy()
-        
-        # Fenêtre secondaire
-        fenetre_params_visualisation_suivi = tk.Toplevel(self)
-        fenetre_params_visualisation_suivi.title("Paramètres de Visualisation et Suivi")
-        fenetre_params_visualisation_suivi.geometry("")
-        
-        # Cadre principal
-        cadre = tk.LabelFrame(fenetre_params_visualisation_suivi, text="Configuration", padx=10, pady=10)
-        cadre.pack(padx=10, pady=10, fill="both", expand=True)
-        
-        # Ligne 1 : Choix des métriques
-        tk.Label(cadre, text="Choix des métriques (séparées par des virgules) :").grid(row=0, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_visualisation_suivi_metriques).grid(row=0, column=1, pady=5)
-        
-        # Boutons
-        bouton_frame = tk.Frame(fenetre_params_visualisation_suivi)
-        bouton_frame.pack(pady=10)
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-
-        fenetre_params_visualisation_suivi.mainloop()
-
-    # Fonctions utilitaires
-    def validate_int_fct(self, text):
-        return text.isdigit() or text == ""
 
 
 # Lancer la boucle principale
