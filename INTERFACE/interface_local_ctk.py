@@ -1210,7 +1210,42 @@ class Fenetre_Params(ctk.CTkToplevel):
         ).grid(row=len(params)+1, column=1, sticky="e",padx=10,pady=(0,20))
 
     def create_lstm_params(self):
-        pass    
+        """Crée les paramètres spécifiques au LSTM"""
+        ctk.CTkLabel(
+            self.params_model_frame,
+            text="🔄 Paramètres LSTM",
+            font=("Roboto Medium", 14)
+        ).grid(row=0, column=0, columnspan=2,padx=10, pady=(0, 20))
+
+        # Nombre de couches
+        ctk.CTkLabel(self.params_model_frame, text="Nombre de couches:", font=("Roboto", 12)).grid(row=1, column=0, sticky="w",padx=10,pady=(0,20))
+        self.lstm_layers = ctk.StringVar(value=str(Parametres_archi_reseau_LSTM.nb_couches))
+        ctk.CTkEntry(self.params_model_frame, textvariable=self.lstm_layers, width=150).grid(row=1, column=1, sticky="e",padx=10,pady=(0,20))
+
+        # Hidden size
+        ctk.CTkLabel(self.params_model_frame, text="Hidden Size:", font=("Roboto", 12)).grid(row=2, column=0, sticky="w",padx=10,pady=(0,20))
+        self.lstm_hidden = ctk.StringVar(value=str(Parametres_archi_reseau_LSTM.hidden_size))
+        ctk.CTkEntry(self.params_model_frame, textvariable=self.lstm_hidden, width=150).grid(row=2, column=1, sticky="e",padx=10,pady=(0,20))
+
+        # Bidirectional
+        self.lstm_bidirectional = ctk.BooleanVar(value=Parametres_archi_reseau_LSTM.bidirectional)
+        ctk.CTkCheckBox(
+            self.params_model_frame,
+            text="Bidirectionnel",
+            variable=self.lstm_bidirectional,
+            font=("Roboto", 12)
+        ).grid(row=3, column=0, columnspan=2, sticky="n",padx=10,pady=(0,20))
+
+        # Batch first
+        self.lstm_batch_first = ctk.BooleanVar(value=Parametres_archi_reseau_LSTM.batch_first)
+        ctk.CTkCheckBox(
+            self.params_model_frame,
+            text="Batch First",
+            variable=self.lstm_batch_first,
+            font=("Roboto", 12)
+        ).grid(row=4, column=0, columnspan=2, sticky="n",padx=10,pady=(0,20))
+
+
 
     def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
         bouton = tk.Button(
