@@ -61,19 +61,19 @@ class Parametres_archi_reseau_class():
             self.bidirectional=False # bool
             self.batch_first=False # bool
 
-    def __init__(self):
-        self.nb_couches=2 #None # int
-        self.hidden_size=64 # int
-        self.dropout_rate=0.0 # float entre 0.0 et 0.9
-        #self.nb_neurones_par_couche=None # list d'int
-        self.fonction_activation="ReLU" # fontion ReLU/GELU/tanh
+    # def __init__(self):
+        # self.nb_couches=2 #None # int
+        # self.hidden_size=64 # int
+        # self.dropout_rate=0.0 # float entre 0.0 et 0.9
+        # #self.nb_neurones_par_couche=None # list d'int
+        # self.fonction_activation="ReLU" # fontion ReLU/GELU/tanh
 
-        self.bidirectional=False # bool
-        self.batch_first=False # bool
+        # self.bidirectional=False # bool
+        # self.batch_first=False # bool
 
-        self.kernel_size=3 # int
-        self.stride=1 # int
-        self.padding=0 # int
+        # self.kernel_size=3 # int
+        # self.stride=1 # int
+        # self.padding=0 # int
 class Parametres_choix_loss_fct_class():
     def __init__(self):
         self.fonction_perte="MSE" # fonction MSE/MAE/Huber
@@ -1061,47 +1061,7 @@ class Fenetre_Params(ctk.CTkToplevel):
         self.params_model_frame.grid(row=9, column=0, columnspan=2, padx=10, pady=(0,20), sticky="ew")
         self.params_model_frame.grid_columnconfigure(0, weight=1)  # première colonne s'étire
         self.params_model_frame.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire aussi
-
-        """
-        # Cadre des paramètres
-        self.CadreParams = tk.LabelFrame(
-            self.cadre, text="", font=self.font_titre,
-            bg=self.cadre_bg, fg="#333333", bd=3, relief="ridge", padx=15, pady=15
-        )
-        self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
-
-        # Liste des boutons
-        boutons = [
-            ("Choix du modèle de réseau de neurones", self.Params_choix_reseau_neurones),
-            ("Paramétrage de l'architecture réseau", self.Params_archi_reseau),
-            ("Choix de la fonction perte (loss)", self.Params_choix_loss_fct),
-            ("Choix et paramétrage de l'optimisateur", self.Params_optimisateur),
-            ("Paramètres d'entraînement", self.Params_entrainement),
-            ("Paramétrage des métriques et visualisations de suivi", self.Params_visualisation_suivi),
-        ]
-
-        for texte, commande in boutons:
-            self.bouton(self.CadreParams, texte, commande)
-
-
-        # tk.Button(
-        #     self.cadre, text="🚀 Envoyer la configuration au serveur", font=self.font_bouton,
-        #     height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
-        #     command=self.EnvoyerConfig
-        # ).pack(fill="x", pady=10)
-
-        tk.Button(
-            self.cadre, text="💾 Sauvegarder la configuration", font=self.font_bouton,
-            height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
-            command=self.Sauvegarder_Config
-        ).pack(fill="x", pady=10)
-
-        tk.Button(
-            self.cadre, text="❌ Quitter", font=self.font_bouton,
-            height=2, bg="#f7b2b2", fg="#842029", relief="raised", bd=3,
-            command=self.destroy
-        ).pack(fill="x", pady=(0, 10))
-        """
+        
         last_row=self.params_frame.grid_size()[1]
         ctk.CTkButton(
             self.params_frame,
@@ -1128,8 +1088,36 @@ class Fenetre_Params(ctk.CTkToplevel):
 
         # self.update_idletasks()
         # self.geometry(f"500x{self.winfo_reqheight()}")
+    
+    def est_ouverte(self):
+        return self.winfo_exists()
+
     def save_params(self):
-        pass
+        Parametres_entrainement.nb_epochs = int(self.epochs_var.get())
+        Parametres_entrainement.batch_size = int(self.batch_var.get())
+        Parametres_choix_loss_fct.fonction_perte = self.loss_var.get()
+        Parametres_optimisateur.optimisateur = self.optim_var.get()
+        Parametres_optimisateur.learning_rate = float(self.lr_var.get())
+
+        Parametres_choix_reseau_neurones.modele = self.model_var.get()
+        if self.model_var.get() == "MLP":
+            Parametres_archi_reseau_MLP.nb_couches = int(self.mlp_layers.get())
+            Parametres_archi_reseau_MLP.hidden_size = int(self.mlp_hidden.get())
+            Parametres_archi_reseau_MLP.dropout_rate = float(self.mlp_dropout.get())
+            Parametres_archi_reseau_MLP.fonction_activation = self.mlp_activation.get()
+        elif self.model_var.get() == "CNN":
+            Parametres_archi_reseau_CNN.nb_couches = int(self.cnn_layers.get())
+            Parametres_archi_reseau_CNN.hidden_size = int(self.cnn_hidden.get())
+            Parametres_archi_reseau_CNN.kernel_size = int(self.cnn_kernel.get())
+            Parametres_archi_reseau_CNN.stride = int(self.cnn_stride.get())
+            Parametres_archi_reseau_CNN.padding = int(self.cnn_padding.get())
+            Parametres_archi_reseau_CNN.fonction_activation = self.cnn_activation.get()
+        elif self.model_var.get() == "LSTM":
+            Parametres_archi_reseau_LSTM.nb_couches = int(self.lstm_layers.get())
+            Parametres_archi_reseau_LSTM.hidden_size = int(self.lstm_hidden.get())
+            Parametres_archi_reseau_LSTM.batch_first = self.lstm_batch_first.get()
+            Parametres_archi_reseau_LSTM.bidirectional = self.lstm_bidirectional.get()
+        self.destroy()
     
     def on_model_change(self, model_type):
         """Change les paramètres affichés selon le modèle"""
@@ -1244,378 +1232,9 @@ class Fenetre_Params(ctk.CTkToplevel):
             variable=self.lstm_batch_first,
             font=("Roboto", 12)
         ).grid(row=4, column=0, columnspan=2, sticky="n",padx=10,pady=(0,20))
-
-
-
-    def bouton(self, parent, texte, commande, bg="#ffffff", fg="#2c3e50"):
-        bouton = tk.Button(
-            parent, text=texte, font=self.font_bouton, command=commande,
-            bg=bg, fg=fg, relief="raised", bd=2, height=2
-        )
-        bouton.pack(fill="x", pady=5)
-
-        # Effet de survol
-        bouton.bind("<Enter>", lambda e: bouton.config(bg="#d6eaf8"))
-        bouton.bind("<Leave>", lambda e: bouton.config(bg=bg))
-
-    def est_ouverte(self):
-        return self.winfo_exists()
     
     # Fonctions des fenêtres de paramétrage
-    
-    def Params_choix_reseau_neurones(self):
-        # Variables pour les paramètres
-        Params_choix_reseau_neurones_modele = tk.StringVar(value=Parametres_choix_reseau_neurones.modele)  # str ['MLP','LSTM','GRU','CNN']
 
-        # Dictionnaire des descriptions
-        descriptions = {
-            "MLP": "MLP (Multi-Layer Perceptron) : réseau de neurones dense, adapté aux données tabulaires ou vectorielles.",
-            "LSTM": "LSTM (Long Short-Term Memory) : réseau récurrent conçu pour capturer les dépendances temporelles longues.",
-            "GRU": "GRU (Gated Recurrent Unit) : variante plus légère du LSTM, efficace pour les séquences temporelles.",
-            "CNN": "CNN (Convolutional Neural Network) : réseau spécialisé dans l'extraction de caractéristiques spatiales, souvent utilisé en vision par ordinateur."
-        }
-
-        def afficher_description():
-            modele = Params_choix_reseau_neurones_modele.get()
-            texte = descriptions.get(modele, "Modèle inconnu.")
-            messagebox.showinfo("Description du modèle", texte)
-            self.lift()  # Ramène la fenêtre secondaire au premier plan
-            self.focus_force()  # Force le focus clavier
-            fenetre_params_choix_reseau_neurones.lift()  # Ramène la fenêtre tertiaire au premier plan
-            fenetre_params_choix_reseau_neurones.focus_force()  # Force le focus clavier
-
-
-        def Save_quit():
-            Parametres_choix_reseau_neurones.modele = Params_choix_reseau_neurones_modele.get()
-            fenetre_params_choix_reseau_neurones.destroy()
-
-        def Quit():
-            Params_choix_reseau_neurones_modele.set(Parametres_choix_reseau_neurones.modele)
-            fenetre_params_choix_reseau_neurones.destroy()
-
-        # Fenêtre secondaire
-        fenetre_params_choix_reseau_neurones = tk.Toplevel(self)
-        fenetre_params_choix_reseau_neurones.title("Paramètres de Choix du réseau de neurones")
-        fenetre_params_choix_reseau_neurones.geometry("")
-
-        # Cadre principal
-        cadre = tk.LabelFrame(fenetre_params_choix_reseau_neurones, text="Configuration", padx=10, pady=10)
-        cadre.pack(padx=10, pady=10, fill="both", expand=True)
-
-        # Ligne 1 : Choix du modèle + bouton "?"
-        tk.Label(cadre, text="Choix du modèle :").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values=["MLP", "LSTM", "GRU", "CNN"], textvariable=Params_choix_reseau_neurones_modele, state="readonly").grid(row=0, column=1, pady=5)
-        tk.Button(cadre, text="❓", command=afficher_description, width=3).grid(row=0, column=2, padx=5)
-
-        # Boutons
-        bouton_frame = tk.Frame(fenetre_params_choix_reseau_neurones)
-        bouton_frame.pack(pady=10)
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-
-        fenetre_params_choix_reseau_neurones.mainloop()
-
-    def Params_archi_reseau(self):
-        def Save_quit():
-            if( Parametres_choix_reseau_neurones.modele=="MLP"):
-                Parametres_archi_reseau_MLP.nb_couches = Params_archi_reseau_nb_couches.get()
-                Parametres_archi_reseau_MLP.hidden_size = Params_archi_reseau_hidden_size.get()
-                Parametres_archi_reseau_MLP.dropout_rate = Params_archi_reseau_dropout_rate.get()
-                Parametres_archi_reseau_MLP.fonction_activation = Params_archi_reseau_fonction_activation.get()
-            elif( Parametres_choix_reseau_neurones.modele=="CNN"):
-                Parametres_archi_reseau_CNN.nb_couches = Params_archi_reseau_nb_couches.get()
-                Parametres_archi_reseau_CNN.hidden_size = Params_archi_reseau_hidden_size.get()
-                Parametres_archi_reseau_CNN.dropout_rate = Params_archi_reseau_dropout_rate.get()
-                Parametres_archi_reseau_CNN.fonction_activation = Params_archi_reseau_fonction_activation.get()
-                Parametres_archi_reseau_CNN.kernel_size = Params_archi_reseau_kernel_size.get()
-                Parametres_archi_reseau_CNN.stride = Params_archi_reseau_stride.get()
-                Parametres_archi_reseau_CNN.padding = Params_archi_reseau_padding.get()
-            elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
-                Parametres_archi_reseau_LSTM.nb_couches = Params_archi_reseau_nb_couches.get()
-                Parametres_archi_reseau_LSTM.hidden_size = Params_archi_reseau_hidden_size.get()
-                Parametres_archi_reseau_LSTM.bidirectional = Params_archi_reseau_bidirectional.get()
-                Parametres_archi_reseau_LSTM.batch_first = Params_archi_reseau_batch_first.get()
-
-
-            fenetre_params_archi_reseau.destroy()
-        
-        def Quit():
-            if( Parametres_choix_reseau_neurones.modele=="MLP"):
-                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau_MLP.nb_couches)
-                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau_MLP.hidden_size)
-                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau_MLP.dropout_rate)
-                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau_MLP.fonction_activation)
-            elif( Parametres_choix_reseau_neurones.modele=="CNN"):
-                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau_CNN.nb_couches)
-                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau_CNN.hidden_size)
-                Params_archi_reseau_dropout_rate.set(Parametres_archi_reseau_CNN.dropout_rate)
-                Params_archi_reseau_fonction_activation.set(Parametres_archi_reseau_CNN.fonction_activation)
-                Params_archi_reseau_kernel_size.set(Parametres_archi_reseau_CNN.kernel_size)
-                Params_archi_reseau_stride.set(Parametres_archi_reseau_CNN.stride)
-                Params_archi_reseau_padding.set(Parametres_archi_reseau_CNN.padding)
-            elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
-                Params_archi_reseau_nb_couches.set(Parametres_archi_reseau_LSTM.nb_couches)
-                Params_archi_reseau_hidden_size.set(Parametres_archi_reseau_LSTM.hidden_size)
-                Params_archi_reseau_bidirectional.set(Parametres_archi_reseau_LSTM.bidirectional)
-                Params_archi_reseau_batch_first.set(Parametres_archi_reseau_LSTM.batch_first)
-            fenetre_params_archi_reseau.destroy()
-
-        # Fenêtre secondaire
-        fenetre_params_archi_reseau = tk.Toplevel(self)
-        fenetre_params_archi_reseau.title("Paramètres de l'architechture du réseau de neurones")
-        fenetre_params_archi_reseau.geometry("")
-        
-        # Cadre principal
-        cadre = tk.LabelFrame(fenetre_params_archi_reseau, text="Configuration", padx=10, pady=10)
-        cadre.pack(padx=10, pady=10, fill="both", expand=True)
-
-
-        # Validation d'entiers
-        vcmd = (fenetre_params_archi_reseau.register(self.validate_int_fct), "%P")
-
-        if( Parametres_choix_reseau_neurones.modele=="MLP"):
-            # if : ...Variables pour les paramètres POUR MLP
-            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau_MLP.nb_couches) # int
-            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau_MLP.hidden_size) # int
-            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau_MLP.dropout_rate) # float entre 0.0 et 0.9
-            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau_MLP.fonction_activation) # fontion ReLU/GELU/tanh
-            # Ligne 1 : Nombre de couches de neurones
-            tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
-
-            # Ligne 2 : Taille des couches cachées
-            tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
-
-            # Ligne 3 : Taux de dropout
-            tk.Label(cadre, text="Taux de dropout (0.0 - 0.9) :").grid(row=2, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_dropout_rate).grid(row=2, column=1, pady=5)
-
-            # Ligne 4 : Fonction d'activation
-            tk.Label(cadre, text="Fonction d'activation :").grid(row=3, column=0, sticky="w", pady=5)
-            ttk.Combobox(cadre, values =["ReLU","GELU","tanh"],textvariable=Params_archi_reseau_fonction_activation,state="readonly").grid(row=3, column=1, pady=5)
-
-        elif( Parametres_choix_reseau_neurones.modele=="CNN"):
-            ## if : ...Variables pour les paramètres POUR CNN
-            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau_CNN.nb_couches) # int
-            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau_CNN.hidden_size) # int
-            Params_archi_reseau_dropout_rate = tk.DoubleVar(value=Parametres_archi_reseau_CNN.dropout_rate) # float entre 0.0 et 0.9
-            Params_archi_reseau_fonction_activation = tk.StringVar(value=Parametres_archi_reseau_CNN.fonction_activation) # fontion ReLU/GELU/tanh
-            # new CNN
-            Params_archi_reseau_kernel_size = tk.IntVar(value = Parametres_archi_reseau_CNN.kernel_size)
-            Params_archi_reseau_stride = tk.IntVar(value = Parametres_archi_reseau_CNN.stride)
-            Params_archi_reseau_padding = tk.IntVar(value = Parametres_archi_reseau_CNN.padding)
-
-            # Ligne 1 : Nombre de couches de neurones
-            tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
-
-            # Ligne 2 : Taille des couches cachées
-            tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
-
-            # Ligne 3 : Taux de dropout
-            tk.Label(cadre, text="Taux de dropout (0.0 - 0.9) :").grid(row=2, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_dropout_rate).grid(row=2, column=1, pady=5)
-
-            # Ligne 4 : Fonction d'activation
-            tk.Label(cadre, text="Fonction d'activation :").grid(row=3, column=0, sticky="w", pady=5)
-            ttk.Combobox(cadre, values =["ReLU","GELU","tanh"],textvariable=Params_archi_reseau_fonction_activation,state="readonly").grid(row=3, column=1, pady=5)
-
-            # Ligne 5 : Taille du kernel
-            tk.Label(cadre, text="Taille du kernel :").grid(row=4, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_kernel_size, validate="key", validatecommand=vcmd).grid(row=4, column=1, pady=5)
-
-            # Ligne 6 : Stride
-            tk.Label(cadre, text="Stride :").grid(row=5, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_stride, validate="key", validatecommand=vcmd).grid(row=5, column=1, pady=5)
-
-            # Ligne 7 : Padding
-            tk.Label(cadre, text="Padding :").grid(row=6, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_padding, validate="key", validatecommand=vcmd).grid(row=6, column=1, pady=5)
-
-        elif( Parametres_choix_reseau_neurones.modele=="LSTM"):
-            ## if : .... Variables pour les paramètres POUR LSTM
-            Params_archi_reseau_nb_couches = tk.IntVar(value=Parametres_archi_reseau_LSTM.nb_couches) # int
-            Params_archi_reseau_hidden_size = tk.IntVar(value=Parametres_archi_reseau_LSTM.hidden_size) # int
-            Params_archi_reseau_bidirectional = tk.BooleanVar(value = Parametres_archi_reseau_LSTM.bidirectional) #bool
-            Params_archi_reseau_batch_first = tk.BooleanVar(value = Parametres_archi_reseau_LSTM.batch_first) #bool
-
-            # Ligne 1 : Nombre de couches de neurones
-            tk.Label(cadre, text="Nombre de couches de neurones :").grid(row=0, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_nb_couches, validate="key", validatecommand=vcmd).grid(row=0, column=1, pady=5)
-
-            # Ligne 2 : Taille des couches cachées
-            tk.Label(cadre, text="Taille des couches cachées :").grid(row=1, column=0, sticky="w", pady=5)
-            tk.Entry(cadre, textvariable=Params_archi_reseau_hidden_size, validate="key", validatecommand=vcmd).grid(row=1, column=1, pady=5)
-
-            # Ligne 3 : Bidirectional
-            tk.Label(cadre, text="Bidirectional :").grid(row=2, column=0, sticky="w", pady=5)
-            tk.Checkbutton(cadre, variable=Params_archi_reseau_bidirectional).grid(row=2, column=1, pady=5)
-            # Ligne 4 : Batch first
-            tk.Label(cadre, text="Batch first :").grid(row=3, column=0, sticky="w", pady=5)
-            tk.Checkbutton(cadre, variable=Params_archi_reseau_batch_first).grid(row=3, column=1, pady=5)
-
-
-
-
-
-
-        # Boutons
-        bouton_frame = tk.Frame(fenetre_params_archi_reseau)
-        bouton_frame.pack(pady=10)
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-        
-        fenetre_params_archi_reseau.mainloop()
-    
-    def Params_choix_loss_fct(self):
-        # Variables pour les paramètres
-        Params_choix_loss_fct_fonction_perte = tk.StringVar(value=Parametres_choix_loss_fct.fonction_perte) # fonction MSE/MAE/Huber
-
-        def Save_quit():
-            Parametres_choix_loss_fct.fonction_perte = Params_choix_loss_fct_fonction_perte.get()
-            fenetre_params_choix_loss_fct.destroy()
-        
-        def Quit():
-            Params_choix_loss_fct_fonction_perte.set(Parametres_choix_loss_fct.fonction_perte)
-            fenetre_params_choix_loss_fct.destroy()
-        
-        # Fenêtre secondaire
-        fenetre_params_choix_loss_fct = tk.Toplevel(self)
-        fenetre_params_choix_loss_fct.title("Paramètres de Choix de la fonction perte (loss)")
-        fenetre_params_choix_loss_fct.geometry("")
-
-        # Cadre principal
-        cadre = tk.LabelFrame(fenetre_params_choix_loss_fct, text="Configuration", padx=10, pady=10)
-        cadre.pack(padx=10, pady=10, fill="both", expand=True)
-
-        # Ligne 1 : Choix de la fonction perte
-        tk.Label(cadre, text="Choix de la fonction perte :").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values =["MSE","MAE","Huber"],textvariable=Params_choix_loss_fct_fonction_perte,state="readonly").grid(row=0, column=1, pady=5)
-
-        # Boutons
-        bouton_frame = tk.Frame(fenetre_params_choix_loss_fct)
-        bouton_frame.pack(pady=10)
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-
-        fenetre_params_choix_loss_fct.mainloop()
-    
-    def Params_optimisateur(self):
-        # Variables pour les paramètres
-        Params_optimisateur_optimisateur = tk.StringVar(value=Parametres_optimisateur.optimisateur) # fonction Adam/SGD/RMSprop/Adagrad/Adadelta
-        Params_optimisateur_learning_rate = tk.DoubleVar(value=Parametres_optimisateur.learning_rate) # float
-        Params_optimisateur_decroissance = tk.DoubleVar(value=Parametres_optimisateur.decroissance) # float
-        Params_optimisateur_scheduler = tk.StringVar(value=Parametres_optimisateur.scheduler) # fonction Plateau/Cosine/OneCycle/None
-        Params_optimisateur_patience = tk.IntVar(value=Parametres_optimisateur.patience) # int
-
-        def Save_quit():
-            Parametres_optimisateur.optimisateur = Params_optimisateur_optimisateur.get()
-            Parametres_optimisateur.learning_rate = Params_optimisateur_learning_rate.get()
-            Parametres_optimisateur.decroissance = Params_optimisateur_decroissance.get()
-            Parametres_optimisateur.scheduler = Params_optimisateur_scheduler.get()
-            Parametres_optimisateur.patience = Params_optimisateur_patience.get()
-            fenetre_params_optimisateur.destroy()
-        
-        def Quit():
-            Params_optimisateur_optimisateur.set(Parametres_optimisateur.optimisateur)
-            Params_optimisateur_learning_rate.set(Parametres_optimisateur.learning_rate)
-            Params_optimisateur_decroissance.set(Parametres_optimisateur.decroissance)
-            Params_optimisateur_scheduler.set(Parametres_optimisateur.scheduler)
-            Params_optimisateur_patience.set(Parametres_optimisateur.patience)
-            fenetre_params_optimisateur.destroy()
-
-        # Fenêtre secondaire
-        fenetre_params_optimisateur = tk.Toplevel(self)
-        fenetre_params_optimisateur.title("Paramètres de l'Optimisation")
-        fenetre_params_optimisateur.geometry("")
-        
-        # Cadre principal
-        cadre = tk.LabelFrame(fenetre_params_optimisateur, text="Configuration", padx=10, pady=10)
-        cadre.pack(padx=10, pady=10, fill="both", expand=True)
-
-        # Validation d'entiers
-        vcmd_int = (fenetre_params_optimisateur.register(self.validate_int_fct), "%P")
-
-        # Ligne 1 : Choix de l'optimisateur
-        tk.Label(cadre, text="Choix de l'optimisateur :").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values =["Adam","SGD","RMSprop","Adagrad","Adadelta"],textvariable=Params_optimisateur_optimisateur,state="readonly").grid(row=0, column=1, pady=5)
-
-        # Ligne 2 : Taux d'apprentissage
-        tk.Label(cadre, text="Taux d'apprentissage :").grid(row=1, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_optimisateur_learning_rate).grid(row=1, column=1, pady=5)
-
-        # Ligne 3 : Décroissance
-        tk.Label(cadre, text="Décroissance :").grid(row=2, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_optimisateur_decroissance).grid(row=2, column=1, pady=5)
-
-        # Ligne 4 : Scheduler
-        tk.Label(cadre, text="Scheduler :").grid(row=3, column=0, sticky="w", pady=5)
-        ttk.Combobox(cadre, values =["Plateau","Cosine","OneCycle","None"],textvariable=Params_optimisateur_scheduler,state="readonly").grid(row=3, column=1, pady=5)
-
-        # Ligne 5 : Patience
-        tk.Label(cadre, text="Patience (int) :").grid(row=4, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_optimisateur_patience, validate="key", validatecommand=vcmd_int).grid(row=4, column=1, pady=5)
-
-        # Boutons
-        bouton_frame = tk.Frame(fenetre_params_optimisateur)
-        bouton_frame.pack(pady=10)
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-
-        fenetre_params_optimisateur.mainloop()
-    
-    def Params_entrainement(self):
-        # Variables pour les paramètres
-        Params_entrainement_nb_epochs = tk.IntVar(value=Parametres_entrainement.nb_epochs) # int
-        Params_entrainement_batch_size = tk.IntVar(value=Parametres_entrainement.batch_size) # int
-        Params_entrainement_clip_gradient = tk.DoubleVar(value=Parametres_entrainement.clip_gradient if Parametres_entrainement.clip_gradient is not None else 0.0) # float
-
-        def Save_quit():
-            Parametres_entrainement.nb_epochs = Params_entrainement_nb_epochs.get()
-            Parametres_entrainement.batch_size = Params_entrainement_batch_size.get()
-            Parametres_entrainement.clip_gradient = Params_entrainement_clip_gradient.get() if Params_entrainement_clip_gradient.get() != 0.0 else None
-            fenetre_params_entrainement.destroy()
-        
-        def Quit():
-            Params_entrainement_nb_epochs.set(Parametres_entrainement.nb_epochs)
-            Params_entrainement_batch_size.set(Parametres_entrainement.batch_size)
-            Params_entrainement_clip_gradient.set(Parametres_entrainement.clip_gradient if Parametres_entrainement.clip_gradient is not None else 0.0)
-            fenetre_params_entrainement.destroy()
-
-        # Fenêtre secondaire
-        fenetre_params_entrainement = tk.Toplevel(self)
-        fenetre_params_entrainement.title("Paramètres d'Entrainement")
-        fenetre_params_entrainement.geometry("")
-        
-        # Cadre principal
-        cadre = tk.LabelFrame(fenetre_params_entrainement, text="Configuration", padx=10, pady=10)
-        cadre.pack(padx=10, pady=10, fill="both", expand=True)
-
-        # Validation d'entiers
-        vcmd_int = (fenetre_params_entrainement.register(self.validate_int_fct), "%P")
-
-        # Ligne 1 : Nombre d'epochs
-        tk.Label(cadre, text="Nombre d'epochs:").grid(row=0, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_entrainement_nb_epochs, validate="key", validatecommand=vcmd_int).grid(row=0, column=1, pady=5)
-
-        # Ligne 2 : Taille du batch
-        tk.Label(cadre, text="Taille du batch:").grid(row=1, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_entrainement_batch_size, validate="key", validatecommand=vcmd_int).grid(row=1, column=1, pady=5)
-
-        # Ligne 3 : Clip des gradients
-        tk.Label(cadre, text="Clip des gradients (0.0 pour None):").grid(row=2, column=0, sticky="w", pady=5)
-        tk.Entry(cadre, textvariable=Params_entrainement_clip_gradient).grid(row=2, column=1, pady=5)
-
-        # Boutons
-        bouton_frame = tk.Frame(fenetre_params_entrainement)
-        bouton_frame.pack(pady=10)
-        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
-        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
-
-        fenetre_params_entrainement.mainloop()
-    
     def Params_visualisation_suivi(self):
         # Variables pour les paramètres
         Params_visualisation_suivi_metriques = tk.StringVar(value=",".join(Parametres_visualisation_suivi.metriques)) # list de fonctions ['MSE','MAE'...]
@@ -1653,9 +1272,6 @@ class Fenetre_Params(ctk.CTkToplevel):
 
     def validate_int_fct(self, text):
         return text.isdigit() or text == ""
-
-    def Sauvegarder_Config(self):
-        self.destroy()
 
 # Créer la fenêtre de paramétrage de l'horizon des données
 class Fenetre_Params_horizon(tk.Toplevel):
@@ -1857,7 +1473,141 @@ class Fenetre_Choix_datasets(tk.Toplevel):
         # Récupérer les datasets sélectionnés
         pass
 
+#Creer la fenêtre de paramètres des visualisations
+# Créer la fenêtre de paramétrage du modèle
+class Fenetre_Params(ctk.CTkToplevel):
+    def __init__(self, master=None):
+        super().__init__(master)
+        
+        self.after(100, lambda: self.focus_force())
+        self.title("⚙️ Paramètres du Modèle")
+        
+        # Polices
+        self.font_titre = ("Helvetica", 18, "bold")
+        self.font_section = ("Helvetica", 14, "bold")
+        self.font_bouton = ("Helvetica", 12)
+
+        # self.geometry("500x1")  # largeur fixe, hauteur minimale
+
+        # Frame principal avec scrollbar
+        self.params_frame = ctk.CTkScrollableFrame(self)
+        self.params_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        self.params_frame.grid_columnconfigure(0, weight=1)  # première colonne s'étire
+        self.params_frame.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire aussi
+
+        
+        # # Titre simulé
+        # tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=self.fenetre_bg).pack(anchor="w", pady=(0, 10))
+        
+        # Polices
+        self.font_titre = ("Roboto Medium", 16)
+        self.font_label = ("Roboto", 12)
+
+        # Titre
+        ctk.CTkLabel(
+            self.params_frame,
+            text="⚙️ Configuration des visualisations et du suivi",
+            font=("Roboto Medium", 22)
+        ).grid(row=0, column=0, columnspan=2,padx=10,pady=(0,20))
+        self.geometry("700x800")
+
+
+        ctk.CTkLabel(self.params_frame, text="Hidden Size:", font=("Roboto", 12)).grid(row=2, column=0, sticky="w",padx=10,pady=(0,20))
+        self.lstm_hidden = ctk.StringVar(value=str(Parametres_archi_reseau_LSTM.hidden_size))
+        ctk.CTkEntry(self.params_frame, textvariable=self.lstm_hidden, width=150).grid(row=2, column=1, sticky="e",padx=10,pady=(0,20))
+
+
+
+
+
+        last_row=self.params_frame.grid_size()[1]
+        ctk.CTkButton(
+            self.params_frame,
+            text="💾 Sauvegarder",
+            font=("Roboto", 13),
+            height=40,
+            command=self.save_params
+        ).grid(row=last_row, column=0,padx=10,pady=(50,20),sticky="ew")
+
+        ctk.CTkButton(
+            self.params_frame,
+            text="❌ Annuler",
+            font=("Roboto", 13),
+            height=40,
+            fg_color="transparent",
+            border_width=2,
+            text_color=("gray10", "gray90"),
+            command=self.destroy
+        ).grid(row=last_row, column=1,padx=10,pady=(50,20),sticky="ew")
+        self.on_model_change(self.model_var.get())
     
+    def est_ouverte(self):
+        return self.winfo_exists()
+
+    def save_params(self):
+        Parametres_entrainement.nb_epochs = int(self.epochs_var.get())
+        Parametres_entrainement.batch_size = int(self.batch_var.get())
+        Parametres_choix_loss_fct.fonction_perte = self.loss_var.get()
+        Parametres_optimisateur.optimisateur = self.optim_var.get()
+        Parametres_optimisateur.learning_rate = float(self.lr_var.get())
+
+        Parametres_choix_reseau_neurones.modele = self.model_var.get()
+        if self.model_var.get() == "MLP":
+            Parametres_archi_reseau_MLP.nb_couches = int(self.mlp_layers.get())
+            Parametres_archi_reseau_MLP.hidden_size = int(self.mlp_hidden.get())
+            Parametres_archi_reseau_MLP.dropout_rate = float(self.mlp_dropout.get())
+            Parametres_archi_reseau_MLP.fonction_activation = self.mlp_activation.get()
+        elif self.model_var.get() == "CNN":
+            Parametres_archi_reseau_CNN.nb_couches = int(self.cnn_layers.get())
+            Parametres_archi_reseau_CNN.hidden_size = int(self.cnn_hidden.get())
+            Parametres_archi_reseau_CNN.kernel_size = int(self.cnn_kernel.get())
+            Parametres_archi_reseau_CNN.stride = int(self.cnn_stride.get())
+            Parametres_archi_reseau_CNN.padding = int(self.cnn_padding.get())
+            Parametres_archi_reseau_CNN.fonction_activation = self.cnn_activation.get()
+        elif self.model_var.get() == "LSTM":
+            Parametres_archi_reseau_LSTM.nb_couches = int(self.lstm_layers.get())
+            Parametres_archi_reseau_LSTM.hidden_size = int(self.lstm_hidden.get())
+            Parametres_archi_reseau_LSTM.batch_first = self.lstm_batch_first.get()
+            Parametres_archi_reseau_LSTM.bidirectional = self.lstm_bidirectional.get()
+        self.destroy()
+
+    def Params_visualisation_suivi(self):
+        # Variables pour les paramètres
+        Params_visualisation_suivi_metriques = tk.StringVar(value=",".join(Parametres_visualisation_suivi.metriques)) # list de fonctions ['MSE','MAE'...]
+
+        def Save_quit():
+            Parametres_visualisation_suivi.metriques = [m.strip() for m in Params_visualisation_suivi_metriques.get().split(",") if m.strip()]
+            fenetre_params_visualisation_suivi.destroy()
+        
+        def Quit():
+            Params_visualisation_suivi_metriques.set(",".join(Parametres_visualisation_suivi.metriques))
+            fenetre_params_visualisation_suivi.destroy()
+        
+        # Fenêtre secondaire
+        fenetre_params_visualisation_suivi = tk.Toplevel(self)
+        fenetre_params_visualisation_suivi.title("Paramètres de Visualisation et Suivi")
+        fenetre_params_visualisation_suivi.geometry("")
+        
+        # Cadre principal
+        cadre = tk.LabelFrame(fenetre_params_visualisation_suivi, text="Configuration", padx=10, pady=10)
+        cadre.pack(padx=10, pady=10, fill="both", expand=True)
+        
+        # Ligne 1 : Choix des métriques
+        tk.Label(cadre, text="Choix des métriques (séparées par des virgules) :").grid(row=0, column=0, sticky="w", pady=5)
+        tk.Entry(cadre, textvariable=Params_visualisation_suivi_metriques).grid(row=0, column=1, pady=5)
+        
+        # Boutons
+        bouton_frame = tk.Frame(fenetre_params_visualisation_suivi)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Sauvegarder et quitter", command=Save_quit).grid(row=0, column=0, padx=10)
+        tk.Button(bouton_frame, text="Quitter", command=Quit).grid(row=0, column=1, padx=10)
+
+        fenetre_params_visualisation_suivi.mainloop()
+
+    # Fonctions utilitaires
+    def validate_int_fct(self, text):
+        return text.isdigit() or text == ""
+
 
 # Lancer la boucle principale
 if __name__ == "__main__":
