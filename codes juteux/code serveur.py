@@ -3,9 +3,9 @@ import threading
 
 HOST = ""
 PORT = 8080
-BACKLOG = 50
+BACKLOG = 1 
 
-# ----- Helpers pour ligne par ligne avec socket brut -----
+
 def send_line(sock, text):
     sock.sendall((text + "\n").encode("utf-8"))
 
@@ -19,24 +19,24 @@ def recv_line(sock, buffer):
             raise ConnectionError("Connexion fermée.")
         buffer += data
 
-# ----- Classe Player -----
+
 class Player:
     def __init__(self, sock, addr, pid):
         self.sock = sock
         self.addr = addr
         self.id = pid
         self.symbol = None  # "X" ou "O"
-        self.buffer = ""    # tampon pour recv_line
+        self.buffer = ""    # tampon pour reevoir les données
 
     def close(self):
         try: self.sock.close()
         except Exception: pass
 
-# ----- Liste d'attente -----
+
 waiting = []
 wait_lock = threading.Lock()
 
-# ----- Relais P1 -> P2 -----
+
 def forward(src: Player, dst: Player):
     try:
         while True:
@@ -45,7 +45,7 @@ def forward(src: Player, dst: Player):
     except Exception:
         pass
 
-# ----- Thread par partie -----
+
 def game_session(p1: Player, p2: Player):
     try:
         p1.id, p1.symbol = 1, "X"
@@ -64,7 +64,7 @@ def game_session(p1: Player, p2: Player):
         p1.close()
         p2.close()
 
-# ----- Gestion d’une nouvelle connexion -----
+
 def handle_new_client(conn, addr):
     print(f"[+] Nouveau client {addr}")
     player = Player(conn, addr, pid=0)
@@ -79,7 +79,7 @@ def handle_new_client(conn, addr):
         else:
             print("[ ] En attente d’un autre joueur...")
 
-# ----- Boucle principale -----
+
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

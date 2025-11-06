@@ -14,7 +14,7 @@ X_COLOR = (200, 50, 50)
 O_COLOR = (50, 50, 200)
 FONT_COLOR = (10, 10, 10)
 
-# ----- Helpers ligne par ligne -----
+
 def send_line(sock, text):
     sock.sendall((text + "\n").encode("utf-8"))
 
@@ -28,7 +28,7 @@ def recv_line(sock, buffer):
             raise ConnectionError("Connexion fermée.")
         buffer += data
 
-# ----- Fonctions morpion -----
+
 def check_winner(board):
     for r in board:
         if r[0] != " " and r[0] == r[1] == r[2]: return r[0]
@@ -64,16 +64,14 @@ def draw_board(screen, board, message):
         text = msg_font.render(message, True, FONT_COLOR)
         screen.blit(text, text.get_rect(center=(WINDOW_SIZE // 2, WINDOW_SIZE + 25)))
 
-# ----- Main -----
+
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((SERVER_HOST, SERVER_PORT))
     buffer = ""
 
-    # Réception ID|SYMBOLE
     txt, buffer = recv_line(sock, buffer)
     parts = txt.split("|")
-    player_id = int(parts[0])
     symbol = parts[1]
     opponent_symbol = "O" if symbol == "X" else "X"
     print(f"Connecté ! Tu joues {symbol}")
@@ -101,7 +99,7 @@ def main():
                     send_line(sock, f"{r}|{c}")
                     turn = opponent_symbol
 
-        # Réception d’un coup adverse
+
         if turn != symbol and not check_winner(board) and not board_full(board):
             sock.setblocking(False)
             try:
