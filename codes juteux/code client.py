@@ -117,7 +117,7 @@ def main():
 
         winner = check_winner(board)
         if winner:
-            message = f"{"Tu as" if (turn == symbol) else "l'adversaire a"} gagné !"
+            message = f"{"L'adversaire a" if (turn == symbol) else "Tu as"} gagné !"
         elif board_full(board):
             message = "Match nul !"
         else:
