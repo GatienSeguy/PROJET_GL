@@ -2,7 +2,7 @@ import pygame
 import socket
 import sys
 
-SERVER_HOST = "127.0.0.1"
+SERVER_HOST = "127.0.0.1" 
 SERVER_PORT = 8081
 CELL_SIZE = 100
 GRID_SIZE = 3
@@ -134,7 +134,7 @@ def main():
         elif board_full(board):
             message = "Match nul !"
         else:
-            message = f"À {turn} de jouer"
+            message = f"À {"toi" if (turn == symbol) else "l'adversaire"} de jouer"
 
         draw_board(screen, board, message)
         pygame.display.flip()
