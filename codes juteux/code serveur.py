@@ -3,7 +3,7 @@ import threading
 
 HOST = ""
 PORT = 8080
-BACKLOG = 1 
+BACKLOG = 1
 
 
 def send_line(sock, text):
