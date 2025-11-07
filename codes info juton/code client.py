@@ -2,7 +2,7 @@ import pygame
 import socket
 import sys
 
-SERVER_HOST = "127.0.0.1"
+SERVER_HOST = "192.168.1.2"
 SERVER_PORT = 8080
 CELL_SIZE = 100
 GRID_SIZE = 3
@@ -115,7 +115,7 @@ def main():
 
         winner = check_winner(board)
         if winner:
-            message = f"{"L'adversaire a" if (turn == symbol) else "Tu as"} gagné !"
+            message = f"{"L adversaire a" if (turn == symbol) else "Tu as"} gagné !"
         elif board_full(board):
             message = "Match nul !"
         else:
