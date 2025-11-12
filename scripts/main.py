@@ -100,35 +100,53 @@ class CNNDARGRUPipeline:
         print(f"Meilleure val loss: {min(val_losses):.6f}")
         print(f"Modèles sauvegardés dans: {save_dir}/")
     
+    #####
     def evaluate(self, save_dir: Path = Path('results')):
-        """Évalue le modèle"""
+        """Évalue le modèle avec visualisation complète"""
         self.evaluator = Evaluator(self.model, self.model_config, self.device)
         
-        # Fonction de dénormalisation
         def denormalize_fn(values):
-            mean = self.data_manager.norm_stats['mean']
-            std = self.data_manager.norm_stats['std']
-            return values * std + mean
+            return values * self.data_manager.norm_stats['std'] + self.data_manager.norm_stats['mean']
         
-        results = self.evaluator.evaluate(
+        # Évaluation sur test
+        test_results = self.evaluator.evaluate_on_loader(
             self.data_manager.loaders['test'],
-            denormalize_fn
+            denormalize_fn,
+            phase_name="Test"
         )
         
-        # Visualisations
-        self.evaluator.plot_results(results, save_dir)
+        # Graphiques détaillés test
+        self.evaluator.plot_test_detailed(test_results, save_dir)
         
-        # Sauvegarde des résultats
-        save_dir = Path(save_dir)
-        save_dir.mkdir(parents=True, exist_ok=True)
+        # Graphique complet avec train/val/test
+        full_dataset = self.data_manager.datasets['train'].dataset
+        train_indices = self.data_manager.datasets['train'].indices
+        val_indices = self.data_manager.datasets['val'].indices
+        test_indices = self.data_manager.datasets['test'].indices
         
+        self.evaluator.plot_complete_analysis(
+            full_dataset,
+            train_indices,
+            val_indices,
+            test_indices,
+            denormalize_fn,
+            save_dir
+        )
+        
+        # Sauvegarde JSON
         results_to_save = {
-            'metrics_per_step': results['metrics_per_step'],
-            'global_metrics': results['global_metrics']
+            'test_metrics_per_step': test_results['metrics_per_step'],
+            'test_global_metrics': test_results['global_metrics']
         }
         
-        with open(save_dir / 'test_results.json', 'w') as f:
+        save_dir = Path(save_dir)
+        with open(save_dir / 'evaluation_results.json', 'w') as f:
             json.dump(results_to_save, f, indent=4)
+        
+        self.log(f"\n✓ Évaluation terminée")
+
+
+    ####
     
     def predict(self, data: dict, exog_data: list = None, save_dir: Path = Path('predictions')):
         """Fait une prédiction"""
@@ -175,7 +193,7 @@ def get_data_file():
     # Proposition de chemins courants
     common_paths = [
         Path('PROJET_GL/Datas/EURO.json'),
-        Path('Datas/EURO.json'),
+        Path('Datas/Boites_per_day.json'),
         Path('data/EURO.json'),
         Path('EURO.json')
     ]
@@ -249,7 +267,7 @@ def main():
     model_config = ModelConfig(
         # Architecture
         conv_channels=64,
-        hidden_size=128,
+        hidden_size=256,
         pred_steps=6,
         kernel_size=6,
         pool_size=2,
@@ -257,9 +275,9 @@ def main():
         # Entraînement
         window_size=15,
         batch_size=32,
-        num_epochs=200,
+        num_epochs=2000,
         learning_rate=0.0001,
-        patience=20,
+        patience=50,
         
         # Split
         train_ratio=0.8,

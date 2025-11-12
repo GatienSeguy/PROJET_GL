@@ -9,7 +9,7 @@ from config import ModelConfig
 
 
 class Predictor:
-    """Classe pour faire des prédictions"""
+    """Classe pour faire des prédictions dans le futur"""
     
     def __init__(
         self,
@@ -25,10 +25,14 @@ class Predictor:
         self.model.eval()
     
     def _prepare_input(self, data: Dict, exog_data: Optional[list] = None) -> torch.Tensor:
-        """Prépare les données d'entrée"""
+        """Prépare les données d'entrée pour la prédiction"""
         # Récupération des dernières valeurs
         values = np.array(data['values'][-self.config.window_size:], dtype=float)
         values = values.reshape(-1, 1)
+        
+        # Nettoyage si nécessaire
+        if np.isnan(values).any():
+            values = pd.Series(values.flatten()).fillna(method='ffill').fillna(method='bfill').values.reshape(-1, 1)
         
         # Normalisation
         values_norm = (values - self.norm_stats['mean']) / self.norm_stats['std']
@@ -71,11 +75,29 @@ class Predictor:
         
         return future_timestamps
     
-    def predict(self, data: Dict, exog_data: Optional[list] = None) -> Dict:
-        """Fait une prédiction multi-step"""
+    def predict_future(
+        self,
+        data: Dict,
+        exog_data: Optional[list] = None,
+        n_future_steps: Optional[int] = None
+    ) -> Dict:
+        """
+        Fait une prédiction dans le futur
+        
+        Args:
+            data: Données historiques
+            exog_data: Variables exogènes (si disponibles)
+            n_future_steps: Nombre de steps à prédire (si None, utilise config.pred_steps)
+        
+        Returns:
+            Dict avec timestamps et valeurs prédites
+        """
         print("\n" + "="*60)
-        print("Prédiction")
+        print("PRÉDICTION DANS LE FUTUR")
         print("="*60)
+        
+        if n_future_steps is None:
+            n_future_steps = self.config.pred_steps
         
         # Préparation
         x = self._prepare_input(data, exog_data).to(self.device)
@@ -91,13 +113,13 @@ class Predictor:
         # Timestamps futurs
         last_timestamps = data['timestamps'][-self.config.window_size:]
         future_timestamps = self._generate_future_timestamps(
-            last_timestamps, 
-            self.config.pred_steps
+            last_timestamps,
+            n_future_steps
         )
         
         predictions = {
-            'timestamps': future_timestamps,
-            'values': pred_denorm.flatten().tolist(),
+            'timestamps': future_timestamps[:n_future_steps],
+            'values': pred_denorm[:n_future_steps, 0].tolist(),
             'input_window': {
                 'timestamps': last_timestamps,
                 'values': data['values'][-self.config.window_size:]
@@ -105,38 +127,62 @@ class Predictor:
         }
         
         # Affichage
-        print("\nRésultats:")
-        for i, (ts, val) in enumerate(zip(future_timestamps, predictions['values'])):
+        print("\nPrédictions futures:")
+        for i, (ts, val) in enumerate(zip(predictions['timestamps'], predictions['values'])):
             print(f"  Step {i+1}: {ts} -> {val:.4f}")
         
         return predictions
     
-    def plot_prediction(self, historical_data: Dict, predictions: Dict, save_path: Optional[Path] = None):
-        """Visualise la prédiction"""
-        fig, ax = plt.subplots(figsize=(15, 6))
+    def plot_forecast(
+        self,
+        historical_data: Dict,
+        predictions: Dict,
+        n_history: int = 200,
+        save_path: Optional[Path] = None
+    ):
+        """
+        Visualise les prédictions futures avec l'historique
         
-        # Historique
-        hist_values = historical_data['values'][-100:]  # Dernières 100 valeurs
+        Args:
+            historical_data: Données historiques complètes
+            predictions: Prédictions futures
+            n_history: Nombre de points historiques à afficher
+            save_path: Chemin de sauvegarde (optionnel)
+        """
+        fig, ax = plt.subplots(figsize=(16, 6))
+        
+        # Historique (derniers n_history points)
+        hist_values = historical_data['values'][-n_history:]
         hist_times = range(len(hist_values))
         
-        ax.plot(hist_times, hist_values, label='Historique', color='blue', alpha=0.7, linewidth=2)
+        ax.plot(hist_times, hist_values, 'b-', label='Historique', linewidth=2, alpha=0.8)
         
-        # Prédictions
+        # Fenêtre d'entrée utilisée
+        window_start = len(hist_values) - self.config.window_size
+        window_values = historical_data['values'][-self.config.window_size:]
+        window_times = range(window_start, len(hist_values))
+        
+        ax.plot(window_times, window_values, 'g-', linewidth=3, alpha=0.6, label='Fenêtre d\'entrée')
+        
+        # Prédictions futures
         pred_values = predictions['values']
         pred_start = len(hist_values)
         pred_times = range(pred_start, pred_start + len(pred_values))
         
-        ax.plot(pred_times, pred_values, label='Prédiction', color='red', 
-               marker='o', linestyle='--', linewidth=2, markersize=8)
+        ax.plot(pred_times, pred_values, 'r-', marker='o', linestyle='--',
+               linewidth=2, markersize=8, label='Prédiction Future', markerfacecolor='red')
         
         # Ligne de séparation
-        ax.axvline(x=pred_start - 1, color='green', linestyle=':', 
-                  linewidth=2, label='Début des prédictions')
+        ax.axvline(x=len(hist_values) - 1, color='orange', linestyle=':', 
+                  linewidth=3, label='Présent → Futur')
         
-        ax.set_xlabel('Index temporel', fontsize=12)
-        ax.set_ylabel('Valeur', fontsize=12)
-        ax.set_title('Prédiction de séries temporelles', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=11)
+        # Zone de prédiction
+        ax.axvspan(pred_start, pred_times[-1], alpha=0.1, color='red', label='Zone de Prédiction')
+        
+        ax.set_xlabel('Index Temporel', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Valeur', fontsize=12, fontweight='bold')
+        ax.set_title('Prédiction Future sur Série Temporelle', fontsize=14, fontweight='bold')
+        ax.legend(loc='best', fontsize=11)
         ax.grid(True, alpha=0.3)
         
         plt.tight_layout()

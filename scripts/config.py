@@ -18,7 +18,7 @@ class ModelConfig:
     # Entraînement
     window_size: int = 15
     batch_size: int = 32
-    num_epochs: int = 200
+    num_epochs: int = 2000
     learning_rate: float = 0.0001
     patience: int = 20
     
