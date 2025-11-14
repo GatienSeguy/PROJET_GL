@@ -193,7 +193,7 @@ def get_data_file():
     # Proposition de chemins courants
     common_paths = [
         Path('PROJET_GL/Datas/EURO.json'),
-        Path('Datas/Boites_per_day.json'),
+        Path('Datas/EURO.json'),
         Path('data/EURO.json'),
         Path('EURO.json')
     ]
@@ -276,8 +276,8 @@ def main():
         window_size=15,
         batch_size=32,
         num_epochs=2000,
-        learning_rate=0.0001,
-        patience=50,
+        learning_rate=0.00005,
+        patience=100,
         
         # Split
         train_ratio=0.8,
