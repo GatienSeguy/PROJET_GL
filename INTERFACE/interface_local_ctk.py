@@ -129,7 +129,7 @@ BORDER_COLOR = "#4a5f7f"
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
     def __init__(self):
-        self.obtenir_datasets()
+        print(self.obtenir_datasets())
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
@@ -384,7 +384,8 @@ class Fenetre_Acceuil(ctk.CTk):
     #         print("Erreur lors de l’envoi du message :", e)
 
     def obtenir_datasets(self):
-        url = f"http://{URL}/datasets/info_all"  # IP SERVEUR_IA
+        url = f"{URL}/datasets/info_all"  # IP SERVEUR_IA
+        
 
         payload = {"message": "choix dataset"}
 
