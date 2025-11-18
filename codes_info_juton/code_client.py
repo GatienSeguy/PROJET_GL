@@ -2,7 +2,7 @@ import pygame
 import socket
 import sys
 
-SERVER_HOST = "127.0.0.1"
+SERVER_HOST = "rpi2-7.zpq.ens-paris-saclay.fr"
 SERVER_PORT = 8080
 CELL_SIZE = 100
 GRID_SIZE = 3
