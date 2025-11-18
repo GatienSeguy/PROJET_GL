@@ -129,7 +129,7 @@ BORDER_COLOR = "#4a5f7f"
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
     def __init__(self):
-        # print(self.obtenir_datasets())
+        print(self.obtenir_datasets())
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
@@ -983,7 +983,7 @@ class Fenetre_Params(ctk.CTkToplevel):
         # self.grab_set()          # empêche de cliquer sur la fenêtre principale tant que le Toplevel est ouvert
         self.after(100, lambda: self.focus_force())
         self.title("⚙️ Paramètres du Modèle")
-        self.geometry("700x800")
+        self.geometry("700x600")
         # Polices
         self.font_titre = ("Helvetica", 18, "bold")
         self.font_section = ("Helvetica", 14, "bold")
