@@ -103,6 +103,9 @@ class Parametres_visualisation_suivi_class():
         # self.Frequence_visualisation_predictions=None # int
         # self.Nb_exemples_visualises=None # int
 
+Datasets_list=[]
+Dataset=""
+
 Parametres_temporels=Parametres_temporels_class()
 Parametres_choix_reseau_neurones=Parametres_choix_reseau_neurones_class()
 Parametres_archi_reseau_MLP=Parametres_archi_reseau_class.MLP_params()
@@ -126,6 +129,7 @@ BORDER_COLOR = "#4a5f7f"
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
     def __init__(self):
+        self.obtenir_datasets()
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
@@ -232,15 +236,15 @@ class Fenetre_Acceuil(ctk.CTk):
         Label_frame_Donnees.grid_columnconfigure(0, weight=1)
         Label_frame_Donnees.grid_rowconfigure(0, weight=1)
 
-
+        
         # self.bouton(Label_frame_Donnees, "📁 Choix Dataset", self.Parametrer_dataset,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
-        optionmenu_var = ctk.StringVar(value="option 2")  # set initial value
+        optionmenu_var = ctk.StringVar(value=Dataset)  # set initial value
 
         def optionmenu_callback(choice):
-            print("optionmenu dropdown clicked:", choice)
+            Dataset=choice
 
         combobox = ctk.CTkOptionMenu(master=Label_frame_Donnees,
-                                            values=["option 1", "option 2"],
+                                            values=Datasets_list,
                                             command=optionmenu_callback,
                                             variable=optionmenu_var,
                                             )
@@ -338,12 +342,6 @@ class Fenetre_Acceuil(ctk.CTk):
         else:
             self.Fenetre_Params_horizon_instance.lift()  # Ramène la fenêtre secondaire au premier plan
 
-    def Parametrer_dataset(self):
-        if self.Fenetre_Choix_datasets_instance is None or not self.Fenetre_Choix_datasets_instance.est_ouverte():
-            self.Fenetre_Choix_datasets_instance = Fenetre_Choix_datasets(self)
-        else:
-            self.Fenetre_Choix_datasets_instance.lift()  # Ramène la fenêtre secondaire au premier plan
-    
     def Parametrer_metriques(self):
         if self.Fenetre_Choix_metriques_instance is None or not self.Fenetre_Choix_metriques_instance.est_ouverte():
             self.Fenetre_Choix_metriques_instance = Fenetre_Choix_metriques(self)
@@ -370,6 +368,20 @@ class Fenetre_Acceuil(ctk.CTk):
         elif Parametres_choix_reseau_neurones.modele=="CNN":
             self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_CNN.__dict__
         return self.config_specifique
+
+    def obtenir_datasets(self):
+        #envoie un message "choix dataset" qui sera relayé au serveur dataset par le serveur ia
+        try:
+            r = requests.post(
+                f"{URL}/train_full",
+                json={"message": "choix dataset"},
+                timeout=10
+            )
+            r.raise_for_status()
+            print("Message envoyé : choix dataset")
+            print("Réponse serveur :", r.text)
+        except Exception as e:
+            print("Erreur lors de l’envoi du message :", e)
 
     def EnvoyerConfig(self):
         if self.Cadre_results_Entrainement.is_training==False:
@@ -1412,91 +1424,6 @@ class Fenetre_Params_horizon(tk.Toplevel):
         self.Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100)
             
         self.destroy()
-
-#Creer la fenetre de choix des datasets
-class Fenetre_Choix_datasets(tk.Toplevel):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.after(100, lambda: self.focus_force())
-
-        self.title("📂 Choix des datasets")
-
-        # Polices
-        self.font_titre = ("Helvetica", 18, "bold")
-        self.font_section = ("Helvetica", 14, "bold")
-        self.font_bouton = ("Helvetica", 12)
-
-        
-
-        self.cadre = ctk.CTkFrame(self, borderwidth=30)
-        self.cadre.pack(fill="both", expand=True,padx=20, pady=20)
-        self.cadre.grid_columnconfigure(0, weight=1)  # première colonne s'étire
-        self.cadre.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire
-
-
-        # Titre simulé
-        # tk.Label(self.cadre, text="Choix du dataset", font=self.font_titre).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
-
-        # Cadre des paramètres
-        self.CadreParams = tk.LabelFrame(
-            self.cadre, text="", font=self.font_titre,
-            bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
-        )
-        self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
-
-        self.Liste_datasets=["A","B","C","D","E","F","G","H","I","J","K","L","M"]  # Exemple de liste de datasets
-        
-
-        # Liste des champs
-        tk.Label(self.CadreParams, text="Sélectionnez un dataset :", font=self.font_bouton, bg="#ffffff").pack(anchor="w")
-
-        # Créer une variable pour stocker la sélection
-        self.dataset_selection = tk.StringVar()
-
-        # Créer la Listbox
-        self.listbox_datasets = tk.Listbox(
-            self.CadreParams,
-            listvariable=self.dataset_selection,
-            height=6,
-            selectmode="browse",
-            font=self.font_bouton,
-            bg="#f0f0f0",
-            activestyle="dotbox"
-        )
-        self.listbox_datasets.pack(fill="x", pady=(5, 10))
-
-        # Remplir la Listbox avec les noms des datasets
-        for nom in self.Liste_datasets:
-            self.listbox_datasets.insert(tk.END, nom)
-
-        # Boutons d'action
-        tk.Button(
-            self.cadre, text="💾 Sauvegarder la configuration", font=self.font_bouton,
-            height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
-            command=self.Save_quit
-        ).pack(fill="x", pady=10)
-        tk.Button(
-            self.cadre, text="❌ Quitter", font=self.font_bouton,
-            height=2, bg="#f7b2b2", fg="#842029", relief="raised", bd=3,
-            command=self.Quit
-        ).pack(fill="x", pady=(0, 10))
-        self.update_idletasks()
-        self.geometry(f"500x{self.winfo_reqheight()}")
-    
-    def est_ouverte(self):
-        return self.winfo_exists()
-
-    def Save_quit(self):
-        # Sauvegarder les paramètres
-        self.destroy()
-    
-    def Quit(self):
-        # Reinitialiser les paramètres
-        self.destroy()
-
-    def Récupérer_datasets(self):
-        # Récupérer les datasets sélectionnés
-        pass
 
 #Creer la fenêtre de paramètres des visualisations
 class Fenetre_Choix_metriques(ctk.CTkToplevel):
