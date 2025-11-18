@@ -635,6 +635,27 @@ def fetch_dataset(request_payload: dict):
         }
 
 
+
+
+@app.post("/datasets/info_all")
+def proxy_get_dataset_list(payload: dict):
+    print("Message reçu depuis UI :", payload)
+
+    if payload.get("message") != "choix dataset":
+        return {"status": "error", "message": "Message invalide"}
+
+    try:
+        url = f"{DATA_SERVER_URL}/datasets/info_all"
+        
+        # ENVOI DU PAYLOAD AU SERVEUR DATA
+        response = requests.post(url, json=payload, timeout=10)
+
+        response.raise_for_status()
+        return response.json()
+
+    except Exception as e:
+        print("🔥 Exception côté IA :", e)
+        return {"status": "error", "message": str(e)}
 # ====================================
 # ROUTES - CHECK SERVEUR IA
 # ====================================
