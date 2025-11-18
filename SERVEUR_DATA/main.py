@@ -91,6 +91,61 @@ def construire_json_datasets():
         }
     return result
 
+def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: str):
+    if not DATA_DIR.exists():
+        raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
+
+    result = {}
+
+    # Parcours direct des fichiers JSON dans Datas2_test
+    for file in DATA_DIR.iterdir():
+        if not file.is_file():
+            continue
+        if not file.suffix.lower() == ".json":
+            continue
+        if name == file.stem:
+            dataset_id = file.stem  # "EURO", "CACAO"
+            # Extraction des données
+            with open(file, "r") as f:
+                data = json.load(f)
+            # Construction du JSON comportant les datas liés aux timestamps entre la date_debut et date_fin avec le pas
+            
+            data_filtered = {}
+            timestamps = data.get("timestamps", [])
+            values = data.get("values", {})
+          
+            filtered_timestamps = []
+            tnew = date_debut
+            for t in timestamps:
+                
+                if date_debut <= tnew <= date_fin:
+                    filtered_timestamps.append(tnew)
+                    data_filtered["timestamps"] = filtered_timestamps
+                    tnew = tnew + pas
+          
+            # construction du json des valeurs filtrées
+            filtered_values = {}
+            for key, vals in values.items():
+                filtered_vals = []
+                for i, t in enumerate(timestamps):
+                    if date_debut <= t <= date_fin:
+                        filtered_vals.append(vals[i])
+                filtered_values[key] = filtered_vals
+            new_id = hash(frozenset(filtered_values.items()))
+            result[new_id] = {
+                "nom": new_id,
+                "dates": [date_debut, date_fin],
+                "pas_temporel": pas,
+                "data": {
+                    "timestamps": filtered_timestamps,
+                    "values": filtered_values
+                }
+            }
+            
+
+    return {"error": "Dataset not found"}
+
+
 # ----------------------------
 # Endpoint
 # ----------------------------
@@ -108,3 +163,25 @@ async def info_all(req: ChoixDatasetRequest):
 @app.post("/datasets/info_all")
 async def info_all(req: ChoixDatasetRequest):
     print("DATA SERVER received:", req.message)  # DEBUG
+
+
+@app.post("/dataset/data_solo")
+async def info_all(req: ChoixDatasetRequest):
+    if req.message != "choix dataset":
+        raise HTTPException(status_code=400, detail="Message inconnu")
+    try:
+        nom = req.name
+        date_debut = req.date_debut
+        date_fin = req.date_fin
+        pas = req.pas
+
+        json_final = construire_un_dataset(nom, date_debut, date_fin, pas)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return json_final
+
+@app.post("/datasets/info_all")
+async def info_all(req: ChoixDatasetRequest):
+    print("DATA SERVER received:", req.message)  # DEBUG
+
