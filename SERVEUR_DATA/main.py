@@ -17,7 +17,6 @@ DATA_DIR = BASE_DIR / "Datas2_test"
 class ChoixDatasetRequest(BaseModel):
     message: str
 
-
 # ----------------------------
 # Utils
 # ----------------------------
@@ -68,7 +67,6 @@ def extraire_infos_dataset(path_json: Path):
 
     return date_debut, date_fin, pas
 
-
 def construire_json_datasets():
     if not DATA_DIR.exists():
         raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
@@ -93,7 +91,6 @@ def construire_json_datasets():
         }
     return result
 
-
 # ----------------------------
 # Endpoint
 # ----------------------------
@@ -110,4 +107,4 @@ async def info_all(req: ChoixDatasetRequest):
 
 @app.post("/datasets/info_all")
 async def info_all(req: ChoixDatasetRequest):
-    print("📥 DATA SERVER received:", req.message)  # DEBUG
+    print("DATA SERVER received:", req.message)  # DEBUG
