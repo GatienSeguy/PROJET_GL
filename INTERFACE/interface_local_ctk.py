@@ -1330,14 +1330,15 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
         self.font_titre = ("Helvetica", 14, "bold")
         self.font_bouton = ("Helvetica", 11)
 
-        self.grid_rowconfigure(0, weight=0)
-        self.grid_columnconfigure(0, weight=1)
 
         self.params_frame = ctk.CTkFrame(self)
         self.params_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
-        self.params_frame.grid_columnconfigure(0, weight=1,uniform="col")  # première colonne s'étire
-        self.params_frame.grid_columnconfigure(1, weight=1,uniform="col")  # deuxième colonne s'étire aussi
-
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        # self.params_frame.grid_columnconfigure(0, weight=1,uniform="col")  # première colonne s'étire
+        # self.params_frame.grid_columnconfigure(1, weight=1,uniform="col")  # deuxième colonne s'étire aussi
+        self.params_frame.grid_columnconfigure((0,1), weight=1,uniform="col")
+        # self.params_frame.grid_rowconfigure((0,1,3,4,), weight=1,uniform="row")
         
         # Variables
         self.Params_temporels_horizon = ctk.IntVar(value=Parametres_temporels.horizon)
@@ -1383,6 +1384,7 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
             command=self.destroy
         ).grid(row=next_row+2, column=1,padx=10,pady=20,sticky="ew")
 
+        self.resizable(False, False)
 
     def est_ouverte(self):
         return self.winfo_exists()
