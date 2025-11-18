@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 import matplotlib
 from tkinter.filedialog import asksaveasfilename
 matplotlib.use("TkAgg")  # backend Tkinter
-
+import time
 import customtkinter as ctk
 
 
@@ -129,7 +129,7 @@ BORDER_COLOR = "#4a5f7f"
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
     def __init__(self):
-        print(self.obtenir_datasets())
+        # print(self.obtenir_datasets())
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
@@ -494,7 +494,6 @@ class Fenetre_Acceuil(ctk.CTk):
             # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
             training_thread = threading.Thread(target=run_training, daemon=True)
             training_thread.start()
-
 
 class Cadre_Entrainement(ctk.CTkFrame):
     def __init__(self, app, master=None):
@@ -984,17 +983,13 @@ class Fenetre_Params(ctk.CTkToplevel):
         # self.grab_set()          # empêche de cliquer sur la fenêtre principale tant que le Toplevel est ouvert
         self.after(100, lambda: self.focus_force())
         self.title("⚙️ Paramètres du Modèle")
-        
+        self.geometry("700x800")
         # Polices
         self.font_titre = ("Helvetica", 18, "bold")
         self.font_section = ("Helvetica", 14, "bold")
         self.font_bouton = ("Helvetica", 12)
 
         
-
-
-        # self.geometry("500x1")  # largeur fixe, hauteur minimale
-
         # Frame principal avec scrollbar
         self.params_frame = ctk.CTkScrollableFrame(self)
         self.params_frame.pack(fill="both", expand=True, padx=20, pady=20)
@@ -1015,7 +1010,6 @@ class Fenetre_Params(ctk.CTkToplevel):
             text="⚙️ Configuration",
             font=("Roboto Medium", 22)
         ).grid(row=0, column=0, columnspan=2,padx=10,pady=(0,20))
-        self.geometry("700x800")
 
         ctk.CTkLabel(
             self.params_frame,
@@ -1096,6 +1090,7 @@ class Fenetre_Params(ctk.CTkToplevel):
             width=150
         ).grid(row=7, column=1, sticky="e",padx=10,pady=(0,20))
 
+        ### Paramètres du modèle choisi ###
 
         self.params_model_frame = ctk.CTkFrame(self.params_frame, corner_radius=10)
 
@@ -1111,6 +1106,8 @@ class Fenetre_Params(ctk.CTkToplevel):
         self.params_model_frame.grid_columnconfigure(0, weight=1)  # première colonne s'étire
         self.params_model_frame.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire aussi
         
+        ### Fin des paramètres du modèle choisi ###
+
         last_row=self.params_frame.grid_size()[1]
         ctk.CTkButton(
             self.params_frame,
@@ -1323,81 +1320,72 @@ class Fenetre_Params(ctk.CTkToplevel):
         return text.isdigit() or text == ""
 
 # Créer la fenêtre de paramétrage de l'horizon des données
-class Fenetre_Params_horizon(tk.Toplevel):
+class Fenetre_Params_horizon(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        couleur_fond = "#d9d9d9"
+        self.after(100, lambda: self.focus_force())
         self.title("🧠 Paramétrage temporels et de découpage des données")
 
         # Définir une police personnalisée
         self.font_titre = ("Helvetica", 14, "bold")
         self.font_bouton = ("Helvetica", 11)
 
-        self.geometry("500x1")  # largeur fixe, hauteur minimale
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_columnconfigure(0, weight=1)
 
-        self.cadre = tk.Frame(self, borderwidth=30)
-        self.cadre.configure(bg=couleur_fond)
-        self.cadre.pack(fill="both", expand="yes")
+        self.params_frame = ctk.CTkFrame(self)
+        self.params_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        self.params_frame.grid_columnconfigure(0, weight=1,uniform="col")  # première colonne s'étire
+        self.params_frame.grid_columnconfigure(1, weight=1,uniform="col")  # deuxième colonne s'étire aussi
 
-        # Titre simulé
-        tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=couleur_fond).pack(anchor="w", pady=(0, 10))
-
-        # Cadre des paramètres
-        self.CadreParams = tk.LabelFrame(
-            self.cadre, text="", font=self.font_titre,
-            bg="#ffffff", fg="#333333", bd=3, relief="ridge", padx=15, pady=15
-        )
-        self.CadreParams.pack(fill="both", expand=True, pady=(0, 20))
-
+        
         # Variables
-        self.Params_temporels_horizon = tk.IntVar(value=Parametres_temporels.horizon)
-        self.date_debut_str = tk.StringVar(value=Parametres_temporels.dates[0])
-        self.date_fin_str = tk.StringVar(value=Parametres_temporels.dates[1])
-        self.Params_temporels_pas_temporel = tk.IntVar(value=Parametres_temporels.pas_temporel)
-        self.Params_temporels_portion_decoupage = tk.IntVar(value=Parametres_temporels.portion_decoupage * 100)
+        self.Params_temporels_horizon = ctk.IntVar(value=Parametres_temporels.horizon)
+        self.date_debut_str = ctk.StringVar(value=Parametres_temporels.dates[0])
+        self.date_fin_str = ctk.StringVar(value=Parametres_temporels.dates[1])
+        self.Params_temporels_pas_temporel = ctk.IntVar(value=Parametres_temporels.pas_temporel)
+        self.Params_temporels_portion_decoupage = ctk.IntVar(value=Parametres_temporels.portion_decoupage * 100)
 
-        # Validation d'entiers
-        vcmd = (self.register(self.validate_int_fct), "%P")
+        ctk.CTkLabel(self.params_frame, text="📅 Paramètres Temporels").grid(row=0, column=0, columnspan=2 , sticky="ew",padx=10,pady=20)
 
         # Liste des champs
         champs = [
-            ("Horizon temporel (int) :", self.Params_temporels_horizon),
-            ("Pas temporel (int) :", self.Params_temporels_pas_temporel),
-            ("Portion découpage (%) :", self.Params_temporels_portion_decoupage),
+            ("Horizon temporel (int) :", self.Params_temporels_horizon,"int"),
+            ("Pas temporel (int) :", self.Params_temporels_pas_temporel,"int"),
+            ("Portion découpage (%) :", self.Params_temporels_portion_decoupage,"float"),
         ]
 
-        for i, (label, var) in enumerate(champs):
-            tk.Label(self.CadreParams, text=label, bg="#ffffff").grid(row=i, column=0, sticky="w", pady=5)
-            tk.Entry(self.CadreParams, textvariable=var, validate="key", validatecommand=vcmd).grid(row=i, column=1, pady=10,padx=105)
+        for i, (label, var, type_) in enumerate(champs):
+            ctk.CTkLabel(self.params_frame, text=label).grid(row=i+1, column=0, sticky="w", padx=10,pady=(0,20))
+            ctk.CTkEntry(self.params_frame, textvariable=var, validate="key", validatecommand=(self.register(lambda P,t=type_: validate_fct(P, t)), "%P")).grid(row=i+1, column=1,padx=10,pady=(0,20),sticky="e")
 
+        next_row=len(champs)+1
         # Dates
-        tk.Label(self.CadreParams, text="Date de début :", bg="#ffffff").grid(row=3, column=0, sticky="w", pady=5)
-        tk.Button(self.CadreParams, textvariable=self.date_debut_str, command=self.ouvrir_calendrier_debut).grid(row=3, column=1, pady=10)
+        ctk.CTkLabel(self.params_frame, text="Date de début :").grid(row=next_row, column=0, sticky="w",padx=10,pady=(0,20))
+        ctk.CTkButton(self.params_frame, textvariable=self.date_debut_str, command=self.ouvrir_calendrier_debut).grid(row=next_row, column=1,padx=10,pady=(0,20),sticky="e")
 
-        tk.Label(self.CadreParams, text="Date de fin :", bg="#ffffff").grid(row=4, column=0, sticky="w", pady=5)
-        tk.Button(self.CadreParams, textvariable=self.date_fin_str, command=self.ouvrir_calendrier_fin).grid(row=4, column=1, pady=10)
+        ctk.CTkLabel(self.params_frame, text="Date de fin :").grid(row=next_row+1, column=0, sticky="w",padx=10,pady=(0,20))
+        ctk.CTkButton(self.params_frame, textvariable=self.date_fin_str, command=self.ouvrir_calendrier_fin).grid(row=next_row+1, column=1,padx=10,pady=(0,20),sticky="e")
 
         # Boutons d'action
-        tk.Button(
-            self.cadre, text="💾 Sauvegarder la configuration", font=self.font_bouton,
-            height=2, bg="#b4d9b2", fg="#0f5132", relief="raised", bd=3,
+        ctk.CTkButton(
+            self.params_frame, 
+            text="💾 Sauvegarder la configuration",
+            font=("Roboto", 13),
+            height=40,
             command=self.Save_quit
-        ).pack(fill="x", pady=10)
+        ).grid(row=next_row+2, column=0,padx=10,pady=20,sticky="ew")
 
-        tk.Button(
-            self.cadre, text="❌ Quitter", font=self.font_bouton,
-            height=2, bg="#f7b2b2", fg="#842029", relief="raised", bd=3,
+        ctk.CTkButton(
+            self.params_frame, text="❌ Quitter",
+            font=("Roboto", 13),
+            height=40,
             command=self.destroy
-        ).pack(fill="x", pady=(0, 10))
+        ).grid(row=next_row+2, column=1,padx=10,pady=20,sticky="ew")
 
-        self.update_idletasks()
-        self.geometry(f"500x{self.winfo_reqheight()}")
-    
+
     def est_ouverte(self):
         return self.winfo_exists()
-
-    def validate_int_fct(self, text):
-        return text.isdigit() or text == ""
     
     # Fonction locale : ouvrir calendrier debut
     def ouvrir_calendrier_debut(self):
@@ -1438,7 +1426,6 @@ class Fenetre_Params_horizon(tk.Toplevel):
         self.date_fin_str.set(value=Parametres_temporels.dates[1])
         self.Params_temporels_pas_temporel.set(Parametres_temporels.pas_temporel)
         self.Params_temporels_portion_decoupage.set(Parametres_temporels.portion_decoupage*100)
-            
         self.destroy()
 
 #Creer la fenêtre de paramètres des visualisations
@@ -1476,7 +1463,7 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
             text="⚙️ Configuration des visualisations et du suivi",
             font=("Roboto Medium", 22)
         ).grid(row=0, column=0, columnspan=2,padx=10,pady=(0,20))
-        self.geometry("700x800")
+        # self.geometry("700x800")
 
 
         ctk.CTkLabel(self.params_frame, text="Choix des métriques (séparées par des virgules):", font=("Roboto", 12)).grid(row=1, column=0, sticky="w",padx=10,pady=(0,20))
@@ -1508,10 +1495,6 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
             command=self.destroy
         ).grid(row=last_row, column=1,padx=10,pady=(50,20),sticky="ew")
 
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-
         # Applique la largeur fixe et la hauteur calculée
         self.ajuster_hauteur_auto()
 
@@ -1530,7 +1513,18 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
         Parametres_visualisation_suivi.metriques = [m.strip() for m in self.Params_visualisation_suivi_metriques.get().split(",") if m.strip()]
         self.destroy()
 
-
+# Fonction utilitaires:
+def validate_fct(text,type_):
+    if type_ == "int":
+        return text.isdigit() or text == ""
+    elif type_ == "float":
+        if text == "":
+            return True
+        try:
+            float(text)
+            return True
+        except ValueError:
+            return False
 
 # Lancer la boucle principale
 if __name__ == "__main__":
