@@ -9,7 +9,7 @@ app = FastAPI()
 # Base de données en mémoire pour stocker les datasets
 DB = {}
 
-# Modèle Pydantic pour recevoir les datasets
+# Modèle Pydantic pour recevoir les datasetsfezfez
 class Dataset(BaseModel):
     dates: Union[List[str], None] = None
     timestamps: Union[List[str], None] = None
@@ -53,3 +53,18 @@ async def create_dataset(dataset: Dataset):
 def list_datasets():
     # Retourner tous les IDs stockés
     return {"datasets": list(DB.keys())}
+
+### Fin corrigée pour choix_dataset et send_datasets ###
+
+@app.post("/choix_dataset/")
+def choix_dataset():
+    result = {}
+    for dataset_id, data in DB.items():
+        if not data["dates"]:
+            continue
+        date_min = min(data["dates"])
+        date_max = max(data["dates"])
+        nom_dataset = f"dataset_{dataset_id}"
+        pas_temporel = False  # À ajuster si nécessaire
+        result[dataset_id] = [nom_dataset, [date_min, date_max], pas_temporel]
+    return result
