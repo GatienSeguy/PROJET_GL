@@ -369,19 +369,34 @@ class Fenetre_Acceuil(ctk.CTk):
             self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_CNN.__dict__
         return self.config_specifique
 
+    # def obtenir_datasets(self):
+    #     #envoie un message "choix dataset" qui sera relayé au serveur dataset par le serveur ia
+    #     try:
+    #         r = requests.post(
+    #             f"{URL}/train_full",
+    #             json={"message": "choix dataset"},
+    #             timeout=10
+    #         )
+    #         r.raise_for_status()
+    #         print("Message envoyé : choix dataset")
+    #         print("Réponse serveur :", r.text)
+    #     except Exception as e:
+    #         print("Erreur lors de l’envoi du message :", e)
+
     def obtenir_datasets(self):
-        #envoie un message "choix dataset" qui sera relayé au serveur dataset par le serveur ia
+        url = f"http://{URL}/datasets/info_all"  # IP SERVEUR_IA
+
+        payload = {"message": "choix dataset"}
+
         try:
-            r = requests.post(
-                f"{URL}/train_full",
-                json={"message": "choix dataset"},
-                timeout=10
-            )
+            r = requests.post(url, json=payload, timeout=10)
             r.raise_for_status()
-            print("Message envoyé : choix dataset")
-            print("Réponse serveur :", r.text)
+            data = r.json()
+            return data
+        
         except Exception as e:
-            print("Erreur lors de l’envoi du message :", e)
+            print("Erreur UI → IA :", e)
+            return None
 
     def EnvoyerConfig(self):
         if self.Cadre_results_Entrainement.is_training==False:
