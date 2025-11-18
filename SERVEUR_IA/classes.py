@@ -36,6 +36,7 @@ class Parametres_choix_loss_fct(BaseModel):
     fonction_perte: Optional[Literal["MSE", "MAE", "Huber"]] = Field(None, description="Fonction de perte")
     params: Optional[dict] = Field(None, description="Paramètres spécifiques de la fonction de perte")
 
+
 class Parametres_optimisateur(BaseModel):
     optimisateur: Optional[Literal["Adam", "SGD", "RMSprop", "Adagrad", "Adadelta"]] = Field(None)
     learning_rate: Optional[float] = Field(None)
