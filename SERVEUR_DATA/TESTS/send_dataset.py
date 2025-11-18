@@ -3,7 +3,7 @@ import json
 import os
 
 # URL du serveur
-URL = "http://127.0.0.1:8000/datasets/"
+URL = "http://192.168.27.66:8001/datasets/"
 SOURCE_DIR = "/home/sofsoflefoufou/Documents/Code/PROJET_GL/SERVEUR_DATA/Datas"
 
 for filename in os.listdir(SOURCE_DIR):

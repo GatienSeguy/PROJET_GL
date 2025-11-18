@@ -18,7 +18,7 @@ import json
 # ====================================
 def build_supervised_tensors(
     values: List[Optional[float]],
-    window_len: int = 1,
+    window_len: int = 15,
     horizon: int = 1,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
