@@ -233,7 +233,20 @@ class Fenetre_Acceuil(ctk.CTk):
         Label_frame_Donnees.grid_rowconfigure(0, weight=1)
 
 
-        self.bouton(Label_frame_Donnees, "📁 Choix Dataset", self.Parametrer_dataset,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        # self.bouton(Label_frame_Donnees, "📁 Choix Dataset", self.Parametrer_dataset,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        optionmenu_var = ctk.StringVar(value="option 2")  # set initial value
+
+        def optionmenu_callback(choice):
+            print("optionmenu dropdown clicked:", choice)
+
+        combobox = ctk.CTkOptionMenu(master=Label_frame_Donnees,
+                                            values=["option 1", "option 2"],
+                                            command=optionmenu_callback,
+                                            variable=optionmenu_var,
+                                            )
+        combobox.grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        
+        
         self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
         
         self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40).pack(fill="both",padx=30,pady=(40,0))
@@ -1404,21 +1417,25 @@ class Fenetre_Params_horizon(tk.Toplevel):
 class Fenetre_Choix_datasets(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        couleur_fond = "#d9d9d9"
+        self.after(100, lambda: self.focus_force())
+
         self.title("📂 Choix des datasets")
 
-        # Définir une police personnalisée
-        self.font_titre = ("Helvetica", 14, "bold")
-        self.font_bouton = ("Helvetica", 11)
+        # Polices
+        self.font_titre = ("Helvetica", 18, "bold")
+        self.font_section = ("Helvetica", 14, "bold")
+        self.font_bouton = ("Helvetica", 12)
 
-        self.geometry("500x1")  # largeur fixe, hauteur minimale
+        
 
-        self.cadre = tk.Frame(self, borderwidth=30)
-        self.cadre.configure(bg=couleur_fond)
-        self.cadre.pack(fill="both", expand="yes")
+        self.cadre = ctk.CTkFrame(self, borderwidth=30)
+        self.cadre.pack(fill="both", expand=True,padx=20, pady=20)
+        self.cadre.grid_columnconfigure(0, weight=1)  # première colonne s'étire
+        self.cadre.grid_columnconfigure(1, weight=1)  # deuxième colonne s'étire
+
 
         # Titre simulé
-        tk.Label(self.cadre, text="Choix des datasets", font=self.font_titre, bg=couleur_fond).pack(anchor="w", pady=(0, 10))
+        # tk.Label(self.cadre, text="Choix du dataset", font=self.font_titre).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
 
         # Cadre des paramètres
         self.CadreParams = tk.LabelFrame(
