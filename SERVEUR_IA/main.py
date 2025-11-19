@@ -142,7 +142,7 @@ class TrainingPipeline:
             return self.series
         
         # Fallback : charger depuis fichier JSON TEMPORAIRE
-        json_file_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/Datas/EURO.json"
+        json_file_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/datasets/EURO.json"
         
         with open(json_file_path, 'r') as f:
             data_json = json.load(f)
@@ -646,15 +646,15 @@ def proxy_get_dataset_list(payload: dict):
 
     try:
         url = f"{DATA_SERVER_URL}/datasets/info_all"
-        
+        # print("salaupard")
         # ENVOI DU PAYLOAD AU SERVEUR DATA
         response = requests.post(url, json=payload, timeout=10)
-
+        # print(payload)
         response.raise_for_status()
         return response.json()
 
     except Exception as e:
-        print("🔥 Exception côté IA :", e)
+        print("Exception côté IA :", e)
         return {"status": "error", "message": str(e)}
 # ====================================
 # ROUTES - CHECK SERVEUR IA

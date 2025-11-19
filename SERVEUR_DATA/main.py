@@ -8,7 +8,7 @@ import json
 app = FastAPI()
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "Datas2_test"
+DATA_DIR = BASE_DIR / "datasets"
 
 
 # ----------------------------
@@ -155,14 +155,11 @@ async def info_all(req: ChoixDatasetRequest):
         raise HTTPException(status_code=400, detail="Message inconnu")
     try:
         json_final = construire_json_datasets()
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     return json_final
-
-@app.post("/datasets/info_all")
-async def info_all(req: ChoixDatasetRequest):
-    print("DATA SERVER received:", req.message)  # DEBUG
 
 
 @app.post("/dataset/data_solo")
@@ -180,8 +177,4 @@ async def info_all(req: ChoixDatasetRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
     return json_final
-
-@app.post("/datasets/info_all")
-async def info_all(req: ChoixDatasetRequest):
-    print("DATA SERVER received:", req.message)  # DEBUG
 
