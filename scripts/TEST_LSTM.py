@@ -465,7 +465,7 @@ if __name__ == "__main__":
         epochs=100,          # Plus d'époques
         batch_size=64,
         lr=0.0001,
-        device='mps'         # ou 'cpu'
+        device='cpu'         # ou 'cpu'
     )
 
     print(f"\n" + "="*70)
