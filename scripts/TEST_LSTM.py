@@ -9,7 +9,7 @@ Architecture:
 - Prédiction future
 
 """
-
+from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -452,10 +452,12 @@ def run_complete_pipeline(
 # ============================================================================
 # EXEMPLE D'UTILISATION
 # ============================================================================
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 if __name__ == "__main__":
     model, metrics, y_pred, y_true, future_pred = run_complete_pipeline(
-        data_path='/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/datasets/CACAO.json',
+        data_path=PROJECT_ROOT / 'SERVEUR_DATA/datasets/CACAO.json',
         window_size=30,      # Contexte de 30 points
         pred_steps=6,        # Prédit 6 points à la fois
         hidden_dim=128,      # Réduit de 256 à 128
