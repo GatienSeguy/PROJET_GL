@@ -25,10 +25,12 @@ URL = "http://192.168.27.66:8000"
 
 class Parametres_temporels_class():
     def __init__(self):
+        #self.dataset="" # str
         self.horizon=1 # int
         self.dates=["2001-01-01", "2025-01-02"] # variable datetime
         self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
+        self.dataset="" # str
     def generate_json(self,json):
         pass
 class Parametres_choix_reseau_neurones_class():
@@ -129,7 +131,7 @@ BORDER_COLOR = "#4a5f7f"
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
     def __init__(self):
-        print(self.obtenir_datasets())
+        self.JSON_Datasets=self.obtenir_datasets()
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
@@ -239,12 +241,17 @@ class Fenetre_Acceuil(ctk.CTk):
         
         # self.bouton(Label_frame_Donnees, "📁 Choix Dataset", self.Parametrer_dataset,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
         optionmenu_var = ctk.StringVar(value=Dataset)  # set initial value
+        # JSON_Datasets_String=JSON_Datasets_String.replace("'", '"')
+        # JSON_Datasets_Dict=json.loads(JSON_Datasets_String)
+
 
         def optionmenu_callback(choice):
-            Dataset=choice
+            Parametres_temporels.dates=[d.split(" ")[0] for d in self.JSON_Datasets[choice]['dates']]
+            self.pas_temporel=self.JSON_Datasets[choice]['pas']
+            Parametres_temporels.dataset=choice
 
         combobox = ctk.CTkOptionMenu(master=Label_frame_Donnees,
-                                            values=Datasets_list,
+                                            values=[self.JSON_Datasets.keys()],
                                             command=optionmenu_callback,
                                             variable=optionmenu_var,
                                             )
@@ -368,20 +375,6 @@ class Fenetre_Acceuil(ctk.CTk):
         elif Parametres_choix_reseau_neurones.modele=="CNN":
             self.config_specifique["Parametres_archi_reseau"]=Parametres_archi_reseau_CNN.__dict__
         return self.config_specifique
-
-    # def obtenir_datasets(self):
-    #     #envoie un message "choix dataset" qui sera relayé au serveur dataset par le serveur ia
-    #     try:
-    #         r = requests.post(
-    #             f"{URL}/train_full",
-    #             json={"message": "choix dataset"},
-    #             timeout=10
-    #         )
-    #         r.raise_for_status()
-    #         print("Message envoyé : choix dataset")
-    #         print("Réponse serveur :", r.text)
-    #     except Exception as e:
-    #         print("Erreur lors de l’envoi du message :", e)
 
     def obtenir_datasets(self):
         url = f"{URL}/datasets/info_all"  # IP SERVEUR_IA
@@ -1347,7 +1340,7 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
         self.Params_temporels_pas_temporel = ctk.IntVar(value=Parametres_temporels.pas_temporel)
         self.Params_temporels_portion_decoupage = ctk.IntVar(value=Parametres_temporels.portion_decoupage * 100)
 
-        ctk.CTkLabel(self.params_frame, text="📅 Paramètres Temporels").grid(row=0, column=0, columnspan=2 , sticky="ew",padx=10,pady=20)
+        ctk.CTkLabel(self.params_frame, text=f"📅 Paramètres Temporels (multiple de {master.pas_temporel})").grid(row=0, column=0, columnspan=2 , sticky="ew",padx=10,pady=20)
 
         # Liste des champs
         champs = [
