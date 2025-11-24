@@ -677,7 +677,7 @@ def proxy_fetch_dataset(payload: dict):
         
         # print(response.json())
         
-        return response.json()
+        return "coucou"
 
     except Exception as e:
         print("Exception côté IA lors du fetch_dataset :", e)
