@@ -503,11 +503,16 @@ class TrainingPipeline:
         if self.model_trained is None:
             yield {"type": "warn", "message": "Modèle non récupéré (test sauté)."}
             return
+
+        yield {
+            "type": "serie_complete",
+            "values": [float(v) for v in self.series.values.tolist()],
+        }
         
         print(f"[DÉBUT TEST] Modèle: {type(self.model_trained).__name__}")
-        
+
         for evt in test_model(
-            self.model_trained, 
+            self.model_trained,
             self.X_test,
             self.y_test,
             device=self.device,
@@ -516,10 +521,7 @@ class TrainingPipeline:
         ):
             yield evt
         #envoyer la serie complète (timestamps + values) pour affichage
-        yield {
-            "type": "serie_complete",
-            "values": self.series.values,
-        }
+        
         
 
     # ====================================
