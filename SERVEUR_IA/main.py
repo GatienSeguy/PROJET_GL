@@ -508,14 +508,21 @@ class TrainingPipeline:
         
         for evt in test_model(
             self.model_trained, 
-            self.X_test, 
-            self.y_test,
+            self.series,
             device=self.device,
             batch_size=256,
             inverse_fn=self.inverse_fn,
+            norm_stats=self.norm_params,
         ):
             yield evt
-    
+        #envoyer la serie complète (timestamps + values) pour affichage
+        yield {
+            "type": "test_complete_series",
+            "timestamps": self.series.timestamps,
+            "values": self.series.values,
+        }
+        
+
     # ====================================
     # 11) ORCHESTRATION COMPLÈTE
     # ====================================
