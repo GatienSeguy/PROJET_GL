@@ -557,8 +557,8 @@ class Fenetre_Acceuil(ctk.CTk):
                                         y.append(msg.get("y"))
                                         yhat.append(msg.get("yhat"))
                                     
-                                    elif msg.get("type") == "serie_reelle":
-                                        y_total=msg.get("y_tot")
+                                    elif msg.get("type") == "serie_complete":
+                                        y_total=msg.get("values")
                                         print(y_total)
                                         
                                     elif msg.get("type") == "test_final":

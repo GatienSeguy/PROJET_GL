@@ -517,8 +517,7 @@ class TrainingPipeline:
             yield evt
         #envoyer la serie complète (timestamps + values) pour affichage
         yield {
-            "type": "test_complete_series",
-            "timestamps": self.series.timestamps,
+            "type": "serie_complete",
             "values": self.series.values,
         }
         
