@@ -516,7 +516,6 @@ class TrainingPipeline:
         ):
             yield evt
         #envoyer la serie complète (timestamps + values) pour affichage
-        print("feur")
         yield {
             "type": "serie_complete",
             "values": self.series.values,
