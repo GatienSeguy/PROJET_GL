@@ -579,7 +579,7 @@ def proxy_get_dataset_list(payload: dict):
         url = f"{DATA_SERVER_URL}/datasets/info_all"
         # print("salaupard")
         # ENVOI DU PAYLOAD AU SERVEUR DATA
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, timeout=100)
         # print(payload)
         response.raise_for_status()
         return response.json()
