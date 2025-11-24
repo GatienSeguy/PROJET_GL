@@ -1370,7 +1370,7 @@ class Fenetre_Params(ctk.CTkToplevel):
 class Fenetre_Params_horizon(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        self.after(100, lambda: self.focus_force())
+        self.after(200, lambda: self.focus_force())
         self.title("🧠 Paramétrage temporels et de découpage des données")
 
         # Définir une police personnalisée
