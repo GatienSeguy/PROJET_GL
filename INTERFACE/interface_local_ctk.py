@@ -1512,14 +1512,33 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
             self.params_frame,
             text="⚙️ Configuration des visualisations et du suivi",
             font=("Roboto Medium", 22)
-        ).grid(row=0, column=0, columnspan=2,padx=10,pady=(0,20))
+        ).grid(row=0, column=0, columnspan=2,padx=20,pady=(20,20))
         # self.geometry("700x800")
 
 
-        ctk.CTkLabel(self.params_frame, text="Choix des métriques (séparées par des virgules):", font=("Roboto", 12)).grid(row=1, column=0, sticky="w",padx=10,pady=(0,20))
-        # self.lstm_hidden = ctk.StringVar(value=str(Parametres_visualisation_suivi.metriques))
+
+        ctk.CTkLabel(self.params_frame, text="Choix de la métrique de visualisation",font=("Roboto Medium", 18)).grid(row=1, column=0,columnspan=2, padx=10,pady=(0,20),sticky="w")
+
+        # Liste des champs
         self.Params_visualisation_suivi_metriques = tk.StringVar(value=",".join(Parametres_visualisation_suivi.metriques))
-        ctk.CTkEntry(self.params_frame, textvariable=self.Params_visualisation_suivi_metriques, width=150).grid(row=1, column=1, sticky="e",padx=10,pady=(0,20))
+        champs = [
+            ("Loss fonction","loss"),
+            ("Métrique 2","loss2"),
+            ("Métrique 3","loss3")
+        ]
+
+        for i, (label, val) in enumerate(champs):
+            ctk.CTkRadioButton(self.params_frame, text=label,variable=self.Params_visualisation_suivi_metriques,value=val).grid(row=i+2, column=1, sticky="ew", padx=10,pady=(0,20))
+        next_row=self.params_frame.grid_size()[1]
+        ctk.CTkLabel(self.params_frame, text="Choix des métriques à calculer",font=("Roboto Medium", 18)).grid(row=next_row, column=0,columnspan=2, padx=10,pady=(0,20),sticky="w")
+
+
+
+
+        # ctk.CTkLabel(self.params_frame, text="Choix des métriques (séparées par des virgules):", font=("Roboto", 12)).grid(row=1, column=0, sticky="w",padx=10,pady=(0,20))
+        # # self.lstm_hidden = ctk.StringVar(value=str(Parametres_visualisation_suivi.metriques))
+        # self.Params_visualisation_suivi_metriques = tk.StringVar(value=",".join(Parametres_visualisation_suivi.metriques))
+        # ctk.CTkEntry(self.params_frame, textvariable=self.Params_visualisation_suivi_metriques, width=150).grid(row=1, column=1, sticky="e",padx=10,pady=(0,20))
 
 
 
@@ -1546,7 +1565,7 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
         ).grid(row=last_row, column=1,padx=10,pady=(50,20),sticky="ew")
 
         # Applique la largeur fixe et la hauteur calculée
-        self.ajuster_hauteur_auto()
+        # self.ajuster_hauteur_auto()
 
 
     def ajuster_hauteur_auto(self, largeur_fixe=700):
