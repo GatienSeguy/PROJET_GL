@@ -85,7 +85,7 @@ class DatasetManager:
                 "dates": [date_start, date_end]
             }
             
-            response = requests.post(url, json=payload, timeout=10)
+            response = requests.post(url, json=payload, timeout=100)
             response.raise_for_status()
             
             data_json = response.json()
