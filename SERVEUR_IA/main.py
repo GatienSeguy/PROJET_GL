@@ -47,7 +47,7 @@ last_config_tempo = None
 last_config_TimeSeries = None
 last_config_series = None  
 
-
+payload_json = {}
 # ====================================
 # CLASSE GESTION DATASETS
 # ====================================
@@ -146,11 +146,12 @@ class TrainingPipeline:
             return self.series
         
         # Fallback : charger depuis fichier JSON TEMPORAIRE
-        json_file_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/datasets/EURO.json"
+        # json_file_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/datasets/EURO.json"
         
-        with open(json_file_path, 'r') as f:
+        # with open(json_file_path, 'r') as f:
             data_json = json.load(f)
         
+        data_json = payload_json
         self.series = TimeSeriesData(**data_json)
         return self.series
     
@@ -676,7 +677,7 @@ def proxy_fetch_dataset(payload: dict):
         response.raise_for_status()
         
         # print(response.json())
-        
+        payload_json = response.json()
         return "coucou"
 
     except Exception as e:
