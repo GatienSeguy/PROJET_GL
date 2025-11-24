@@ -19,7 +19,7 @@ import customtkinter as ctk
 
 # URL = "http://192.168.27.66:8000"
 # URL = "http://138.231.149.81:8000"
-URL = "http://192.168.1.190:8000"
+URL = "http://192.168.27.66:8000"
 
 # Paramètres et variables
 
@@ -430,6 +430,34 @@ class Fenetre_Acceuil(ctk.CTk):
             # Avant d'envoyer le payload
             print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model, "payload_dataset": payload_dataset})
             
+            
+            ##### ENVOYER PAYLOAD DATASET SEULEMENT #####
+            def run_fetch_dataset():
+                """Fonction pour récupérer le dataset dans un thread séparé"""
+                try:
+                    r = requests.post(
+                        f"{URL}/datasets/fetch_dataset",
+                        json=payload_dataset,     
+                        timeout=10
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+                    print(f"\n")
+                    print("Dataset récupéré avec succès.")
+                    print("Réponse fetch_dataset :", data)
+
+                    # Ici tu mets ce que tu veux faire avec le dataset :
+                    # par ex. mettre à jour un cadre UI :
+                    # self.Cadre_results_Dataset.afficher_infos(data)
+
+                except requests.exceptions.RequestException as e:
+                    print(f"Erreur de connexion lors de fetch_dataset: {e}")
+                    messagebox.showerror(
+                        "Erreur de connexion",
+                        f"Impossible de se connecter au serveur (fetch_dataset):\n{str(e)}"
+                    )
+
+
             def run_training():
                 """Fonction pour exécuter l'entraînement dans un thread séparé"""
                 y=[]
@@ -437,7 +465,7 @@ class Fenetre_Acceuil(ctk.CTk):
                 try:
                     with requests.post(
                         f"{URL}/train_full", 
-                        json={"payload": payload_global, "payload_model": payload_model, "payload_dataset": payload_dataset}, 
+                        json={"payload": payload_global, "payload_model": payload_model}, 
                         stream=True,
                         timeout=None
                     ) as r:
@@ -507,6 +535,9 @@ class Fenetre_Acceuil(ctk.CTk):
                     # Arrêter l'affichage de l'entraînement
                     self.Cadre_results_Entrainement.stop_training()
             
+            fetch_thread = threading.Thread(target=run_fetch_dataset, daemon=True)
+            fetch_thread.start()
+
             # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
             training_thread = threading.Thread(target=run_training, daemon=True)
             training_thread.start()
