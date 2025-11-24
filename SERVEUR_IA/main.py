@@ -7,11 +7,11 @@ import json
 import torch
 
 # Train Modele
-from .trains.training_MLP import train_MLP
-from .trains.training_CNN import train_CNN
-from .trains.training_LSTM import train_LSTM
+from SERVEUR_IA.trains.training_MLP import train_MLP
+from SERVEUR_IA.trains.training_CNN import train_CNN
+from SERVEUR_IA.trains.training_LSTM import train_LSTM
 
-from .test.testing import test_model
+from SERVEUR_IA.test.testing import test_model
 
 from .launcher_serveur import json_path
 
@@ -36,7 +36,7 @@ from .fonctions_pour_main import(
 import os
 import requests
 
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.27.66:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
 
 # python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
@@ -107,8 +107,8 @@ class DatasetManager:
 # ====================================
 class TrainingPipeline:
     """Pipeline d'entraînement pour les réseaux de neurones"""
-    
-    def __init__(self, payload: PaquetComplet, payload_model: dict,time_series_data: Optional[TimeSeriesData] = None):
+
+    def __init__(self, payload: PaquetComplet, payload_model: dict, time_series_data: Optional[TimeSeriesData] = None):
         """Initialise le pipeline avec les configurations"""
         self.cfg = payload
         self.payload_model = payload_model
