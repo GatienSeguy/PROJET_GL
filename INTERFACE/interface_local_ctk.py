@@ -405,7 +405,7 @@ class Fenetre_Acceuil(ctk.CTk):
         payload = {"message": "choix dataset"}
 
         try:
-            r = requests.post(url, json=payload, timeout=100000)
+            r = requests.post(url, json=payload, timeout=10000)
             r.raise_for_status()
             data = r.json()
             return data
@@ -438,7 +438,7 @@ class Fenetre_Acceuil(ctk.CTk):
                     r = requests.post(
                         f"{URL}/datasets/fetch_dataset",
                         json=payload_dataset,     
-                        timeout=100
+                        timeout=10000
                     )
                     r.raise_for_status()
                     data = r.json()
