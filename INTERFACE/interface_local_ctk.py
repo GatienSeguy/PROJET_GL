@@ -19,20 +19,19 @@ import customtkinter as ctk
 
 # URL = "http://192.168.27.66:8000"
 # URL = "http://138.231.149.81:8000"
-RL = "http://192.168.1.190:8000"
+URL = "http://192.168.1.190:8000"
 
 # Paramètres et variables
 
 class Parametres_temporels_class():
     def __init__(self):
-        #self.dataset="" # str
+        self.nom_dataset="" # str
         self.horizon=1 # int
         self.dates=["2001-01-01", "2025-01-02"] # variable datetime
         self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
-        self.dataset="" # str
-    def generate_json(self,json):
-        pass
+        # self.dataset="" # str
+
 class Parametres_choix_reseau_neurones_class():
     def __init__(self):
         self.modele="MLP" # str ['MLP','LSTM','GRU','CNN']
@@ -105,6 +104,12 @@ class Parametres_visualisation_suivi_class():
         # self.Frequence_visualisation_predictions=None # int
         # self.Nb_exemples_visualises=None # int
 
+class Selected_Dataset_class():
+    def __init__(self):
+        self.name="" # str
+        self.dates=[] # list de str
+        self.pas_temporel=0 # int
+
 Datasets_list=[]
 Dataset=""
 
@@ -117,6 +122,8 @@ Parametres_choix_loss_fct=Parametres_choix_loss_fct_class()
 Parametres_optimisateur=Parametres_optimisateur_class()
 Parametres_entrainement=Parametres_entrainement_class()
 Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
+
+Selected_Dataset=Selected_Dataset_class()
 
 # Couleurs style IRMA Conseil
 BG_DARK = "#2c3e50"
@@ -141,7 +148,7 @@ class Fenetre_Acceuil(ctk.CTk):
         self.Fenetre_Params_horizon_instance = None
         self.Fenetre_Choix_datasets_instance = None
         self.Fenetre_Choix_metriques_instance = None
-        self.feur_instance = None
+        # self.feur_instance = None
 
         ctk.CTk.__init__(self)
         self.grid_columnconfigure(0, weight=0, minsize=600)  # largeur fixe
@@ -245,13 +252,17 @@ class Fenetre_Acceuil(ctk.CTk):
         # JSON_Datasets_Dict=json.loads(JSON_Datasets_String)
 
 
-        def optionmenu_callback(choice):
-            Parametres_temporels.dates=[d.split(" ")[0] for d in self.JSON_Datasets[choice]['dates']]
-            self.pas_temporel=self.JSON_Datasets[choice]['pas']
-            Parametres_temporels.dataset=choice
+        def optionmenu_callback(choice):            
+            Selected_Dataset.name=choice
+            Selected_Dataset.dates=[d.split(" ")[0] for d in self.JSON_Datasets[choice]['dates']]
+            Selected_Dataset.pas_temporel=self.JSON_Datasets[choice]['pas_temporel']
+
+            Parametres_temporels.nom_dataset=Selected_Dataset.name
+            Parametres_temporels.dates=Selected_Dataset.dates
+            Parametres_temporels.pas_temporel=1
 
         combobox = ctk.CTkOptionMenu(master=Label_frame_Donnees,
-                                            values=[self.JSON_Datasets.keys()],
+                                            values=list(self.JSON_Datasets.keys()),
                                             command=optionmenu_callback,
                                             variable=optionmenu_var,
                                             )
@@ -357,7 +368,11 @@ class Fenetre_Acceuil(ctk.CTk):
     
     def Formatter_JSON_global(self):
         self.config_totale={}
-        self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
+        # self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
+        self.config_totale["Parametres_temporels"] = {
+            "horizon": Parametres_temporels.horizon,
+            "portion_decoupage": Parametres_temporels.portion_decoupage
+        }
         self.config_totale["Parametres_choix_reseau_neurones"]=Parametres_choix_reseau_neurones.__dict__
         #self.config_totale["Parametres_archi_reseau"]=Parametres_archi_reseau.__dict__
         self.config_totale["Parametres_choix_loss_fct"]=Parametres_choix_loss_fct.__dict__
@@ -365,6 +380,13 @@ class Fenetre_Acceuil(ctk.CTk):
         self.config_totale["Parametres_entrainement"]=Parametres_entrainement.__dict__
         self.config_totale["Parametres_visualisation_suivi"]=Parametres_visualisation_suivi.__dict__
         return self.config_totale
+
+    def Formatter_JSON_dataset(self):
+        self.config_dataset={}
+        self.config_dataset["name"]=Selected_Dataset.name
+        self.config_dataset["dates"]=Selected_Dataset.dates
+        self.config_dataset["pas_temporel"]=Selected_Dataset.pas_temporel
+        return self.config_dataset
     
     def Formatter_JSON_specif(self):
         self.config_specifique={}
@@ -403,9 +425,10 @@ class Fenetre_Acceuil(ctk.CTk):
             # Préparer les payloads
             payload_global = self.Formatter_JSON_global()
             payload_model = self.Formatter_JSON_specif()
-            
+            payload_dataset = self.Formatter_JSON_dataset()
+
             # Avant d'envoyer le payload
-            print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model})
+            print("Payload envoyé au serveur :", {"payload": payload_global, "payload_model": payload_model, "payload_dataset": payload_dataset})
             
             def run_training():
                 """Fonction pour exécuter l'entraînement dans un thread séparé"""
@@ -1340,12 +1363,12 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
         self.Params_temporels_pas_temporel = ctk.IntVar(value=Parametres_temporels.pas_temporel)
         self.Params_temporels_portion_decoupage = ctk.IntVar(value=Parametres_temporels.portion_decoupage * 100)
 
-        ctk.CTkLabel(self.params_frame, text=f"📅 Paramètres Temporels (multiple de {master.pas_temporel})").grid(row=0, column=0, columnspan=2 , sticky="ew",padx=10,pady=20)
+        ctk.CTkLabel(self.params_frame, text="📅 Paramètres Temporels").grid(row=0, column=0, columnspan=2 , sticky="ew",padx=10,pady=20)
 
         # Liste des champs
         champs = [
             ("Horizon temporel (int) :", self.Params_temporels_horizon,"int"),
-            ("Pas temporel (int) :", self.Params_temporels_pas_temporel,"int"),
+            (f"Pas temporel (multiple de {Selected_Dataset.pas_temporel}) :", self.Params_temporels_pas_temporel,"int"),
             ("Portion découpage (%) :", self.Params_temporels_portion_decoupage,"float"),
         ]
 
