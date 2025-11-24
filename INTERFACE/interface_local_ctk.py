@@ -460,6 +460,7 @@ class Fenetre_Acceuil(ctk.CTk):
 
             def run_training():
                 """Fonction pour exécuter l'entraînement dans un thread séparé"""
+                run_fetch_dataset()
                 y=[]
                 yhat=[]
                 try:
@@ -535,7 +536,7 @@ class Fenetre_Acceuil(ctk.CTk):
                     # Arrêter l'affichage de l'entraînement
                     self.Cadre_results_Entrainement.stop_training()
             
-            run_fetch_dataset()
+            
 
             # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
             training_thread = threading.Thread(target=run_training, daemon=True)
