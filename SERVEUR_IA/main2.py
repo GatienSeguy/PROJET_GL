@@ -28,6 +28,7 @@ from .classes import (
 from .fonctions_pour_main import(
     filter_series_by_dates,
     build_supervised_tensors_with_step,
+    build_supervised_tensors_with_step,
     split_train_test,
     sse,
     normalize_data,
@@ -177,33 +178,32 @@ class TrainingPipeline:
     # ====================================
     # 3) EXTRACTION ET FILTRAGE DES DONNÉES
     # ====================================
+    # ====================================
+    # 3) EXTRACTION ET FILTRAGE DES DONNÉES
+    # ====================================
+# ====================================
+    # 3) EXTRACTION ET FILTRAGE DES DONNÉES
+    # ====================================
     def preprocess_data(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Prétraite les données : filtrage, construction de (X,y) et normalisation"""
         
-        # Récupération des paramètres temporels
-        # dates = self.cfg.Parametres_temporels.dates if (self.cfg and self.cfg.Parametres_temporels) else None
-
-        # pas_temporel = int(self.cfg.Parametres_temporels.pas_temporel) if (self.cfg and self.cfg.Parametres_temporels and self.cfg.Parametres_temporels.pas_temporel is not None) else 1
         horizon = 1
         if self.cfg and self.cfg.Parametres_temporels and self.cfg.Parametres_temporels.horizon:
             horizon = max(1, int(self.cfg.Parametres_temporels.horizon))
         
-        # Filtrage par dates
-        # ts_filt, vals_filt = filter_series_by_dates(
-        #     self.series.timestamps, 
-        #     self.series.values, 
-        #     dates
-        # )
+        # --- CORRECTION OBLIGATOIRE ---
+        # On force une fenêtre de 20 points pour donner de la matière au LSTM
+        self.window_size = 20 
         
-        # Construction des tenseurs (X, y)
+        # On passe bien 'window_len=self.window_size' ici :
         X, y = build_supervised_tensors_with_step(
             self.series.values,
+            window_len=self.window_size,  # <--- IMPORTANT
             horizon=horizon
         )
+        # ------------------------------
 
-        
         if X.numel() == 0:
-            raise ValueError("(X,y) vide ")
+            raise ValueError("(X,y) vide")
         
         self.X = X
         self.y = y
@@ -240,15 +240,23 @@ class TrainingPipeline:
     # ====================================
     # 4) ADAPTATION DU SHAPE POUR LE MODÈLE
     # ====================================
+    # ====================================
+    # 4) ADAPTATION DU SHAPE POUR LE MODÈLE
+    # ====================================
     def reshape_data_for_model(self, model_type: str):
         """Adapte la forme des données selon le type de modèle"""
         if model_type == "lstm":
+            # CORRECTION : on utilise unsqueeze(-1) (ou 2) pour ajouter la dimension à la FIN
+            # Avant : (B, 20) -> unsqueeze(1) -> (B, 1, 20) [Sequence=1, Features=20] -> FAUX pour LSTM Time Series
+            # Après : (B, 20) -> unsqueeze(-1) -> (B, 20, 1) [Sequence=20, Features=1] -> CORRECT
             if self.X_train.ndim == 2:
-                self.X_train = self.X_train.unsqueeze(1)  # (B, T) -> (B, T, 1)
+                self.X_train = self.X_train.unsqueeze(-1)
             if self.X_test.ndim == 2:
-                self.X_test = self.X_test.unsqueeze(1)
+                self.X_test = self.X_test.unsqueeze(-1)
         
         elif model_type == "cnn":
+            # Pour CNN, on garde souvent (Batch, Channels, Length)
+            # Donc (B, 1, 20) est correct ici si le CNN est Conv1d
             if self.X_train.ndim == 2:
                 self.X_train = self.X_train.unsqueeze(1)  # (B, seq_len) -> (B, 1, seq_len)
             if self.X_test.ndim == 2:
@@ -498,29 +506,87 @@ class TrainingPipeline:
     # ====================================
     # 10) TEST
     # ====================================
+    # ====================================
+    # 10) TEST - MODE 2 (PRÉDICTION AUTORÉGRESSIVE)
+    # ====================================
     def run_testing(self):
-        """Exécute les tests sur le modèle entraîné"""
+        """Exécute les tests en mode Prédiction Future (Mode 2)"""
         if self.model_trained is None:
             yield {"type": "warn", "message": "Modèle non récupéré (test sauté)."}
             return
         
-        print(f"[DÉBUT TEST] Modèle: {type(self.model_trained).__name__}")
+        print(f"[DÉBUT TEST] Mode 2 (Prédiction) - Modèle: {type(self.model_trained).__name__}")
         
-        for evt in test_model(
-            self.model_trained, 
-            self.X_test,
-            self.y_test,
-            device=self.device,
-            batch_size=256,
-            inverse_fn=self.inverse_fn,
-        ):
-            yield evt
-        #envoyer la serie complète (timestamps + values) pour affichage
+        # 1. Récupération dynamique de la window_size réelle
+        # (Au cas où elle change dans preprocess_data, on lit la vérité terrain du tenseur)
+        if self.X is not None:
+            real_window_size = self.X.shape[1]
+        else:
+            real_window_size = 20 # Fallback
+            
+        # 2. Préparation des données pour le Mode 2
+        # Le Mode 2 de testing.py attend un dictionnaire {'values': [...]} brut.
+        # On lui donne TOUTE la série. Le modèle prendra les 'window_size' premiers points
+        # et prédira TOUT le reste étape par étape.
+        data_for_prediction = {
+            "values": self.series.values,
+            "timestamps": self.series.timestamps
+        }
+        
+        # 3. Calcul du nombre de pas à prédire
+        # On veut prédire tout ce qui dépasse la première fenêtre d'initialisation
+        total_points = len(self.series.values)
+        pred_steps = total_points - real_window_size
+        
+        if pred_steps <= 0:
+            yield {"type": "error", "message": "Pas assez de données pour lancer une prédiction."}
+            return
+
+        # 4. Lancement du test via testing.py
+        # Note: On passe 'norm_params' (dict) au lieu de 'y_test' (tensor) pour déclencher le Mode 2
+        try:
+            for evt in test_model(
+                model=self.model_trained,
+                X_test_or_data=data_for_prediction,      # Arg 1: Dict (déclenche Mode 2)
+                y_test_or_norm_stats=self.norm_params,   # Arg 2: Dict stats (déclenche Mode 2)
+                device=self.device,
+                window_size=real_window_size,            # Requis pour Mode 2
+                pred_steps=pred_steps,                   # Requis pour Mode 2
+                inverse_fn=self.inverse_fn
+            ):
+                yield evt
+                
+        except Exception as e:
+            print(f"Erreur durant le testing Mode 2: {e}")
+            yield {"type": "error", "message": str(e)}
+
+        # 5. Envoi de la série complète originale pour comparaison visuelle finale dans l'UI
         yield {
             "type": "test_complete_series",
-            "timestamps": self.series.timestamps,
-            "values": self.series.values,
+            "y_tot": self.series.values,
         }
+    # def run_testing(self):
+    #     """Exécute les tests sur le modèle entraîné"""
+    #     if self.model_trained is None:
+    #         yield {"type": "warn", "message": "Modèle non récupéré (test sauté)."}
+    #         return
+        
+    #     print(f"[DÉBUT TEST] Modèle: {type(self.model_trained).__name__}")
+        
+    #     for evt in test_model(
+    #         self.model_trained, 
+    #         self.series,
+    #         device=self.device,
+    #         batch_size=256,
+    #         inverse_fn=self.inverse_fn,
+    #         norm_stats=self.norm_params,
+    #     ):
+    #         yield evt
+    #     #envoyer la serie complète (timestamps + values) pour affichage
+    #     yield {
+    #         "type": "test_complete_series",
+    #         "y_tot": self.series.values,
+    #     }
         
 
     # ====================================
