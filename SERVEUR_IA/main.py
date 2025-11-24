@@ -7,11 +7,11 @@ import json
 import torch
 
 # Train Modele
-from SERVEUR_IA.trains.training_MLP import train_MLP
-from SERVEUR_IA.trains.training_CNN import train_CNN
-from SERVEUR_IA.trains.training_LSTM import train_LSTM
+from .trains.training_MLP import train_MLP
+from .trains.training_CNN import train_CNN
+from .trains.training_LSTM import train_LSTM
 
-from SERVEUR_IA.test.testing import test_model
+from .test.testing import test_model
 
 from .launcher_serveur import json_path
 
