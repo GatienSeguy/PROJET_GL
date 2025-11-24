@@ -405,7 +405,7 @@ class Fenetre_Acceuil(ctk.CTk):
         payload = {"message": "choix dataset"}
 
         try:
-            r = requests.post(url, json=payload, timeout=100)
+            r = requests.post(url, json=payload, timeout=10000)
             r.raise_for_status()
             data = r.json()
             return data
@@ -438,13 +438,14 @@ class Fenetre_Acceuil(ctk.CTk):
                     r = requests.post(
                         f"{URL}/datasets/fetch_dataset",
                         json=payload_dataset,     
-                        timeout=10
+                        timeout=10000
                     )
                     r.raise_for_status()
                     data = r.json()
                     print(f"\n")
                     print("Dataset récupéré avec succès.")
-                    print("Réponse fetch_dataset :", data)
+                    print(f"\n")
+                    # print("Réponse fetch_dataset :", data)
 
                     # Ici tu mets ce que tu veux faire avec le dataset :
                     # par ex. mettre à jour un cadre UI :

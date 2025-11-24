@@ -85,7 +85,7 @@ class DatasetManager:
                 "dates": [date_start, date_end]
             }
             
-            response = requests.post(url, json=payload, timeout=10)
+            response = requests.post(url, json=payload, timeout=10000)
             response.raise_for_status()
             
             data_json = response.json()
@@ -152,7 +152,7 @@ class TrainingPipeline:
             # data_json = json.load(f)
         
         data_json = payload_json
-        print("###############",data_json)
+        # print("###############",data_json)
         self.series = TimeSeriesData(**data_json)
         return self.series
     
@@ -579,7 +579,7 @@ def proxy_get_dataset_list(payload: dict):
         url = f"{DATA_SERVER_URL}/datasets/info_all"
         # print("salaupard")
         # ENVOI DU PAYLOAD AU SERVEUR DATA
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, timeout=1000)
         # print(payload)
         response.raise_for_status()
         return response.json()
@@ -626,7 +626,7 @@ def proxy_fetch_dataset(payload: dict):
         url = f"{DATA_SERVER_URL}/datasets/data_solo"
         
         # ENVOI DU PAYLOAD AU SERVEUR DATA
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, timeout=1000)
         response.raise_for_status()
         
         data = response.json()

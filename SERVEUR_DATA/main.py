@@ -285,14 +285,17 @@ async def info_all(req: ChoixDatasetRequest):
 
 @app.post("/datasets/data_solo")
 async def info_all(payload: ChoixDatasetRequest2):
-    print("DATA SERVER received fetch_dataset for:", payload.name)  # DEBUG
+    print("DATA SERVER received fetch_dataset for:", payload.name) 
     json_final = construire_un_dataset(
         name=payload.name,
         date_debut=payload.dates[0],
         date_fin=payload.dates[1],
         pas=payload.pas_temporel
     )
-
+    print(f"\n")
+    print("On est bien")
+    print(f"\n")
+    
     if "error" in json_final:
         print("t'as fait nawak")
         raise HTTPException(status_code=404, detail=json_final["error"])
