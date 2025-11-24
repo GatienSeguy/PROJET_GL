@@ -383,9 +383,9 @@ class Fenetre_Acceuil(ctk.CTk):
 
     def Formatter_JSON_dataset(self):
         self.config_dataset={}
-        self.config_dataset["name"]=Selected_Dataset.name
-        self.config_dataset["dates"]=Selected_Dataset.dates
-        self.config_dataset["pas_temporel"]=Selected_Dataset.pas_temporel
+        self.config_dataset["name"]=Parametres_temporels.nom_dataset
+        self.config_dataset["dates"]=Parametres_temporels.dates
+        self.config_dataset["pas_temporel"]=Parametres_temporels.pas_temporel
         return self.config_dataset
     
     def Formatter_JSON_specif(self):
