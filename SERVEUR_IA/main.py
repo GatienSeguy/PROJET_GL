@@ -504,11 +504,18 @@ class TrainingPipeline:
             yield {"type": "warn", "message": "Modèle non récupéré (test sauté)."}
             return
 
+        # print(f"\n")
+        # print('#######################')
+        # print(f"\n")
+        # print('youhou')
+        # print(f"\n")
+        # print('#######################')
+
         yield {
             "type": "serie_complete",
-            "values": [float(v) for v in self.series.values.tolist()],
+            "values": self.series.values,
         }
-        
+
         print(f"[DÉBUT TEST] Modèle: {type(self.model_trained).__name__}")
 
         for evt in test_model(
