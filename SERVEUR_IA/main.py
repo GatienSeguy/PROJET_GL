@@ -152,7 +152,7 @@ class TrainingPipeline:
             # data_json = json.load(f)
         
         data_json = payload_json
-        print("###############",data_json)
+        # print("###############",data_json)
         self.series = TimeSeriesData(**data_json)
         return self.series
     

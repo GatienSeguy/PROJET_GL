@@ -444,7 +444,8 @@ class Fenetre_Acceuil(ctk.CTk):
                     data = r.json()
                     print(f"\n")
                     print("Dataset récupéré avec succès.")
-                    print("Réponse fetch_dataset :", data)
+                    print(f"\n")
+                    # print("Réponse fetch_dataset :", data)
 
                     # Ici tu mets ce que tu veux faire avec le dataset :
                     # par ex. mettre à jour un cadre UI :
