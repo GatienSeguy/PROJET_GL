@@ -245,7 +245,7 @@ def _test_model_prediction_mode(
     
     # Variance pour R²
     all_values = np.array(data['values'], dtype=float)
-    var_y = np.var(all_values)
+    var_y = np.nanvar(all_values)
     
     # ========================================
     # PRÉDICTION CONTINUE (AUTORÉGRESSIVE)
@@ -281,35 +281,53 @@ def _test_model_prediction_mode(
         x_input = x_input.to(device)
         
         # Prédiction
+        # ... (dans la boucle for pred_idx in range(n_predictions):)
+        
+        # Prédiction
         with torch.no_grad():
             pred = model(x_input)
             
+            # Gestion LSTM output (Batch, Seq, Features) -> (Batch, Features)
             if pred.ndim == 3:
                 pred = pred[:, -1, :]
             
-            pred = pred.squeeze().cpu().numpy()
+            # --- CORRECTION ROBUSTESSE ---
+            pred = pred.cpu().numpy()
             
-            # Prendre la première sortie si multiple
-            if pred.size > 1:
-                pred = pred[0]
+            # On s'assure de récupérer un simple float, peu importe la forme (scalaire, vecteur...)
+            if pred.ndim > 0:
+                pred = float(pred.flatten()[0]) 
+            else:
+                pred = float(pred.item())
+            # -----------------------------
         
         # Dénormalisation
+        # Note: on recrée un tenseur propre pour inverse_fn
         if inverse_fn is not None:
-            pred_denorm = float(inverse_fn(torch.FloatTensor([[pred]])).item())
+            # On passe un tenseur 2D [[val]] pour être sûr que ça passe
+            pred_tensor = torch.tensor([[pred]], dtype=torch.float32)
+            pred_denorm = float(inverse_fn(pred_tensor).item())
         else:
             pred_denorm = float(pred * std + mean)
-        
+            
         # Vraie valeur
         true_idx = window_size + pred_idx
-        y_true = float(data['values'][true_idx])
+        raw_val = data['values'][true_idx] # <-- On récupère la valeur brute
+        
+        # --- CORRECTION ICI : Gérer les None en les remplaçant par NaN (que NumPy gère) ---
+        if raw_val is None:
+            y_true = np.nan
+        else:
+            y_true = float(raw_val)
+        # ----------------------------------------------------------------------------------
         
         all_y_true.append(y_true)
         all_y_pred.append(pred_denorm)
         
-        # Stream la paire
+        # Stream la paire (on envoie None à l'UI si c'est nan)
         yield {
             "type": "test_pair",
-            "y": [y_true],
+            "y": [y_true if not np.isnan(y_true) else None], # <-- Envoi safe
             "yhat": [pred_denorm],
             "pred_idx": pred_idx,
             "step": pred_idx + 1
@@ -333,16 +351,26 @@ def _test_model_prediction_mode(
     all_y_true = np.array(all_y_true)
     all_y_pred = np.array(all_y_pred)
     
-    N = len(all_y_true)
+    # Masque pour ne garder que les couples où y_true existe (n'est pas NaN)
+    mask = ~np.isnan(all_y_true)
+    valid_y_true = all_y_true[mask]
+    valid_y_pred = all_y_pred[mask]
     
-    mse = float(np.mean((all_y_true - all_y_pred) ** 2))
-    mae = float(np.mean(np.abs(all_y_true - all_y_pred)))
-    rmse = float(np.sqrt(mse))
+    N = len(valid_y_true)
     
-    if var_y > 1e-10:
-        r2 = float(1.0 - (mse / var_y))
+    if N > 0:
+        # Calcul des métriques uniquement sur les points non manquants
+        mse = float(np.mean((valid_y_true - valid_y_pred) ** 2))
+        mae = float(np.mean(np.abs(valid_y_true - valid_y_pred)))
+        rmse = float(np.sqrt(mse))
+        
+        if var_y > 1e-10:
+            r2 = float(1.0 - (mse / var_y))
+        else:
+            r2 = None
     else:
-        r2 = None
+        # Si la série test était vide de vraies valeurs
+        mse, mae, rmse, r2 = 0.0, 0.0, 0.0, None
     
     per_dim = {
         "MSE": [mse],
@@ -358,6 +386,9 @@ def _test_model_prediction_mode(
         "R2": r2
     }
     
+    # Pour l'envoi final, on remplace les NaN par None dans la liste pour le JSON
+    safe_true = [x if not np.isnan(x) else None for x in all_y_true]
+    
     yield {
         "type": "test_final",
         "n_test": N,
@@ -368,7 +399,7 @@ def _test_model_prediction_mode(
         },
         "model_type": model_type,
         "all_predictions": all_y_pred.tolist(),
-        "all_true": all_y_true.tolist()
+        "all_true": safe_true # <-- Envoi de la liste sécurisée
     }
     
     yield {"type": "fin_test", "done": 1}
