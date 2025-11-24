@@ -20,6 +20,14 @@ DATA_DIR = BASE_DIR / "datasets"
 # Models
 # ----------------------------
 class ChoixDatasetRequest(BaseModel):
+    message: str
+    name: str = None
+    # dates: Optional[List[str]] = None
+    date_debut: str = None
+    date_fin: str = None
+    pas_temporel: str = None
+
+class ChoixDatasetRequest2(BaseModel):
     # message: str
     name: str = None
     dates: Optional[List[str]] = None
@@ -276,7 +284,7 @@ async def info_all(req: ChoixDatasetRequest):
     return json_final
 
 @app.post("/datasets/data_solo")
-async def info_all(payload: ChoixDatasetRequest):
+async def info_all(payload: dict):
     print("DATA SERVER received fetch_dataset for:", payload.name)  # DEBUG
     json_final = construire_un_dataset(
         name=payload.name,
