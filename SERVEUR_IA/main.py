@@ -141,15 +141,15 @@ class TrainingPipeline:
         Si un dataset a été passé au constructeur, l'utilise.
         Sinon, charge depuis le fichier JSON par défaut.
         """
-        if self.series is not None:
-            # Dataset déjà fourni (récupéré via /datasets/fetch)
-            return self.series
+        # if self.series is not None:
+        #     # Dataset déjà fourni (récupéré via /datasets/fetch)
+        #     return self.series
         
         # Fallback : charger depuis fichier JSON TEMPORAIRE
         # json_file_path = "/Users/gatienseguy/Documents/VSCode/PROJET_GL/SERVEUR_DATA/datasets/EURO.json"
         
         # with open(json_file_path, 'r') as f:
-            data_json = json.load(f)
+            # data_json = json.load(f)
         
         data_json = payload_json
         self.series = TimeSeriesData(**data_json)
