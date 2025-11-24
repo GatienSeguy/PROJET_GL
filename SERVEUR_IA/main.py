@@ -22,6 +22,7 @@ from .classes import (
     Parametres_archi_reseau_MLP,
     Parametres_archi_reseau_CNN,
     Parametres_archi_reseau_LSTM,
+    Tx_choix_dataset,
     PaquetComplet)
 
 from .fonctions_pour_main import(
@@ -36,7 +37,7 @@ from .fonctions_pour_main import(
 import os
 import requests
 
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.27.66:8001")
 
 # python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
@@ -178,25 +179,26 @@ class TrainingPipeline:
         """Prétraite les données : filtrage, construction de (X,y) et normalisation"""
         
         # Récupération des paramètres temporels
-        dates = self.cfg.Parametres_temporels.dates if (self.cfg and self.cfg.Parametres_temporels) else None
-        pas_temporel = int(self.cfg.Parametres_temporels.pas_temporel) if (self.cfg and self.cfg.Parametres_temporels and self.cfg.Parametres_temporels.pas_temporel is not None) else 1
+        # dates = self.cfg.Parametres_temporels.dates if (self.cfg and self.cfg.Parametres_temporels) else None
+
+        # pas_temporel = int(self.cfg.Parametres_temporels.pas_temporel) if (self.cfg and self.cfg.Parametres_temporels and self.cfg.Parametres_temporels.pas_temporel is not None) else 1
         horizon = 1
         if self.cfg and self.cfg.Parametres_temporels and self.cfg.Parametres_temporels.horizon:
             horizon = max(1, int(self.cfg.Parametres_temporels.horizon))
         
         # Filtrage par dates
-        ts_filt, vals_filt = filter_series_by_dates(
-            self.series.timestamps, 
-            self.series.values, 
-            dates
-        )
+        # ts_filt, vals_filt = filter_series_by_dates(
+        #     self.series.timestamps, 
+        #     self.series.values, 
+        #     dates
+        # )
         
         # Construction des tenseurs (X, y)
         X, y = build_supervised_tensors_with_step(
-            vals_filt,
-            horizon=horizon,
-            step=pas_temporel,
+            self.series.values,
+            horizon=horizon
         )
+
         
         if X.numel() == 0:
             raise ValueError("(X,y) vide après filtrage/découpage")
@@ -574,72 +576,73 @@ def training(payload: PaquetComplet, payload_model: dict):
 # ROUTES - GESTION DATASETS
 # ====================================
 
-@app.get("/datasets/list")
-def get_datasets_list():
-    """
-    Récupère la liste de tous les datasets disponibles
-    Endpoint pour la UI permettant d'afficher les datasets disponibles
-    """
-    try:
-        manager = DatasetManager()
-        datasets = manager.get_available_datasets()
+# @app.get("/datasets/list")
+# def get_datasets_list():
+#     """
+#     Récupère la liste de tous les datasets disponibles
+#     Endpoint pour la UI permettant d'afficher les datasets disponibles
+#     """
+#     try:
+#         manager = DatasetManager()
+#         datasets = manager.get_available_datasets()
         
-        return {
-            "status": "success",
-            "datasets": datasets
-        }
+#         return {
+#             "status": "success",
+#             "datasets": datasets
+#         }
     
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+#     except Exception as e:
+#         return {
+#             "status": "error",
+#             "message": str(e)
+#         }
 
 
-@app.post("/datasets/fetch")
-def fetch_dataset(request_payload: dict):
-    """
-    Récupère un dataset spécifique avec une plage de dates
-    Endpoint pour la UI permettant de charger un dataset avec filtrage de dates
-    """
-    try:
-        # Validation de la requête
-        if "name" not in request_payload:
-            return {
-                "status": "error",
-                "message": "Champ 'name' manquant"
-            }
+# @app.post("/datasets/fetch")
+# def fetch_dataset(request_payload: dict):
+#     """
+#     Récupère un dataset spécifique avec une plage de dates
+#     Endpoint pour la UI permettant de charger un dataset avec filtrage de dates
+#     """
+#     try:
+#         # Validation de la requête
+#         if "name" not in request_payload:
+#             return {
+#                 "status": "error",
+#                 "message": "Champ 'name' manquant"
+#             }
         
-        if "dates" not in request_payload or len(request_payload["dates"]) != 2:
-            return {
-                "status": "error",
-                "message": "Champ 'dates' manquant ou invalide (doit contenir [date_debut, date_fin])"
-            }
+#         if "dates" not in request_payload or len(request_payload["dates"]) != 2:
+#             return {
+#                 "status": "error",
+#                 "message": "Champ 'dates' manquant ou invalide (doit contenir [date_debut, date_fin])"
+#             }
         
-        dataset_name = request_payload["name"]
-        date_start, date_end = request_payload["dates"]
+#         dataset_name = request_payload["name"]
+#         date_start, date_end = request_payload["dates"]
         
-        # Récupération du dataset
-        manager = DatasetManager()
-        time_series = manager.fetch_dataset(dataset_name, date_start, date_end)
+#         # Récupération du dataset
+#         manager = DatasetManager()
+#         time_series = manager.fetch_dataset(dataset_name, date_start, date_end)
         
-        return {
-            "status": "success",
-            "data": {
-                "timestamps": time_series.timestamps,
-                "values": time_series.values
-            }
-        }
+#         return {
+#             "status": "success",
+#             "data": {
+#                 "timestamps": time_series.timestamps,
+#                 "values": time_series.values
+#             }
+#         }
     
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+#     except Exception as e:
+#         return {
+#             "status": "error",
+#             "message": str(e)
+#         }
 
 
 
-
+# Route proxy pour récupérer la liste des datasets depuis le serveur DATA 
+# UI -> SERVEUR_IA -> SERVEUR_DATA -> SERVEUR_IA -> UI
 @app.post("/datasets/info_all")
 def proxy_get_dataset_list(payload: dict):
     print("Message reçu depuis UI :", payload)
@@ -659,6 +662,26 @@ def proxy_get_dataset_list(payload: dict):
     except Exception as e:
         print("Exception côté IA :", e)
         return {"status": "error", "message": str(e)}
+    
+
+@app.post("/datasets/fetch_dataset")
+def proxy_fetch_dataset(payload: dict):
+    print("Message reçu depuis UI pour fetch_dataset :", payload)
+
+    try:
+        url = f"{DATA_SERVER_URL}/datasets/data_solo"
+        
+        # ENVOI DU PAYLOAD AU SERVEUR DATA
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        print(response.json())
+        return response.json()
+
+    except Exception as e:
+        print("Exception côté IA lors du fetch_dataset :", e)
+        return {"status": "error", "message": str(e)}
+
+
 # ====================================
 # ROUTES - CHECK SERVEUR IA
 # ====================================

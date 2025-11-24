@@ -4,6 +4,7 @@ from pathlib import Path
 import xarray as xr
 from datetime import datetime, timedelta
 from itertools import zip_longest
+from typing import Optional, Tuple, Literal, List
 
 import re
 
@@ -19,11 +20,12 @@ DATA_DIR = BASE_DIR / "datasets"
 # Models
 # ----------------------------
 class ChoixDatasetRequest(BaseModel):
-    message: str
+    # message: str
     name: str = None
-    date_debut: str = None
-    date_fin: str = None
-    pas: str = None
+    dates: Optional[List[str]] = None
+    # date_debut: str = None
+    # date_fin: str = None
+    pas_temporel: str = None
 
 
 # ----------------------------
@@ -278,27 +280,21 @@ async def info_all(req: ChoixDatasetRequest):
     print("DATA SERVER received:", req.message)  # DEBUG
 
 
-@app.post("/dataset/data_solo")
-async def info_all(req: ChoixDatasetRequest):
-    if req.message != "choix dataset":
-        raise HTTPException(status_code=400, detail="Message inconnu")
+@app.post("/datasets/data_solo")
+async def info_all(payload: ChoixDatasetRequest):
+    print("DATA SERVER received fetch_dataset for:", payload.name)  # DEBUG
+    json_final = construire_un_dataset(
+        name=payload.name,
+        date_debut=payload.dates[0],
+        date_fin=payload.dates[1],
+        pas=payload.pas_temporel
+    )
 
-    try:
-        json_final = construire_un_dataset(
-            name=req.name,
-            date_debut=req.date_debut,
-            date_fin=req.date_fin,
-            pas=req.pas
-        )
-
-        if "error" in json_final:
-            print("t'as fait nawak")
-            raise HTTPException(status_code=404, detail=json_final["error"])
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+    if "error" in json_final:
+        print("t'as fait nawak")
+        raise HTTPException(status_code=404, detail=json_final["error"])
     return json_final
+
 
 @app.post("/datasets/info_all")
 async def info_all(req: ChoixDatasetRequest):

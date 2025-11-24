@@ -22,8 +22,8 @@ class TimeSeriesData(BaseModel):
 
 class Parametres_temporels(BaseModel):
     horizon: Optional[int] = Field(None, description="Nombre de pas temporels à prédire")
-    dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
-    pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
+    # dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
+    # pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
     portion_decoupage: Optional[confloat(gt=0, lt=1)] = Field(None, description="Proportion de découpage train/test")
 
 
@@ -162,6 +162,7 @@ class Parametres_archi_reseau_LSTM(BaseModel):
 class Tx_choix_dataset(BaseModel):
     dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
     name: Optional[str] = Field(None, description="Nom du fichier à utiliser")
+    pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
 
 
 
