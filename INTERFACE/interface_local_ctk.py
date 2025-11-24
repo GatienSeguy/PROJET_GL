@@ -437,7 +437,7 @@ class Fenetre_Acceuil(ctk.CTk):
                 try:
                     with requests.post(
                         f"{URL}/train_full", 
-                        json={"payload": payload_global, "payload_model": payload_model}, 
+                        json={"payload": payload_global, "payload_model": payload_model, "payload_dataset": payload_dataset}, 
                         stream=True,
                         timeout=None
                     ) as r:
