@@ -320,12 +320,12 @@ def _test_model_prediction_mode(
         current_window[-1, 0] = pred  # pred normalisé
         
         # Progression
-        if (pred_idx + 1) % 10 == 0 or pred_idx == n_predictions - 1:
-            yield {
-                "type": "test_progress", 
-                "done": pred_idx + 1,
-                "total": n_predictions
-            }
+        # if (pred_idx + 1) % 10 == 0 or pred_idx == n_predictions - 1:
+        #     yield {
+        #         "type": "test_progress", 
+        #         "done": pred_idx + 1,
+        #         "total": n_predictions
+        #     }
     
     # ========================================
     # MÉTRIQUES FINALES
