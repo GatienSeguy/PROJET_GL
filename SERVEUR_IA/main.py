@@ -64,7 +64,7 @@ class DatasetManager:
         """
         try:
             url = f"{self.data_server_url}/datasets/list"
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=100)
             response.raise_for_status()
             
             data = response.json()
