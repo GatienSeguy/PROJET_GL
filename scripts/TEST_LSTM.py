@@ -459,12 +459,12 @@ if __name__ == "__main__":
     model, metrics, y_pred, y_true, future_pred = run_complete_pipeline(
         data_path=PROJECT_ROOT / 'SERVEUR_DATA/datasets/CACAO.json',
         window_size=30,      # Contexte de 30 points
-        pred_steps=6,        # Prédit 6 points à la fois
+        pred_steps=1,        # Prédit 6 points à la fois
         hidden_dim=128,      # Réduit de 256 à 128
         num_layers=2,        # Réduit de 3 à 2
-        epochs=100,          # Plus d'époques
-        batch_size=64,
-        lr=0.0001,
+        epochs=10000,          # Plus d'époques
+        batch_size=128,
+        lr=0.001,
         device='cpu'         # ou 'cpu'
     )
 

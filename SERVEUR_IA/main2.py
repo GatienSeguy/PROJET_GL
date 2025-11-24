@@ -117,7 +117,7 @@ class TrainingPipeline:
 
         # Détection du device cpu gpu ou mps
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
-        # self.device = "mps"
+        # self.device = ""
 
         # Variables d'état
         self.series = time_series_data
@@ -192,7 +192,7 @@ class TrainingPipeline:
         
         # --- CORRECTION OBLIGATOIRE ---
         # On force une fenêtre de 20 points pour donner de la matière au LSTM
-        self.window_size = 60 
+        self.window_size = 20 
         
         # On passe bien 'window_len=self.window_size' ici :
         X, y = build_supervised_tensors_with_step(
@@ -515,6 +515,11 @@ class TrainingPipeline:
             yield {"type": "warn", "message": "Modèle non récupéré (test sauté)."}
             return
         
+        yield {
+            "type": "serie_complete",
+            "values": self.series.values,
+        }
+
         print(f"[DÉBUT TEST] Mode 2 (Prédiction) - Modèle: {type(self.model_trained).__name__}")
         
         # 1. Récupération dynamique de la window_size réelle
