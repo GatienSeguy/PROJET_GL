@@ -275,11 +275,6 @@ async def info_all(req: ChoixDatasetRequest):
 
     return json_final
 
-@app.post("/datasets/info_all")
-async def info_all(req: ChoixDatasetRequest):
-    print("DATA SERVER received:", req.message)  # DEBUG
-
-
 @app.post("/datasets/data_solo")
 async def info_all(payload: ChoixDatasetRequest):
     print("DATA SERVER received fetch_dataset for:", payload.name)  # DEBUG
