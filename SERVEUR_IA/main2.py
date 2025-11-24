@@ -11,7 +11,7 @@ from .trains.training_MLP import train_MLP
 from .trains.training_CNN import train_CNN
 from .trains.training_LSTM import train_LSTM
 
-from .test.testing import test_model
+from .test.testing2 import test_model
 
 from .launcher_serveur import json_path
 
@@ -192,7 +192,7 @@ class TrainingPipeline:
         
         # --- CORRECTION OBLIGATOIRE ---
         # On force une fenêtre de 20 points pour donner de la matière au LSTM
-        self.window_size = 20 
+        self.window_size = 60 
         
         # On passe bien 'window_len=self.window_size' ici :
         X, y = build_supervised_tensors_with_step(

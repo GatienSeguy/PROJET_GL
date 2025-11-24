@@ -19,7 +19,7 @@ import customtkinter as ctk
 
 # URL = "http://192.168.27.66:8000"
 # URL = "http://138.231.149.81:8000"
-URL = "http://192.168.1.190:8000"
+URL = "http://192.168.1.94:8000"
 
 # Paramètres et variables
 
@@ -803,7 +803,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
         # Traiter toutes les données restantes dans la queue avant d'arrêter
         while not self.data_queue.empty():
             try:
-                epoch, loss = self.data_queue.get_nowait()
+                epoch, loss, epoch_s = self.data_queue.get_nowait()
                 self.epochs.append(epoch)
                 self.losses.append(loss)
                 
