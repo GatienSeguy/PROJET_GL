@@ -111,17 +111,17 @@ def construire_json_datasets():
         }
     return result
 
-def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: str):
+def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: int):
     import re
     from datetime import datetime, timedelta
 
     def parse_pas(pas_str: str) -> timedelta:
         """Parse '1d', '12h', '30m', '15s' ou '1d 12h' en timedelta."""
-        if not pas_str:
+        if not pas:
             return timedelta(days=1)
         regex = r"(\d+)\s*([dhms])"
         kwargs = {}
-        for amount, unit in re.findall(regex, pas_str):
+        for amount, unit in re.findall(regex, pas):
             n = int(amount)
             if unit == "d":
                 kwargs["days"] = kwargs.get("days", 0) + n

@@ -203,7 +203,7 @@ class TrainingPipeline:
 
         
         if X.numel() == 0:
-            raise ValueError("(X,y) vide après filtrage/découpage")
+            raise ValueError("(X,y) vide ")
         
         self.X = X
         self.y = y
