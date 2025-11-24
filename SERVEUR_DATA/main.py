@@ -292,7 +292,7 @@ async def info_all(payload: ChoixDatasetRequest2):
         date_fin=payload.dates[1],
         pas=payload.pas_temporel
     )
-
+    print(json_final)
     if "error" in json_final:
         print("t'as fait nawak")
         raise HTTPException(status_code=404, detail=json_final["error"])
