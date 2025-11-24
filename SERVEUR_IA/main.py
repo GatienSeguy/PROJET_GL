@@ -64,7 +64,7 @@ class DatasetManager:
         """
         try:
             url = f"{self.data_server_url}/datasets/list"
-            response = requests.get(url, timeout=10000)
+            response = requests.get(url, timeout=100)
             response.raise_for_status()
             
             data = response.json()
@@ -85,7 +85,7 @@ class DatasetManager:
                 "dates": [date_start, date_end]
             }
             
-            response = requests.post(url, json=payload, timeout=100)
+            response = requests.post(url, json=payload, timeout=10000)
             response.raise_for_status()
             
             data_json = response.json()
