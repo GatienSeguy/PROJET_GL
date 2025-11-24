@@ -284,7 +284,7 @@ async def info_all(req: ChoixDatasetRequest):
     return json_final
 
 @app.post("/datasets/data_solo")
-async def info_all(payload: dict):
+async def info_all(payload: ChoixDatasetRequest2):
     print("DATA SERVER received fetch_dataset for:", payload.name)  # DEBUG
     json_final = construire_un_dataset(
         name=payload.name,
