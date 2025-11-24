@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 from itertools import zip_longest
 from typing import Optional, Tuple, Literal, List
 
-import re
-
 import json
 
 app = FastAPI()
@@ -33,7 +31,7 @@ class ChoixDatasetRequest2(BaseModel):
     dates: Optional[List[str]] = None
     # date_debut: str = None
     # date_fin: str = None
-    pas_temporel: str = None
+    pas_temporel: int = None
 
 
 # ----------------------------
@@ -111,17 +109,17 @@ def construire_json_datasets():
         }
     return result
 
-def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: int):
+def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: str):
     import re
     from datetime import datetime, timedelta
 
     def parse_pas(pas_str: str) -> timedelta:
         """Parse '1d', '12h', '30m', '15s' ou '1d 12h' en timedelta."""
-        if not pas:
+        if not pas_str:
             return timedelta(days=1)
         regex = r"(\d+)\s*([dhms])"
         kwargs = {}
-        for amount, unit in re.findall(regex, pas):
+        for amount, unit in re.findall(regex, pas_str):
             n = int(amount)
             if unit == "d":
                 kwargs["days"] = kwargs.get("days", 0) + n
@@ -295,7 +293,6 @@ async def info_all(payload: ChoixDatasetRequest2):
     print(f"\n")
     print("On est bien")
     print(f"\n")
-    
     if "error" in json_final:
         print("t'as fait nawak")
         raise HTTPException(status_code=404, detail=json_final["error"])
