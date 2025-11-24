@@ -438,7 +438,7 @@ class Fenetre_Acceuil(ctk.CTk):
                     r = requests.post(
                         f"{URL}/datasets/fetch_dataset",
                         json=payload_dataset,     
-                        timeout=10
+                        timeout=100
                     )
                     r.raise_for_status()
                     data = r.json()
