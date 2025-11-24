@@ -31,7 +31,6 @@ class Parametres_temporels_class():
         self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
         # self.dataset="" # str
-
 class Parametres_choix_reseau_neurones_class():
     def __init__(self):
         self.modele="MLP" # str ['MLP','LSTM','GRU','CNN']
@@ -110,6 +109,39 @@ class Selected_Dataset_class():
         self.dates=[] # list de str
         self.pas_temporel=0 # int
 
+class Fonts_class():
+    def __init__(self):
+        self.title_font = ("Roboto Medium", 28,"bold")
+        self.section_font = ("Roboto Medium", 24,"bold")
+        self.button_font = ("Roboto", 20)
+
+        self.Metrics = ("Roboto Medium", 24,"bold")
+        self.Tabs_title = ("Helvetica", 16, "bold")
+
+class Colors_IRMA_class():
+    def __init__(self):
+        # Couleurs style IRMA Conseil
+        BG_DARK = "#2c3e50"
+        BG_CARD = "#34495e"
+        BG_INPUT = "#273747"
+        TEXT_PRIMARY = "#ecf0f1"
+        TEXT_SECONDARY = "#bdc3c7"
+        ACCENT_PRIMARY = "#e74c3c"
+        ACCENT_SECONDARY = "#3498db"
+        BORDER_COLOR = "#4a5f7f"
+
+class Colors_Light_class():
+    def __init__(self):
+        self.text_color_primary = '#2C3E50'
+
+class Colors_Dark_class():
+    def __init__(self):
+        self.text_color_primary = '#DCE4EE'
+
+Colors_Dark=Colors_Dark_class()
+Fonts=Fonts_class()
+Colors=Colors_Dark
+
 Datasets_list=[]
 Dataset=""
 
@@ -125,15 +157,6 @@ Parametres_visualisation_suivi=Parametres_visualisation_suivi_class()
 
 Selected_Dataset=Selected_Dataset_class()
 
-# Couleurs style IRMA Conseil
-BG_DARK = "#2c3e50"
-BG_CARD = "#34495e"
-BG_INPUT = "#273747"
-TEXT_PRIMARY = "#ecf0f1"
-TEXT_SECONDARY = "#bdc3c7"
-ACCENT_PRIMARY = "#e74c3c"
-ACCENT_SECONDARY = "#3498db"
-BORDER_COLOR = "#4a5f7f"
 
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
@@ -202,15 +225,21 @@ class Fenetre_Acceuil(ctk.CTk):
             self, self.Results_notebook.tab("Training")
         )
         self.Cadre_results_Entrainement.pack(fill="both", expand=True)
+
         self.Cadre_results_Testing = Cadre_Testing(
             self, self.Results_notebook.tab("Testing")
         )
+        self.Cadre_results_Testing.pack(fill="both", expand=True)
+
         self.Cadre_results_Metrics = Cadre_Metrics(
             self, self.Results_notebook.tab("Metrics")
         )
+        self.Cadre_results_Metrics.pack(fill="both", expand=True)
+
         self.Cadre_results_Prediction = Cadre_Prediction(
             self, self.Results_notebook.tab("Prediction")
         )
+        self.Cadre_results_Prediction.pack(fill="both", expand=True)
 
 
         # Titre
@@ -611,16 +640,17 @@ class Cadre_Entrainement(ctk.CTkFrame):
         self.ax = self.fig.add_subplot(111)
         
         # Style du graphique
-        self.ax.tick_params(axis='x', colors='#DCE4EE')
-        self.ax.tick_params(axis='y', colors='#DCE4EE')
+        self.ax.tick_params(axis='both', colors='#DCE4EE',labelsize=20)
+        self.ax.tick_params(which='minor', axis='both', colors='#DCE4EE',labelsize=20)
         for spine in self.ax.spines.values():
             spine.set_color('#DCE4EE')
 
         self.ax.set_facecolor(self.fg_color)
         self.ax.grid(True, linestyle='--', alpha=0.3,color='#DCE4EE') #, color='#95a5a6'
-        self.ax.set_xlabel('Epoch', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_ylabel('Loss', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_title('Évolution de la Loss', fontsize=16, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
+        self.ax.grid(which='minor', linestyle=':', alpha=0.2, color='#DCE4EE')
+        self.ax.set_xlabel('Epoch', fontsize=24, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_ylabel('Loss', fontsize=24, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_title('Évolution de la Loss', fontsize=24, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
         
         # Ligne de tracé (sera mise à jour)
         self.line, = self.ax.plot([], [],'o-', linewidth=2.5,
@@ -630,9 +660,6 @@ class Cadre_Entrainement(ctk.CTkFrame):
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
-
-        
-
 
         ctk.CTkCheckBox(self, text="📈 Échelle Logarithmique", variable=self.is_log,
                     font=("Helvetica", 14, "bold"),
@@ -689,10 +716,14 @@ class Cadre_Entrainement(ctk.CTkFrame):
 
         self.ax.set_facecolor(self.fg_color)
         self.ax.grid(True, linestyle='--', alpha=0.3,color='#DCE4EE') #, color='#95a5a6'
-        self.ax.set_xlabel('Epoch', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_ylabel('Loss', fontsize=16, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_title('Évolution de la Loss', fontsize=16, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
+        self.ax.grid(which='minor', linestyle=':', alpha=0.2, color='#DCE4EE')
+        self.ax.set_xlabel('Epoch', fontsize=28, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_ylabel('Loss', fontsize=28, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_title('Évolution de la Loss', fontsize=28, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
         
+        self.ax.tick_params(axis='both', colors='#DCE4EE',labelsize=20)
+        self.ax.tick_params(which='minor', axis='both', colors='#DCE4EE',labelsize=20)
+
         self.line, = self.ax.plot([], [],'o-', linewidth=2.5,
                                    color="#e74c3c", markerfacecolor="#9c9c9c",)
         
@@ -725,7 +756,13 @@ class Cadre_Entrainement(ctk.CTkFrame):
                 
                 # Mettre à jour les labels
                 self.label_epoch.configure(text=f"Epoch: {epoch}")
-                self.label_epoch_s.configure(text=f"Epochs/seconde: {epoch_s:.2f}")
+                if epoch_s is not None:
+                    text = f"Epochs/seconde: {epoch_s:.2f}"
+                else:
+                    text = "Epochs/seconde: N/A"
+
+                self.label_epoch_s.configure(text=text)
+
                 self.label_loss.configure(text=f"Loss: {loss:.6f}")
                 # Mettre à jour la barre de progression
                 self.progress_bar['value'] = (epoch / self.total_epochs) * 100
@@ -822,10 +859,13 @@ class Cadre_Testing(ctk.CTkFrame):
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
-            text="📊 Suivi de la phase de test", 
+            text="📊 Affichage de la phase de test", 
             font=("Helvetica", 16, "bold"),
         )
         self.titre.pack(pady=(0, 10))
+
+        # Création du graphique vide au départ
+        self.fig=None
 
     def save_figure(self,fig):
         file_path = asksaveasfilename(
@@ -862,6 +902,7 @@ class Cadre_Testing(ctk.CTkFrame):
         # Style du graphique
         ax.set_facecolor(self.fg_color)
         ax.grid(True, linestyle='--', alpha=0.3, color='#DCE4EE')
+        
         
         if yt.ndim == 1:
             x = np.arange(len(yt))
@@ -963,18 +1004,16 @@ class Cadre_Testing(ctk.CTkFrame):
 
        
         # Bouton de sauvegarde stylisé
-        bouton_sauvegarde = tk.Button(
-            self,
+        bouton_sauvegarde = ctk.CTkButton(
+            master=self,
             text="💾 Enregistrer la figure",
             font=("Helvetica", 11, "bold"),
-            bg="#2E86AB",           # Bleu profond pour contraster
-            fg="white",             # Texte blanc lisible
-            activebackground="#1B4F72",  # Survol plus foncé
-            activeforeground="white",
-            relief="flat",
-            bd=0,
-            padx=12,
-            pady=6,
+            fg_color="#2E86AB",       # Fond bleu profond
+            text_color="white",       # Texte blanc
+            hover_color="#1B4F72",    # Couleur au survol
+            corner_radius=8,           # Bords arrondis
+            width=180,                 # Largeur
+            height=35,                 # Hauteur
             command=lambda: self.save_figure(fig)
         )
         bouton_sauvegarde.pack(pady=(10, 5))
@@ -993,10 +1032,11 @@ class Cadre_Metrics(ctk.CTkFrame):
         self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
         
         # Titre
-        self.titre = tk.Label(
+        self.titre = ctk.CTkLabel(
             self, 
             text="📊 Affichage des metrics", 
-            font=("Helvetica", 16, "bold"),
+            font=Fonts.Tabs_title,
+            text_color=Colors.text_color_primary
         )
         self.titre.pack(pady=(0, 10))
 
@@ -1004,7 +1044,7 @@ class Cadre_Metrics(ctk.CTkFrame):
         for widget in self.winfo_children():
             widget.destroy()
         for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
-            label = tk.Label(self, text=f"{metric}: {val:.8f}", font=("Helvetica", 16, "bold"), bg=self.fg_color)
+            label = ctk.CTkLabel(self, text=f"{metric}: {val:.8f}", font=Fonts.Metrics, text_color=Colors.text_color_primary)
             label.pack(anchor="w", padx=15, pady=5)
 
 class Cadre_Prediction(ctk.CTkFrame):
