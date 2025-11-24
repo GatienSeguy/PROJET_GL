@@ -674,7 +674,9 @@ def proxy_fetch_dataset(payload: dict):
         # ENVOI DU PAYLOAD AU SERVEUR DATA
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
-        print(response.json())
+        
+        # print(response.json())
+        
         return response.json()
 
     except Exception as e:

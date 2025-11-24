@@ -296,7 +296,3 @@ async def info_all(payload: ChoixDatasetRequest):
     return json_final
 
 
-@app.post("/datasets/info_all")
-async def info_all(req: ChoixDatasetRequest):
-    print("DATA SERVER received:", req.message)  # DEBUG
-
