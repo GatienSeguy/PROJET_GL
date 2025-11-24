@@ -116,11 +116,11 @@ class Fonts_class():
         self.button_font = ("Roboto", 20)
 
         self.Metrics = ("Roboto Medium", 24,"bold")
-        self.Tabs_title = ("Roboto", 16, "bold")
+        self.Tabs_title = ("Roboto", 20, "bold")
         self.plot_axes = ("Roboto", 20, "bold")
         # self.plot_title = ("Roboto", 24, "bold")
         self.plot_title = {'fontname':'sans-serif','fontsize':24, 'fontweight':'bold','color':'#DCE4EE'}
-
+        self.plot_legend = {'family':'sans-serif','size':20}
 class Colors_IRMA_class():
     def __init__(self):
         # Couleurs style IRMA Conseil
@@ -986,8 +986,7 @@ class Cadre_Testing(ctk.CTkFrame):
             markerfacecolor='white',
             markeredgewidth=1.5,
             markeredgecolor='#2E86AB',
-            alpha=0.9,
-            label="Valeurs réelles"
+            alpha=0.9
         )
 
         # Courbe prédite
@@ -1002,13 +1001,18 @@ class Cadre_Testing(ctk.CTkFrame):
             markeredgewidth=1.5,
             markeredgecolor='#A23B72',
             linestyle="--",
-            alpha=0.9,
-            label="Valeurs Prédites"
+            alpha=0.9
         )
 
-        self.ax.axvline(x_pred[0], color='black', linestyle='--', label='Séparation entrainement / test')
+        ligne_separation=self.ax.axvline(x_pred[0], color=Colors.plot_grid_color, linestyle='--')
 
-        self.ax.legend(facecolor=Colors.background_color)
+        self.ax.legend(handles=[true_line,pred_line,ligne_separation],
+                       labels=["Valeurs réelles","Valeurs Prédites",'Séparation entrainement / test'],
+                       fancybox=True,
+                       labelcolor=Colors.plot_axes_color,
+                       prop=Fonts.plot_legend,
+                       facecolor=Colors.background_color,
+                       loc='best')
 
         # Stockage des lignes si futur effacement / rafraîchissement
         self.true_lines.append(true_line)
@@ -1018,7 +1022,6 @@ class Cadre_Testing(ctk.CTkFrame):
         self.ax.set_title('Test de prédiction', fontdict=Fonts.plot_title)
 
         # Rafraîchissement
-        self.ax.legend(loc='best')
         self.fig.tight_layout()
         self.canvas.draw()
 
@@ -1202,10 +1205,11 @@ class Cadre_Prediction(ctk.CTkFrame):
         self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
         
         # Titre
-        self.titre = tk.Label(
+        self.titre = ctk.CTkLabel(
             self, 
             text="📊 Affichage de la prédiction", 
-            font=("Helvetica", 16, "bold"),
+            font=Fonts.Tabs_title,
+            text_color=Colors.text_color_primary
         )
         self.titre.pack(pady=(0, 10))
 
