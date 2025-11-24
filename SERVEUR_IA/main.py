@@ -112,8 +112,11 @@ class TrainingPipeline:
         """Initialise le pipeline avec les configurations"""
         self.cfg = payload
         self.payload_model = payload_model
-        self.device = "mps"
-        
+
+        # Détection du device cpu gpu ou mps
+        self.device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
+        # self.device = "mps"
+
         # Variables d'état
         self.series = time_series_data
         self.cfg_model = None
