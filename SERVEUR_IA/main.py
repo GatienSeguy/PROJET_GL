@@ -47,7 +47,7 @@ last_config_tempo = None
 last_config_TimeSeries = None
 last_config_series = None  
 
-payload_json = {}
+payload_json = {"timestamps": [], "values": []}
 # ====================================
 # CLASSE GESTION DATASETS
 # ====================================
@@ -134,7 +134,7 @@ class TrainingPipeline:
     # ====================================
     # 1) CHARGEMENT DES DONNÉES
     # ====================================
-    def load_data(self) -> TimeSeriesData:
+    def load_data(self,payload_json) -> TimeSeriesData:
         """
         Charge les données
         
@@ -152,6 +152,7 @@ class TrainingPipeline:
             # data_json = json.load(f)
         
         data_json = payload_json
+        print("###############",data_json)
         self.series = TimeSeriesData(**data_json)
         return self.series
     
@@ -523,7 +524,7 @@ class TrainingPipeline:
         
         try:
             # Chargement des données
-            self.load_data()
+            self.load_data(payload_json=payload_json)
             
             # Configuration du modèle
             self.setup_model_config()
@@ -561,86 +562,9 @@ class TrainingPipeline:
 # ====================================
 # ROUTES
 # ====================================
-
-# ====================================
-# ROUTES - ENTRAÎNEMENT COMPLET
-# ====================================
-
-@app.post("/train_full")
-def training(payload: PaquetComplet, payload_model: dict):
-    """Route d'entraînement complet"""
-    pipeline = TrainingPipeline(payload, payload_model)
-    return StreamingResponse(pipeline.execute_full_pipeline(), media_type="text/event-stream")
-
-
 # ====================================
 # ROUTES - GESTION DATASETS
 # ====================================
-
-# @app.get("/datasets/list")
-# def get_datasets_list():
-#     """
-#     Récupère la liste de tous les datasets disponibles
-#     Endpoint pour la UI permettant d'afficher les datasets disponibles
-#     """
-#     try:
-#         manager = DatasetManager()
-#         datasets = manager.get_available_datasets()
-        
-#         return {
-#             "status": "success",
-#             "datasets": datasets
-#         }
-    
-#     except Exception as e:
-#         return {
-#             "status": "error",
-#             "message": str(e)
-#         }
-
-
-# @app.post("/datasets/fetch")
-# def fetch_dataset(request_payload: dict):
-#     """
-#     Récupère un dataset spécifique avec une plage de dates
-#     Endpoint pour la UI permettant de charger un dataset avec filtrage de dates
-#     """
-#     try:
-#         # Validation de la requête
-#         if "name" not in request_payload:
-#             return {
-#                 "status": "error",
-#                 "message": "Champ 'name' manquant"
-#             }
-        
-#         if "dates" not in request_payload or len(request_payload["dates"]) != 2:
-#             return {
-#                 "status": "error",
-#                 "message": "Champ 'dates' manquant ou invalide (doit contenir [date_debut, date_fin])"
-#             }
-        
-#         dataset_name = request_payload["name"]
-#         date_start, date_end = request_payload["dates"]
-        
-#         # Récupération du dataset
-#         manager = DatasetManager()
-#         time_series = manager.fetch_dataset(dataset_name, date_start, date_end)
-        
-#         return {
-#             "status": "success",
-#             "data": {
-#                 "timestamps": time_series.timestamps,
-#                 "values": time_series.values
-#             }
-#         }
-    
-#     except Exception as e:
-#         return {
-#             "status": "error",
-#             "message": str(e)
-#         }
-
-
 
 # Route proxy pour récupérer la liste des datasets depuis le serveur DATA 
 # UI -> SERVEUR_IA -> SERVEUR_DATA -> SERVEUR_IA -> UI
@@ -665,8 +589,37 @@ def proxy_get_dataset_list(payload: dict):
         return {"status": "error", "message": str(e)}
     
 
+
+
+def extract_timestamps_values(obj):
+    """
+    Cherche récursivement des clés 'timestamps' et 'values' dans un JSON
+    potentiellement imbriqué (dict / list).
+    Retourne (timestamps, values) ou (None, None) si introuvable.
+    """
+    if isinstance(obj, dict):
+        # Cas idéal : les clés sont au même niveau
+        if "timestamps" in obj and "values" in obj:
+            return obj["timestamps"], obj["values"]
+        
+        # Sinon on explore récursivement les sous-dicts
+        for v in obj.values():
+            ts, vals = extract_timestamps_values(v)
+            if ts is not None and vals is not None:
+                return ts, vals
+
+    elif isinstance(obj, list):
+        for item in obj:
+            ts, vals = extract_timestamps_values(item)
+            if ts is not None and vals is not None:
+                return ts, vals
+
+    return None, None
+
+
 @app.post("/datasets/fetch_dataset")
 def proxy_fetch_dataset(payload: dict):
+    global payload_json  # on va mettre à jour le buffer global
     print("Message reçu depuis UI pour fetch_dataset :", payload)
 
     try:
@@ -676,13 +629,54 @@ def proxy_fetch_dataset(payload: dict):
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
         
-        # print(response.json())
-        payload_json = response.json()
-        return "coucou"
+        data = response.json()
+        print("Réponse brute DATA_SERVER :", data)
+
+        # On essaie d'extraire timestamps / values où qu'ils soient
+        ts, vals = extract_timestamps_values(data)
+
+        if ts is None or vals is None:
+            # Message d'erreur très verbeux pour debug
+            return {
+                "status": "error",
+                "message": (
+                    "Format de données inattendu depuis DATA_SERVER "
+                    "(impossible de trouver des clés 'timestamps' et 'values'). "
+                    f"Clés au niveau racine : {list(data.keys()) if isinstance(data, dict) else type(data).__name__}"
+                )
+            }
+
+        # On met à jour le buffer global utilisé par TrainingPipeline.load_data()
+        payload_json = {
+            "timestamps": ts,
+            "values": vals
+        }
+
+        print(f"[IA] Dataset chargé dans payload_json : {len(ts)} points")
+        
+        # Et on renvoie aussi les données à l'UI
+        return {
+            "status": "success",
+            "data": payload_json
+        }
 
     except Exception as e:
         print("Exception côté IA lors du fetch_dataset :", e)
         return {"status": "error", "message": str(e)}
+    
+
+
+
+# ====================================
+# ROUTES - ENTRAÎNEMENT COMPLET
+# ====================================
+
+@app.post("/train_full")
+def training(payload: PaquetComplet, payload_model: dict):
+    """Route d'entraînement complet"""
+    pipeline = TrainingPipeline(payload, payload_model)
+    return StreamingResponse(pipeline.execute_full_pipeline(), media_type="text/event-stream")
+
 
 
 # ====================================

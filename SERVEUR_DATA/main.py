@@ -260,7 +260,7 @@ def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: str):
                 "pas_temporel": pas,
                 "data": {
                     "timestamps": generated_str,
-                    "values": filtered_values
+                    "values": filtered_values["values"]
                 }
             }
         }

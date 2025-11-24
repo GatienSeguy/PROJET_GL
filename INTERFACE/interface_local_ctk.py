@@ -19,7 +19,7 @@ import customtkinter as ctk
 
 # URL = "http://192.168.27.66:8000"
 # URL = "http://138.231.149.81:8000"
-URL = "http://192.168.1.190:8000"
+URL = "http://192.168.27.66:8000"
 
 # Paramètres et variables
 
@@ -535,8 +535,7 @@ class Fenetre_Acceuil(ctk.CTk):
                     # Arrêter l'affichage de l'entraînement
                     self.Cadre_results_Entrainement.stop_training()
             
-            fetch_thread = threading.Thread(target=run_fetch_dataset, daemon=True)
-            fetch_thread.start()
+            run_fetch_dataset()
 
             # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
             training_thread = threading.Thread(target=run_training, daemon=True)
