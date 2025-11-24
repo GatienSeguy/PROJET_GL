@@ -36,7 +36,7 @@ from .fonctions_pour_main import(
 import os
 import requests
 
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.27.66:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
 
 # python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
@@ -107,13 +107,16 @@ class DatasetManager:
 # ====================================
 class TrainingPipeline:
     """Pipeline d'entraînement pour les réseaux de neurones"""
-    
-    def __init__(self, payload: PaquetComplet, payload_model: dict,time_series_data: Optional[TimeSeriesData] = None):
+
+    def __init__(self, payload: PaquetComplet, payload_model: dict, time_series_data: Optional[TimeSeriesData] = None):
         """Initialise le pipeline avec les configurations"""
         self.cfg = payload
         self.payload_model = payload_model
-        self.device = "mps"
-        
+
+        # Détection du device cpu gpu ou mps
+        self.device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
+        # self.device = "mps"
+
         # Variables d'état
         self.series = time_series_data
         self.cfg_model = None
