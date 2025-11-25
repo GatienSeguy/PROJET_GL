@@ -933,7 +933,7 @@ class Cadre_Testing(ctk.CTkFrame):
         # Canvas Matplotlib
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=(0, 10))
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=(0, 0))
 
         # Liste pour stocker les courbes (important si plusieurs tracés successifs)
         self.true_lines = []
