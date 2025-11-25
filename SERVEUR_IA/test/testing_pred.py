@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 
 @torch.no_grad()
-def test_model(
+def test_model_pred(
     model: torch.nn.Module,
     X_test_or_data: Union[torch.Tensor, Dict],
     y_test_or_norm_stats: Union[torch.Tensor, Dict],
@@ -106,7 +106,7 @@ def _test_model_classic_mode(
     nbatches = len(dl)
     
     yield {
-        "type": "test_start", 
+        "type": "pred_start", 
         "n_test": N, 
         "dims": D, 
         "n_batches": nbatches
@@ -145,14 +145,14 @@ def _test_model_classic_mode(
         # Stream des paires
         for i in range(yb_cpu.shape[0]):
             yield {
-                "type": "test_pair",
+                "type": "pred_pair",
                 "y": yb_cpu[i].tolist(),
                 "yhat": yhat_cpu[i].tolist(),
             }
 
         seen += yb_cpu.shape[0]
         yield {
-            "type": "test_progress", 
+            "type": "pred_progress", 
             "done": int(seen), 
             "total": int(N)
         }
@@ -178,7 +178,7 @@ def _test_model_classic_mode(
     }
 
     yield {
-        "type": "test_final",
+        "type": "pred_final",
         "n_test": N,
         "dims": D,
         "metrics": {
@@ -187,7 +187,7 @@ def _test_model_classic_mode(
         },
     }
     
-    yield {"type": "fin_test", "done": 1}
+    yield {"type": "fin_pred", "done": 1}
 
 
 # ============================================================================
@@ -198,80 +198,103 @@ def _test_model_prediction_mode(
     data: Dict,
     norm_stats: Dict,
     window_size: int,
-    pred_steps: int,      # ici on ne s’en sert plus vraiment, c’est le 20% qui décide
+    pred_steps: int,   # on le garde pour la signature, mais on ne s'en sert pas vraiment ici
     device: str,
     inverse_fn: Optional[Callable]
 ) -> Iterator[Dict[str, Any]]:
     """
-    Mode prédiction future : on garde 80% de la série comme historique
-    et on prédit uniquement les 20% restants de façon autorégressive.
+    Mode prédiction future :
+    - On considère 80% de la série comme historique (train)
+    - On prédit autorégressivement les 20% restants
+    - On renvoie des listes all_true / all_predictions de TOUTE longueur de la série
+      (avec des None là où il n'y a pas de prédiction), pour que l'UI puisse tracer
+      correctement et placer la séparation 80%.
     """
     model.eval()
     model = model.to(device)
 
     model_type = type(model).__name__.upper()
 
+    # -----------------------------
+    # Données brutes & split
+    # -----------------------------
     raw_values = data["values"]
     total_data_points = len(raw_values)
 
-    # -----------------------------
-    # split 80% / 20%
-    # -----------------------------
-    split_ratio = 0.8  # à rendre paramétrable si tu veux
+    if total_data_points <= window_size + 1:
+        raise ValueError(
+            f"Série trop courte ({total_data_points}) pour window_size={window_size}"
+        )
+
+    # Ratio de split (à adapter si tu le passes en paramètre)
+    split_ratio = 0.8
     split_idx = int(total_data_points * split_ratio)
 
     if split_idx <= window_size:
         raise ValueError(
-            f"Split trop tôt ({split_idx}) par rapport à window_size={window_size}"
+            f"Index de split {split_idx} <= window_size={window_size} ; "
+            f"augmente la taille de la série ou diminue la fenêtre."
         )
 
-    # nombre de points sur lesquels on va prédire = les 20% de fin
+    # Nombre de points qu'on va prédire = 20% de fin
     n_predictions = total_data_points - split_idx
 
     yield {
-        "type": "test_start",
-        "n_test": n_predictions,
+        "type": "pred_start",
+        "n_test": total_data_points,   # longueur des listes renvoyées
         "dims": 1,
         "n_batches": 1,
         "model_type": model_type,
         "window_size": window_size,
         "pred_steps": n_predictions,
-        "split_index": split_idx,   # <<< utile pour l’UI si tu veux
+        "split_index": split_idx,      # info utile si tu veux côté UI
     }
 
     # -----------------------------
-    # préparation des données
+    # Nettoyage & normalisation
     # -----------------------------
     mean = norm_stats["mean"]
     std = norm_stats["std"]
 
-    # valeurs nettoyées (None -> NaN)
+    # Série nettoyée : None -> NaN, cast en float
     clean_values = []
     for v in raw_values:
         clean_values.append(np.nan if v is None else float(v))
     all_values = np.array(clean_values, dtype=float)
 
-    # variance sur la partie test uniquement
+    # Variance pour R² sur la partie "test" uniquement
     var_y = np.nanvar(all_values[split_idx:])
 
-    all_y_true = []
-    all_y_pred = []
+    # Listes complètes pour renvoi à l'UI
+    all_true_full = all_values.copy()                 # toute la série réelle
+    all_pred_full: List[Optional[float]] = [None] * total_data_points  # prédictions au bon endroit
 
-    # fenêtre initiale = les window_size points juste AVANT split_idx
+    # Listes restreintes pour les métriques (uniquement zone prédite)
+    all_y_true_metrics: List[float] = []
+    all_y_pred_metrics: List[float] = []
+
+    # Fenêtre initiale : les window_size points avant split_idx
     initial_window = all_values[split_idx - window_size: split_idx].reshape(-1, 1)
 
-    # comble les NaN dans la fenêtre
+    # Comble les NaN dans cette fenêtre
     if np.isnan(initial_window).any():
-        initial_window = pd.Series(initial_window.flatten()).fillna(
-            method="ffill"
-        ).fillna(method="bfill").values.reshape(-1, 1)
+        initial_window = (
+            pd.Series(initial_window.flatten())
+            .fillna(method="ffill")
+            .fillna(method="bfill")
+            .values.reshape(-1, 1)
+        )
 
+    # Normalisation
     current_window = (initial_window - mean) / std
 
     # -----------------------------
-    # boucle de prédiction autorégressive
+    # Boucle de prédiction autorégressive sur les 20% de fin
     # -----------------------------
     for pred_idx in range(n_predictions):
+        global_idx = split_idx + pred_idx  # index dans la série complète
+
+        # Préparation de l'entrée selon le type de modèle
         if model_type == "MLP":
             x_input = torch.FloatTensor(current_window.flatten()).unsqueeze(0)
         elif model_type == "LSTM":
@@ -283,6 +306,7 @@ def _test_model_prediction_mode(
 
         x_input = x_input.to(device)
 
+        # ----- Prédiction -----
         with torch.no_grad():
             pred = model(x_input)
             if pred.ndim == 3:
@@ -290,44 +314,47 @@ def _test_model_prediction_mode(
             pred = pred.cpu().numpy()
             pred = float(pred.flatten()[0]) if pred.ndim > 0 else float(pred.item())
 
-        # dénormalisation
+        # ----- Dénormalisation -----
         if inverse_fn is not None:
-            pred_denorm = float(inverse_fn(torch.tensor([[pred]], dtype=torch.float32)).item())
+            pred_tensor = torch.tensor([[pred]], dtype=torch.float32)
+            pred_denorm = float(inverse_fn(pred_tensor).item())
         else:
             pred_denorm = float(pred * std + mean)
 
-        # vraie valeur : à partir de split_idx
-        true_idx = split_idx + pred_idx
-        raw_val = raw_values[true_idx]
+        # ----- Vraie valeur (pour métriques) -----
+        raw_val = raw_values[global_idx]
         y_true = np.nan if raw_val is None else float(raw_val)
 
-        all_y_true.append(y_true)
-        all_y_pred.append(pred_denorm)
+        all_y_true_metrics.append(y_true)
+        all_y_pred_metrics.append(pred_denorm)
 
+        # Mise à jour de la série de prédictions complète
+        all_pred_full[global_idx] = pred_denorm
+
+        # Envoi pour l'UI (animation, etc.)
         y_to_send = None if np.isnan(y_true) else float(y_true)
-
         yield {
-            "type": "test_pair",
+            "type": "pred_pair",
             "y": [y_to_send],
             "yhat": [pred_denorm],
             "pred_idx": pred_idx,
-            "global_idx": true_idx,  # index dans la série complète (pratique pour l’UI)
+            "global_idx": global_idx,
             "step": pred_idx + 1,
         }
 
-        # autorégressif : on réinjecte la prédiction (normalisée)
+        # Autorégressif : on réinjecte la prédiction (normalisée) dans la fenêtre
         current_window = np.roll(current_window, -1, axis=0)
         current_window[-1, 0] = pred
 
     # -----------------------------
-    # métriques finales
+    # Métriques finales
     # -----------------------------
-    all_y_true = np.array(all_y_true, dtype=float)
-    all_y_pred = np.array(all_y_pred, dtype=float)
+    all_y_true_metrics_arr = np.array(all_y_true_metrics, dtype=float)
+    all_y_pred_metrics_arr = np.array(all_y_pred_metrics, dtype=float)
 
-    mask = ~np.isnan(all_y_true)
-    valid_y_true = all_y_true[mask]
-    valid_y_pred = all_y_pred[mask]
+    mask = ~np.isnan(all_y_true_metrics_arr)
+    valid_y_true = all_y_true_metrics_arr[mask]
+    valid_y_pred = all_y_pred_metrics_arr[mask]
 
     N = len(valid_y_true)
     if N > 0:
@@ -343,23 +370,24 @@ def _test_model_prediction_mode(
     per_dim = {"MSE": [mse], "MAE": [mae], "RMSE": [rmse], "R2": [r2]}
     overall = {"MSE": mse, "MAE": mae, "RMSE": rmse, "R2": r2}
 
-    safe_true = [None if np.isnan(x) else float(x) for x in all_y_true]
+    # Séries complètes pour le JSON (float ou None, jamais NaN)
+    safe_true_full = [None if np.isnan(x) else float(x) for x in all_true_full]
 
     yield {
-        "type": "test_final",
-        "n_test": N,
+        "type": "pred_final",
+        "n_test": total_data_points,        # même longueur que les listes renvoyées
         "dims": 1,
         "metrics": {
             "per_dim": per_dim,
             "overall_mean": overall,
         },
         "model_type": model_type,
-        "all_predictions": all_y_pred.tolist(),
-        "all_true": safe_true,
+        "all_predictions": all_pred_full,   # longueur = série complète, avec None avant split
+        "all_true": safe_true_full,         # série réelle complète
         "split_index": split_idx,
     }
 
-    yield {"type": "fin_test", "done": 1}
+    yield {"type": "fin_pred", "done": 1}
 
 
 def _predict_autoregressive(
@@ -423,18 +451,18 @@ if __name__ == "__main__":
     
     model = DummyModel()
     
-    # MODE 1 : Ancien
-    print("\n" + "-"*60)
-    print("MODE 1 : Test classique")
-    print("-"*60)
-    X_test = torch.randn(100, 15)
-    y_test = torch.randn(100, 1)
+    # # MODE 1 : Ancien
+    # print("\n" + "-"*60)
+    # print("MODE 1 : PRED classique")
+    # print("-"*60)
+    # X_test = torch.randn(100, 15)
+    # y_test = torch.randn(100, 1)
     
-    for update in test_model(model, X_test, y_test, 'cpu', batch_size=32):
-        if update['type'] == 'test_start':
-            print(f"✓ Démarré: {update['n_test']} tests")
-        elif update['type'] == 'test_final':
-            print(f"✓ Terminé: MSE={update['metrics']['overall_mean']['MSE']:.6f}")
+    # for update in test_model(model, X_test, y_test, 'cpu', batch_size=32):
+    #     if update['type'] == 'test_start':
+    #         print(f"✓ Démarré: {update['n_test']} tests")
+    #     elif update['type'] == 'test_final':
+    #         print(f"✓ Terminé: MSE={update['metrics']['overall_mean']['MSE']:.6f}")
     
     # MODE 2 : Nouveau
     print("\n" + "-"*60)
@@ -448,9 +476,9 @@ if __name__ == "__main__":
     
     for update in test_model(model, data, norm_stats, 'cpu', 
                             window_size=15, pred_steps=6):
-        if update['type'] == 'test_start':
+        if update['type'] == 'pred_start':
             print(f"✓ Démarré: {update['n_test']} prédictions")
-        elif update['type'] == 'test_final':
+        elif update['type'] == 'pred_final':
             print(f"✓ Terminé: MSE={update['metrics']['overall_mean']['MSE']:.6f}")
     
     print("\n" + "="*60)

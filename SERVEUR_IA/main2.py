@@ -11,7 +11,8 @@ from .trains.training_MLP import train_MLP
 from .trains.training_CNN import train_CNN
 from .trains.training_LSTM import train_LSTM
 
-from .test.testing2 import test_model
+from .test.testing import test_model
+from .test.testing_pred import test_model_pred
 
 from .launcher_serveur import json_path
 
@@ -38,7 +39,8 @@ from .fonctions_pour_main import(
 import os
 import requests
 
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
+# DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://138.231.149.81:8001")
 
 # python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
@@ -126,6 +128,8 @@ class TrainingPipeline:
         self.y = None
         self.X_train = None
         self.y_train = None
+        self.X_val = None
+        self.y_val = None
         self.X_test = None
         self.y_test = None
         self.norm_params = None
@@ -236,7 +240,8 @@ class TrainingPipeline:
             self.X, self.y, 
             portion_train=portion_decoupage
         )
-    
+        self.X_val, self.y_val, self.X_test, self.y_test = split_train_test(self.X_test, self.y_test, portion_train=0.5)
+
     # ====================================
     # 4) ADAPTATION DU SHAPE POUR LE MODÈLE
     # ====================================
@@ -507,18 +512,46 @@ class TrainingPipeline:
     # 10) TEST
     # ====================================
     # ====================================
-    # 10) TEST - MODE 2 (PRÉDICTION AUTORÉGRESSIVE)
+    # 10) TEST - MODE 1 (Validation)
+    # ====================================
+        # ====================================
+    # 10) TEST
     # ====================================
     def run_testing(self):
+        """Exécute les tests sur le modèle entraîné"""
+        if self.model_trained is None:
+            yield {"type": "warn", "message": "Modèle non récupéré (test sauté)."}
+            return
+
+        yield {
+            "type": "serie_complete",
+            "values": self.series.values,
+        }
+
+        print(f"[DÉBUT TEST] Modèle: {type(self.model_trained).__name__}")
+
+        for evt in test_model(
+            self.model_trained,
+            self.X_test,
+            self.y_test,
+            device=self.device,
+            batch_size=256,
+            inverse_fn=self.inverse_fn,
+        ):
+            yield evt
+    # ====================================
+    # 10) TEST - MODE 2 (PRÉDICTION AUTORÉGRESSIVE)
+    # ====================================
+    def run_testing_pred(self):
         """Exécute les tests en mode Prédiction Future (Mode 2)"""
         if self.model_trained is None:
             yield {"type": "warn", "message": "Modèle non récupéré (test sauté)."}
             return
         
-        yield {
-            "type": "serie_complete",
-            "values": self.series.values,
-        }
+        # yield {
+        #     "type": "serie_complete",
+        #     "values": self.series.values,
+        # }
 
         print(f"[DÉBUT TEST] Mode 2 (Prédiction) - Modèle: {type(self.model_trained).__name__}")
         
@@ -550,7 +583,7 @@ class TrainingPipeline:
         # 4. Lancement du test via testing.py
         # Note: On passe 'norm_params' (dict) au lieu de 'y_test' (tensor) pour déclencher le Mode 2
         try:
-            for evt in test_model(
+            for evt in test_model_pred(
                 model=self.model_trained,
                 X_test_or_data=data_for_prediction,      # Arg 1: Dict (déclenche Mode 2)
                 y_test_or_norm_stats=self.norm_params,   # Arg 2: Dict stats (déclenche Mode 2)
@@ -631,6 +664,9 @@ class TrainingPipeline:
             
             # Test
             for msg in self.run_testing():
+                yield f"data: {json.dumps(msg)}\n\n"
+                
+            for msg in self.run_testing_pred():
                 yield f"data: {json.dumps(msg)}\n\n"
         
         except Exception as e:
