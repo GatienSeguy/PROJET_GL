@@ -1473,7 +1473,7 @@ class Fenetre_Params(ctk.CTkToplevel):
             ctk.CTkEntry(self.params_model_frame, textvariable=var, width=150).grid(row=index+1, column=1, sticky="e",padx=10,pady=(5, 15))
 
         # Activation
-        ctk.CTkLabel(self.params_model_frame, text="Activation:", font=("Roboto", 12)).pack(side="left")
+        ctk.CTkLabel(self.params_model_frame, text="Activation:", font=("Roboto", 12)).grid(row=len(params)+1, column=0, sticky="w",padx=10,pady=(5, 15))
         self.cnn_activation = ctk.StringVar(value=Parametres_archi_reseau_CNN.fonction_activation)
         ctk.CTkOptionMenu(
             self.params_model_frame,
