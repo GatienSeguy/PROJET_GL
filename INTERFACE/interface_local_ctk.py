@@ -1354,7 +1354,7 @@ class Fenetre_Params(ctk.CTkToplevel):
             font=("Roboto", 13),
             height=40,
             command=self.save_params
-        ).grid(row=last_row, column=0,padx=10,pady=(50,20),sticky="ew")
+        ).grid(row=last_row, column=0,padx=10,pady=(30,20),sticky="ew")
 
         ctk.CTkButton(
             self.params_frame,
@@ -1365,7 +1365,7 @@ class Fenetre_Params(ctk.CTkToplevel):
             border_width=2,
             text_color=("gray10", "gray90"),
             command=self.destroy
-        ).grid(row=last_row, column=1,padx=10,pady=(50,20),sticky="ew")
+        ).grid(row=last_row, column=1,padx=10,pady=(30,20),sticky="ew")
         self.on_model_change(self.model_var.get())
 
         # Afficher les paramètres du modèle sélectionné
