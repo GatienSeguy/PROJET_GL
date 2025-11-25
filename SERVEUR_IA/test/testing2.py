@@ -198,210 +198,167 @@ def _test_model_prediction_mode(
     data: Dict,
     norm_stats: Dict,
     window_size: int,
-    pred_steps: int,
+    pred_steps: int,      # ici on ne s’en sert plus vraiment, c’est le 20% qui décide
     device: str,
     inverse_fn: Optional[Callable]
 ) -> Iterator[Dict[str, Any]]:
-    """Mode prédiction future : UNE SEULE prédiction continue (sans chevauchement)"""
-    
+    """
+    Mode prédiction future : on garde 80% de la série comme historique
+    et on prédit uniquement les 20% restants de façon autorégressive.
+    """
     model.eval()
     model = model.to(device)
-    
-    # Détection du type de modèle
+
     model_type = type(model).__name__.upper()
-    
-    # On prend une fenêtre initiale et on prédit TOUT le reste
-    total_data_points = len(data['values'])
-    
-    # Fenêtre initiale
-    if total_data_points < window_size + pred_steps:
+
+    raw_values = data["values"]
+    total_data_points = len(raw_values)
+
+    # -----------------------------
+    # split 80% / 20%
+    # -----------------------------
+    split_ratio = 0.8  # à rendre paramétrable si tu veux
+    split_idx = int(total_data_points * split_ratio)
+
+    if split_idx <= window_size:
         raise ValueError(
-            f"Pas assez de données : {total_data_points} points, "
-            f"besoin de au moins {window_size + pred_steps}"
+            f"Split trop tôt ({split_idx}) par rapport à window_size={window_size}"
         )
-    
-    # Calculer combien de prédictions on peut faire
-    initial_window_end = window_size
-    remaining_data = total_data_points - initial_window_end
-    n_predictions = remaining_data
-    
+
+    # nombre de points sur lesquels on va prédire = les 20% de fin
+    n_predictions = total_data_points - split_idx
+
     yield {
-        "type": "test_start", 
+        "type": "test_start",
         "n_test": n_predictions,
         "dims": 1,
-        "n_batches": 1,  # Une seule "batch" continue
+        "n_batches": 1,
         "model_type": model_type,
         "window_size": window_size,
-        "pred_steps": n_predictions
+        "pred_steps": n_predictions,
+        "split_index": split_idx,   # <<< utile pour l’UI si tu veux
     }
-    
-    # Normalisation
-    mean = norm_stats['mean']
-    std = norm_stats['std']
-    
-    # Stockage
+
+    # -----------------------------
+    # préparation des données
+    # -----------------------------
+    mean = norm_stats["mean"]
+    std = norm_stats["std"]
+
+    # valeurs nettoyées (None -> NaN)
+    clean_values = []
+    for v in raw_values:
+        clean_values.append(np.nan if v is None else float(v))
+    all_values = np.array(clean_values, dtype=float)
+
+    # variance sur la partie test uniquement
+    var_y = np.nanvar(all_values[split_idx:])
+
     all_y_true = []
     all_y_pred = []
-    
-    # Variance pour R²
-    all_values = np.array(data['values'], dtype=float)
-    var_y = np.nanvar(all_values)
-    
-    # ========================================
-    # PRÉDICTION CONTINUE (AUTORÉGRESSIVE)
-    # ========================================
-    
-    # Fenêtre initiale (les window_size premiers points)
-    initial_window = np.array(
-        data['values'][:window_size], 
-        dtype=float
-    ).reshape(-1, 1)
-    
-    # Nettoyage NaN
+
+    # fenêtre initiale = les window_size points juste AVANT split_idx
+    initial_window = all_values[split_idx - window_size: split_idx].reshape(-1, 1)
+
+    # comble les NaN dans la fenêtre
     if np.isnan(initial_window).any():
         initial_window = pd.Series(initial_window.flatten()).fillna(
-            method='ffill'
-        ).fillna(method='bfill').values.reshape(-1, 1)
-    
-    # Normalisation
+            method="ffill"
+        ).fillna(method="bfill").values.reshape(-1, 1)
+
     current_window = (initial_window - mean) / std
-    
-    # Prédiction step par step sur TOUT le reste des données
+
+    # -----------------------------
+    # boucle de prédiction autorégressive
+    # -----------------------------
     for pred_idx in range(n_predictions):
-        # Format selon le modèle
-        if model_type == 'MLP':
+        if model_type == "MLP":
             x_input = torch.FloatTensor(current_window.flatten()).unsqueeze(0)
-        elif model_type == 'LSTM':
+        elif model_type == "LSTM":
             x_input = torch.FloatTensor(current_window).unsqueeze(0)
-        elif model_type == 'CNN':
+        elif model_type == "CNN":
             x_input = torch.FloatTensor(current_window).transpose(0, 1).unsqueeze(0)
         else:
             x_input = torch.FloatTensor(current_window).unsqueeze(0)
-        
+
         x_input = x_input.to(device)
-        
-        # Prédiction
-        # ... (dans la boucle for pred_idx in range(n_predictions):)
-        
-        # Prédiction
+
         with torch.no_grad():
             pred = model(x_input)
-            
-            # Gestion LSTM output (Batch, Seq, Features) -> (Batch, Features)
             if pred.ndim == 3:
                 pred = pred[:, -1, :]
-            
-            # --- CORRECTION ROBUSTESSE ---
             pred = pred.cpu().numpy()
-            
-            # On s'assure de récupérer un simple float, peu importe la forme (scalaire, vecteur...)
-            if pred.ndim > 0:
-                pred = float(pred.flatten()[0]) 
-            else:
-                pred = float(pred.item())
-            # -----------------------------
-        
-        # Dénormalisation
-        # Note: on recrée un tenseur propre pour inverse_fn
+            pred = float(pred.flatten()[0]) if pred.ndim > 0 else float(pred.item())
+
+        # dénormalisation
         if inverse_fn is not None:
-            # On passe un tenseur 2D [[val]] pour être sûr que ça passe
-            pred_tensor = torch.tensor([[pred]], dtype=torch.float32)
-            pred_denorm = float(inverse_fn(pred_tensor).item())
+            pred_denorm = float(inverse_fn(torch.tensor([[pred]], dtype=torch.float32)).item())
         else:
             pred_denorm = float(pred * std + mean)
-            
-        # Vraie valeur
-        true_idx = window_size + pred_idx
-        raw_val = data['values'][true_idx] # <-- On récupère la valeur brute
-        
-        # --- CORRECTION ICI : Gérer les None en les remplaçant par NaN (que NumPy gère) ---
-        if raw_val is None:
-            y_true = np.nan
-        else:
-            y_true = float(raw_val)
-        # ----------------------------------------------------------------------------------
-        
+
+        # vraie valeur : à partir de split_idx
+        true_idx = split_idx + pred_idx
+        raw_val = raw_values[true_idx]
+        y_true = np.nan if raw_val is None else float(raw_val)
+
         all_y_true.append(y_true)
         all_y_pred.append(pred_denorm)
-        
-        # Stream la paire (on envoie None à l'UI si c'est nan)
+
+        y_to_send = None if np.isnan(y_true) else float(y_true)
+
         yield {
             "type": "test_pair",
-            "y": [y_true if not np.isnan(y_true) else None], # <-- Envoi safe
+            "y": [y_to_send],
             "yhat": [pred_denorm],
             "pred_idx": pred_idx,
-            "step": pred_idx + 1
+            "global_idx": true_idx,  # index dans la série complète (pratique pour l’UI)
+            "step": pred_idx + 1,
         }
-        
-        # ⚠️ CRITIQUE : Mise à jour avec la PRÉDICTION (pas la vraie valeur!)
+
+        # autorégressif : on réinjecte la prédiction (normalisée)
         current_window = np.roll(current_window, -1, axis=0)
-        current_window[-1, 0] = pred  # pred normalisé
-        
-        # Progression
-        # if (pred_idx + 1) % 10 == 0 or pred_idx == n_predictions - 1:
-        #     yield {
-        #         "type": "test_progress", 
-        #         "done": pred_idx + 1,
-        #         "total": n_predictions
-        #     }
-    
-    # ========================================
-    # MÉTRIQUES FINALES
-    # ========================================
-    all_y_true = np.array(all_y_true)
-    all_y_pred = np.array(all_y_pred)
-    
-    # Masque pour ne garder que les couples où y_true existe (n'est pas NaN)
+        current_window[-1, 0] = pred
+
+    # -----------------------------
+    # métriques finales
+    # -----------------------------
+    all_y_true = np.array(all_y_true, dtype=float)
+    all_y_pred = np.array(all_y_pred, dtype=float)
+
     mask = ~np.isnan(all_y_true)
     valid_y_true = all_y_true[mask]
     valid_y_pred = all_y_pred[mask]
-    
+
     N = len(valid_y_true)
-    
     if N > 0:
-        # Calcul des métriques uniquement sur les points non manquants
         mse = float(np.mean((valid_y_true - valid_y_pred) ** 2))
         mae = float(np.mean(np.abs(valid_y_true - valid_y_pred)))
         rmse = float(np.sqrt(mse))
-        
-        if var_y > 1e-10:
-            r2 = float(1.0 - (mse / var_y))
-        else:
-            r2 = None
+        var_y_valid = np.nanvar(valid_y_true)
+        r2 = float(1.0 - mse / var_y_valid) if var_y_valid > 1e-10 else None
     else:
-        # Si la série test était vide de vraies valeurs
-        mse, mae, rmse, r2 = 0.0, 0.0, 0.0, None
-    
-    per_dim = {
-        "MSE": [mse],
-        "MAE": [mae],
-        "RMSE": [rmse],
-        "R2": [r2]
-    }
-    
-    overall = {
-        "MSE": mse,
-        "MAE": mae,
-        "RMSE": rmse,
-        "R2": r2
-    }
-    
-    # Pour l'envoi final, on remplace les NaN par None dans la liste pour le JSON
-    safe_true = [x if not np.isnan(x) else None for x in all_y_true]
-    
+        mse = mae = rmse = 0.0
+        r2 = None
+
+    per_dim = {"MSE": [mse], "MAE": [mae], "RMSE": [rmse], "R2": [r2]}
+    overall = {"MSE": mse, "MAE": mae, "RMSE": rmse, "R2": r2}
+
+    safe_true = [None if np.isnan(x) else float(x) for x in all_y_true]
+
     yield {
         "type": "test_final",
         "n_test": N,
         "dims": 1,
         "metrics": {
             "per_dim": per_dim,
-            "overall_mean": overall
+            "overall_mean": overall,
         },
         "model_type": model_type,
         "all_predictions": all_y_pred.tolist(),
-        "all_true": safe_true # <-- Envoi de la liste sécurisée
+        "all_true": safe_true,
+        "split_index": split_idx,
     }
-    
+
     yield {"type": "fin_test", "done": 1}
 
 
