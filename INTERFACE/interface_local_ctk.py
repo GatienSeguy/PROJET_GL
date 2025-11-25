@@ -111,6 +111,10 @@ class Selected_Dataset_class():
 
 class Fonts_class():
     def __init__(self):
+        self.Titre_app = ("Roboto Medium", 30)
+        self.sous_Titre_app= ("Roboto", 20)
+
+
         self.title_font = ("Roboto Medium", 28,"bold")
         self.section_font = ("Roboto Medium", 24,"bold")
         self.button_font = ("Roboto", 20)
@@ -178,9 +182,11 @@ Selected_Dataset=Selected_Dataset_class()
 class Fenetre_Acceuil(ctk.CTk):
     def __init__(self):
         self.JSON_Datasets=self.obtenir_datasets()
+
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
+
         self.stop_training = False  # drapeau d’annulation
         self.Payload={}
         self.Fenetre_Params_instance = None
@@ -262,13 +268,13 @@ class Fenetre_Acceuil(ctk.CTk):
         ctk.CTkLabel(
             self.cadre, 
             text="MLApp", 
-            font=("Roboto Medium", 30)
+            font=Fonts.Titre_app
         ).pack(pady=(20, 10))
         # Sous-titre
         ctk.CTkLabel(
             self.cadre,
             text="Machine Learning Application",
-            font=("Roboto", 20)
+            font=Fonts.sous_Titre_app
         ).pack(pady=(0, 40))
 
 
