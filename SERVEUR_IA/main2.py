@@ -11,7 +11,8 @@ from .trains.training_MLP import train_MLP
 from .trains.training_CNN import train_CNN
 from .trains.training_LSTM import train_LSTM
 
-from .test.testing2 import test_model
+from .test.testing import test_model
+from .test.testing_pred import test_model_pred
 
 from .launcher_serveur import json_path
 
@@ -126,6 +127,8 @@ class TrainingPipeline:
         self.y = None
         self.X_train = None
         self.y_train = None
+        self.X_val = None
+        self.y_val = None
         self.X_test = None
         self.y_test = None
         self.norm_params = None
@@ -236,7 +239,8 @@ class TrainingPipeline:
             self.X, self.y, 
             portion_train=portion_decoupage
         )
-    
+        self.X_val, self.y_val, self.X_test, self.y_test = split_train_test(self.X_test, self.y_test, portion_train=0.5)
+
     # ====================================
     # 4) ADAPTATION DU SHAPE POUR LE MODÈLE
     # ====================================
