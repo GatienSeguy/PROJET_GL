@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 import json
 
-# ----------------------------
+# ------------------ ---------
 # App & chemins
 # ----------------------------
 
@@ -78,7 +78,7 @@ def extraire_infos_dataset(path_json: Path):
     if not timestamps or len(timestamps) < 2:
         raise ValueError(f"Dataset {path_json.name} invalide : timestamps insuffisants")
     print("test3")
-    ts_dt = [timestamps[0], timestamps[1]]
+    ts_dt = [parse_ts(timestamps[0]),parse_ts(timestamps[1])]
     print("test4")
     date_debut = timestamps[0]
     date_fin = timestamps[-1]

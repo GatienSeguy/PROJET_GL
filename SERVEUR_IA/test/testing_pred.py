@@ -106,7 +106,7 @@ def _test_model_classic_mode(
     nbatches = len(dl)
     
     yield {
-        "type": "test_start", 
+        "type": "pred_start", 
         "n_test": N, 
         "dims": D, 
         "n_batches": nbatches
@@ -145,14 +145,14 @@ def _test_model_classic_mode(
         # Stream des paires
         for i in range(yb_cpu.shape[0]):
             yield {
-                "type": "test_pair",
+                "type": "pred_pair",
                 "y": yb_cpu[i].tolist(),
                 "yhat": yhat_cpu[i].tolist(),
             }
 
         seen += yb_cpu.shape[0]
         yield {
-            "type": "test_progress", 
+            "type": "pred_progress", 
             "done": int(seen), 
             "total": int(N)
         }
@@ -178,7 +178,7 @@ def _test_model_classic_mode(
     }
 
     yield {
-        "type": "test_final",
+        "type": "pred_final",
         "n_test": N,
         "dims": D,
         "metrics": {
@@ -187,7 +187,7 @@ def _test_model_classic_mode(
         },
     }
     
-    yield {"type": "fin_test", "done": 1}
+    yield {"type": "fin_pred", "done": 1}
 
 
 # ============================================================================
@@ -240,7 +240,7 @@ def _test_model_prediction_mode(
     n_predictions = total_data_points - split_idx
 
     yield {
-        "type": "test_start",
+        "type": "pred_start",
         "n_test": total_data_points,   # longueur des listes renvoyées
         "dims": 1,
         "n_batches": 1,
@@ -334,7 +334,7 @@ def _test_model_prediction_mode(
         # Envoi pour l'UI (animation, etc.)
         y_to_send = None if np.isnan(y_true) else float(y_true)
         yield {
-            "type": "test_pair",
+            "type": "pred_pair",
             "y": [y_to_send],
             "yhat": [pred_denorm],
             "pred_idx": pred_idx,
@@ -374,7 +374,7 @@ def _test_model_prediction_mode(
     safe_true_full = [None if np.isnan(x) else float(x) for x in all_true_full]
 
     yield {
-        "type": "test_final",
+        "type": "pred_final",
         "n_test": total_data_points,        # même longueur que les listes renvoyées
         "dims": 1,
         "metrics": {
@@ -387,7 +387,7 @@ def _test_model_prediction_mode(
         "split_index": split_idx,
     }
 
-    yield {"type": "fin_test", "done": 1}
+    yield {"type": "fin_pred", "done": 1}
 
 
 def _predict_autoregressive(
@@ -451,18 +451,18 @@ if __name__ == "__main__":
     
     model = DummyModel()
     
-    # MODE 1 : Ancien
-    print("\n" + "-"*60)
-    print("MODE 1 : Test classique")
-    print("-"*60)
-    X_test = torch.randn(100, 15)
-    y_test = torch.randn(100, 1)
+    # # MODE 1 : Ancien
+    # print("\n" + "-"*60)
+    # print("MODE 1 : PRED classique")
+    # print("-"*60)
+    # X_test = torch.randn(100, 15)
+    # y_test = torch.randn(100, 1)
     
-    for update in test_model(model, X_test, y_test, 'cpu', batch_size=32):
-        if update['type'] == 'test_start':
-            print(f"✓ Démarré: {update['n_test']} tests")
-        elif update['type'] == 'test_final':
-            print(f"✓ Terminé: MSE={update['metrics']['overall_mean']['MSE']:.6f}")
+    # for update in test_model(model, X_test, y_test, 'cpu', batch_size=32):
+    #     if update['type'] == 'test_start':
+    #         print(f"✓ Démarré: {update['n_test']} tests")
+    #     elif update['type'] == 'test_final':
+    #         print(f"✓ Terminé: MSE={update['metrics']['overall_mean']['MSE']:.6f}")
     
     # MODE 2 : Nouveau
     print("\n" + "-"*60)
@@ -476,9 +476,9 @@ if __name__ == "__main__":
     
     for update in test_model(model, data, norm_stats, 'cpu', 
                             window_size=15, pred_steps=6):
-        if update['type'] == 'test_start':
+        if update['type'] == 'pred_start':
             print(f"✓ Démarré: {update['n_test']} prédictions")
-        elif update['type'] == 'test_final':
+        elif update['type'] == 'pred_final':
             print(f"✓ Terminé: MSE={update['metrics']['overall_mean']['MSE']:.6f}")
     
     print("\n" + "="*60)
