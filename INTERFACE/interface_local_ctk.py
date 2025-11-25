@@ -19,7 +19,7 @@ import customtkinter as ctk
 
 # URL = "http://192.168.27.66:8000"
 # URL = "http://138.231.149.81:8000"
-URL = "http://138.231.149.81:8000"
+URL = "http://192.168.1.190:8000"
 
 # Paramètres et variables
 
@@ -312,6 +312,7 @@ class Fenetre_Acceuil(ctk.CTk):
             Parametres_temporels.pas_temporel=1
         
         optionmenu_var = ctk.StringVar(value=Dataset)  # set initial value
+
         combobox = ctk.CTkOptionMenu(master=Label_frame_Donnees,
                                             values=list(self.JSON_Datasets.keys()),
                                             command=optionmenu_callback,
@@ -323,7 +324,7 @@ class Fenetre_Acceuil(ctk.CTk):
         self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
         
         self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font).pack(fill="both",padx=30,pady=(40,0))
-        
+
         # Section 3 : Actions
         section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=self.cadre.cget("fg_color")) #fg_color=root.cget('fg_color')
         section_actions.pack(side="bottom",fill="both",pady=(0,10),padx=10)
@@ -336,9 +337,9 @@ class Fenetre_Acceuil(ctk.CTk):
         # self.bouton(section_actions, "🛑 Annuler l'entraînement", self.annuler_entrainement, bg="#f9e79f", fg="#7d6608")
         # self.bouton(section_actions, "❌ Quitter", self.destroy, bg="#f5b7b1", fg="#641e16")
         
-        start_btn = self.bouton(section_actions, "🚀 Start", self.EnvoyerConfig, height=60, bg="#d4efdf", fg="#145a32", font=Fonts.button_font)
-        stop_btn = self.bouton(section_actions, "🛑 Stop", self.annuler_entrainement, height=60, bg="#f9e79f", fg="#7d6608", font=Fonts.button_font)
-        quit_btn = self.bouton(section_actions, "❌ Quitter", self.destroy, height=60, bg="#f5b7b1", fg="#641e16", font=Fonts.button_font)
+        start_btn = self.bouton(section_actions, "🚀 Start", self.EnvoyerConfig, height=60, background_color="#d4efdf", text_color="#145a32", font=Fonts.button_font)
+        stop_btn = self.bouton(section_actions, "🛑 Stop", self.annuler_entrainement, height=60, background_color="#f9e79f", text_color="#7d6608", font=Fonts.button_font)
+        quit_btn = self.bouton(section_actions, "❌ Quitter", self.destroy, height=60, background_color="#f5b7b1", text_color="#641e16", font=Fonts.button_font)
 
         # Alignement horizontal
         start_btn.grid(row=0, column=0, padx=10, pady=(10,0),sticky="nsew")
