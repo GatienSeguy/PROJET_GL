@@ -1477,7 +1477,7 @@ class Fenetre_Params(ctk.CTkToplevel):
         self.cnn_activation = ctk.StringVar(value=Parametres_archi_reseau_CNN.fonction_activation)
         ctk.CTkOptionMenu(
             self.params_model_frame,
-            values=["ReLU", "GELU", "tanh", "sigmoid"],
+            values=["ReLU", "GELU", "tanh", "sigmoid","leaky_relu"],
             variable=self.cnn_activation,
             width=150
         ).grid(row=len(params)+1, column=1, sticky="e",padx=10,pady=(0,20))
