@@ -48,6 +48,7 @@ last_config_TimeSeries = None
 last_config_series = None  
 
 payload_json = {"timestamps": [], "values": []}
+
 # ====================================
 # CLASSE GESTION DATASETS
 # ====================================
@@ -581,7 +582,6 @@ class TrainingPipeline:
 # ROUTES - GESTION DATASETS
 # ====================================
 
-# Route proxy pour récupérer la liste des datasets depuis le serveur DATA 
 # UI -> SERVEUR_IA -> SERVEUR_DATA -> SERVEUR_IA -> UI
 @app.post("/datasets/info_all")
 def proxy_get_dataset_list(payload: dict):
@@ -603,8 +603,7 @@ def proxy_get_dataset_list(payload: dict):
         print("Exception côté IA :", e)
         return {"status": "error", "message": str(e)}
     
-
-
+    
 
 def extract_timestamps_values(obj):
     """
@@ -697,7 +696,6 @@ def training(payload: PaquetComplet, payload_model: dict):
 # ====================================
 # ROUTES - CHECK SERVEUR IA
 # ====================================
-
 @app.get("/")
 def root():
     """Vérification de l'état du serveur"""
