@@ -72,14 +72,14 @@ def extraire_infos_dataset(path_json: Path):
     """
     with open(path_json, "r", encoding="utf-8") as f:
         data = json.load(f)
-
+    print("test1")
     timestamps = data.get("timestamps", [])
-
+    print("test2")
     if not timestamps or len(timestamps) < 2:
         raise ValueError(f"Dataset {path_json.name} invalide : timestamps insuffisants")
-
-    ts_dt = [parse_ts(t) for t in timestamps]
-
+    print("test3")
+    ts_dt = [timestamps[0], timestamps[1]]
+    print("test4")
     date_debut = timestamps[0]
     date_fin = timestamps[-1]
 

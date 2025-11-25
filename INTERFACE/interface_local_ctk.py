@@ -112,8 +112,8 @@ class Selected_Dataset_class():
 class Fonts_class():
     def __init__(self):
         self.Titre_app = ("Roboto Medium", 30)
-        self.sous_Titre_app= ("Roboto", 20)
-
+        self.sous_Titre_app = ("Roboto", 20)
+        self.Section_params = ("Roboto Medium", 24,"bold")
 
         self.title_font = ("Roboto Medium", 28,"bold")
         self.section_font = ("Roboto Medium", 24,"bold")
@@ -279,18 +279,18 @@ class Fenetre_Acceuil(ctk.CTk):
 
 
         # Section 1 : Modèle
-        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=self.font_section)
+        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=Fonts.Section_params)
         Titre_frame_Modele.pack()
         Label_frame_Modele.pack(fill="both",padx=10)
         Label_frame_Modele.grid_columnconfigure(0, weight=1)
         Label_frame_Modele.grid_rowconfigure(0, weight=1)
         
-        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
-        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40,font=Fonts.button_font).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
 
 
         # Section 2 : Données
-        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=self.font_section)
+        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=Fonts.Section_params)
         Titre_frame_Donnees.pack(pady=(30,0))
         Label_frame_Donnees.pack(fill="both",padx=10)
         Label_frame_Donnees.grid_columnconfigure(0, weight=1)
