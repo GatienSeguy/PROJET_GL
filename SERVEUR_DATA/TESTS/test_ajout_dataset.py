@@ -1,9 +1,9 @@
 import requests
 import json
 
-url = "http://127.0.0.1:8000/datasets/data_add"
+url = "http://127.0.0.1:8001/datasets/data_add"
 
-filename = "/home/sofsoflefoufou/Documents/Code/PROJET_GL/SERVEUR_DATA/TESTS/bruno_mars.json"
+filename = "/home/sofsoflefoufou/Documents/Code/projet2/PROJET_GL/SERVEUR_DATA/TESTS/bruno_mars.json"
 
 with open(filename, "r") as f:
     content = json.load(f)

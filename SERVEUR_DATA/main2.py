@@ -256,6 +256,9 @@ def add_new_dataset(name: str, data: Dict[str, Any]) -> None:
 
     path_new_dataset = DATA_DIR / f"{name}.json"
 
+    if path_new_dataset.exists():
+        raise ValueError(f"Dataset '{name}' existe déjà et ne peut pas être ajouté")
+    
     with open(path_new_dataset, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
