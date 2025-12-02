@@ -11,15 +11,15 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib
 from tkinter.filedialog import asksaveasfilename
-matplotlib.use("TkAgg")  # backend Tkinter
-import time
+matplotlib.use("TkAgg")
 import customtkinter as ctk
 
 
-
-# URL = "http://192.168.27.66:8000"
-# URL = "http://138.231.149.81:8000"
 URL = "http://192.168.1.190:8000"
+
+ctk.set_default_color_theme("INTERFACE/Themes/blue.json")
+ctk.set_appearance_mode("dark")
+
 
 # Paramètres et variables
 
@@ -121,10 +121,24 @@ class Fonts_class():
 
         self.Metrics = ("Roboto Medium", 24,"bold")
         self.Tabs_title = ("Roboto", 20, "bold")
+
+class Plot_style_class():
+    def __init__(self):
         self.plot_axes = ("Roboto", 20, "bold")
         # self.plot_title = ("Roboto", 24, "bold")
         self.plot_title = {'fontname':'sans-serif','fontsize':24, 'fontweight':'bold','color':'#DCE4EE'}
         self.plot_legend = {'family':'sans-serif','size':20}
+
+        self.text_color="#DCE4EE"
+        self.primary_color="#DCE4EE"
+        self.plot_background=gray_to_hex("gray17")
+        self.train_line="#e74c3c"
+        self.markerfacecolor="#9c9c9c"
+
+
+        self.test_prediction_reel="#2E86AB"
+        self.test_prediction_test="#A23B72"
+        self.test_prediction_diff="#A8A8A8"
 
 class Colors_IRMA_class():
     def __init__(self):
@@ -138,56 +152,8 @@ class Colors_IRMA_class():
         ACCENT_SECONDARY = "#3498db"
         BORDER_COLOR = "#4a5f7f"
 
-class Colors_Light_class():
-    def __init__(self):
-        self.back_color="#FF6B6B"
-        self.background_color = "#B9FFA3"
-        self.tab_background_color = "#7AAE6B"
-        
-        #Graphiques
-        self.plot_axes_color = '#DCE4EE'
-        self.plot_grid_color = '#DCE4EE'
-
-        self.plot_prediction_reel='#2E86AB'
-        self.plot_prediction_test='#A23B72'
-
-        #Texte
-        self.plot_text_color="#EA00FF"
-        self.text_color_primary = "#AA5500"
-        self.button_text_color = "#FFEE00"
-
-        #Autres
-        self.button_color="#0C324F"
-
-class Colors_Dark_class():
-    def __init__(self):
-        self.back_color="#242424" #gray14
-        self.background_color = '#2B2B2B' #gray92
-        self.tab_background_color = "#2B2B2B"
-        
-        #Graphiques
-        self.plot_axes_color = '#DCE4EE'
-        self.plot_grid_color = '#DCE4EE'
-
-        self.plot_prediction_reel='#2E86AB'
-        self.plot_prediction_test='#A23B72'
-
-        #Texte
-        self.plot_text_color='#DCE4EE'
-        self.text_color_primary = '#DCE4EE'
-        self.button_text_color = '#DCE4EE'
-
-        #Autres
-        self.button_color='#1F6AA5'
-
-        self.notebook_color={
-            
-        }
-
-Colors_Dark=Colors_Dark_class()
-Colors_Light=Colors_Light_class()
 Fonts=Fonts_class()
-Colors=Colors_Dark
+
 
 Datasets_list=[]
 Dataset=""
@@ -227,7 +193,6 @@ class Fenetre_Acceuil(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)                # extensible
         self.grid_rowconfigure(0, weight=1)
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
-        self.configure(fg_color=Colors.back_color)
         #self.configure(bg=self.fenetre_bg)
         # self.geometry("1200x700")
 
@@ -251,7 +216,6 @@ class Fenetre_Acceuil(ctk.CTk):
 
         # Cadre principal de configuration
         self.cadre = ctk.CTkFrame(self, corner_radius=10)
-        self.cadre.configure(fg_color=Colors.background_color)
         self.cadre.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         self.cadre.grid_columnconfigure(0, weight=1)
 
@@ -263,7 +227,6 @@ class Fenetre_Acceuil(ctk.CTk):
         # self.Cadre_results_global.grid(row=0, column=1, sticky="nsew", padx=(0,20), pady=20)
     
         self.Results_notebook = ctk.CTkTabview(self,corner_radius=10)
-        # self.Results_notebook.configure(fg_color=Colors.background_color,segmented_button_fg_color=Colors.tab_background_color)
         self.Results_notebook.grid(row=0, column=1, sticky="nsew", padx=(0,20),pady=(0,20))
 
         #Créer les onglets
@@ -293,44 +256,33 @@ class Fenetre_Acceuil(ctk.CTk):
         )
         self.Cadre_results_Prediction.pack(fill="both", expand=True)
         
-        self.Results_notebook.configure(fg_color="#00377A",
-                                        text_color="#007E06",
-                                        segmented_button_fg_color="#A30093",
-                                        segmented_button_selected_color="#FF0000",
-                                        segmented_button_unselected_color="#00A995",
-                                        segmented_button_unselected_hover_color="#A0AC00"
-                                        )
         # Titre
         ctk.CTkLabel(
             self.cadre, 
             text="MLApp", 
-            font=Fonts.Titre_app,
-            text_color=Colors.text_color_primary,
-            fg_color=Colors.background_color
+            font=Fonts.Titre_app
         ).pack(pady=(20, 10))
         # Sous-titre
         ctk.CTkLabel(
             self.cadre,
             text="Machine Learning Application",
-            font=Fonts.sous_Titre_app,
-            text_color=Colors.text_color_primary,
-            fg_color=Colors.background_color
+            font=Fonts.sous_Titre_app
         ).pack(pady=(0, 40))
 
 
         # Section 1 : Modèle
-        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=Fonts.Section_params,background_color=Colors.background_color,text_color=Colors.text_color_primary)
+        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=Fonts.Section_params)
         Titre_frame_Modele.pack()
         Label_frame_Modele.pack(fill="both",padx=10)
         Label_frame_Modele.grid_columnconfigure(0, weight=1)
         Label_frame_Modele.grid_rowconfigure(0, weight=1)
         
-        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
-        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40,font=Fonts.button_font).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
 
 
         # Section 2 : Données
-        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=Fonts.Section_params,background_color=Colors.background_color,text_color=Colors.text_color_primary)
+        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=Fonts.Section_params)
         Titre_frame_Donnees.pack(pady=(30,0))
         Label_frame_Donnees.pack(fill="both",padx=10)
         Label_frame_Donnees.grid_columnconfigure(0, weight=1)
@@ -358,15 +310,16 @@ class Fenetre_Acceuil(ctk.CTk):
                                             command=optionmenu_callback,
                                             variable=optionmenu_var,
                                             )
+        combobox.configure(font=Fonts.button_font)
         combobox.grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
         
         
-        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
         
-        self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).pack(fill="both",padx=30,pady=(40,0))
+        self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font).pack(fill="both",padx=30,pady=(40,0))
 
         # Section 3 : Actions
-        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=Colors.background_color) #fg_color=root.cget('fg_color')
+        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10)
         section_actions.pack(side="bottom",fill="both",pady=(0,10),padx=10)
         section_actions.grid_columnconfigure(0, weight=1)
         section_actions.grid_columnconfigure(1, weight=1)
@@ -397,12 +350,12 @@ class Fenetre_Acceuil(ctk.CTk):
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
 
-    def label_frame(self, root, title, font, background_color, text_color, width=200, height=200):
+    def label_frame(self, root, title, font, width=200, height=200):
         # Crée un cadre avec un titre simulant un LabelFrame
-        frame = ctk.CTkFrame(root, width=width, height=height, corner_radius=10, fg_color=background_color, border_width=2, border_color="gray")
+        frame = ctk.CTkFrame(root, width=width, height=height, corner_radius=10, border_width=2, border_color="gray")
         #frame.pack_propagate(False)
 
-        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font, fg_color=background_color, text_color=text_color)
+        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font)
         return frame, title_label
     
     def bouton(self, parent, texte, commande,padx=5, pady=20,background_color=None, text_color=None, font=None, width=None, height=None,pack=False):
@@ -643,13 +596,6 @@ class Fenetre_Acceuil(ctk.CTk):
 class Cadre_Entrainement(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.configure(fg_color=master.cget("fg_color"))
-
-        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
-        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
-
-        # self.cadres_bg = app.cadres_bg
-        # self.configure(fg_color=self.cadres_bg)
         
         # Variables pour stocker les données
         self.epochs = []
@@ -662,8 +608,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
         self.titre = ctk.CTkLabel(
             self, 
             text="📊 Suivi de l'Entraînement en Temps Réel", 
-            font=Fonts.Tabs_title,
-            text_color=Colors.text_color_primary
+            font=Fonts.Tabs_title
         )
         self.titre.pack(pady=(0, 10))
 
@@ -671,7 +616,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
         
         # Frame pour les informations
         # self.info_frame = ctk.CTkFrame(self)
-        self.info_frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
+        self.info_frame = ctk.CTkFrame(self)
         self.info_frame.pack(fill="x", pady=(0, 10))
         
         
@@ -705,25 +650,27 @@ class Cadre_Entrainement(ctk.CTkFrame):
         self.label_status.pack(side="right", padx=10)
         
         # Création du graphique matplotlib avec style moderne
-        self.fig = Figure(figsize=(10, 6),facecolor=self.fg_color) #,dpi=100
+        self.fig = Figure(figsize=(10, 6),facecolor=Plot_style.plot_background) #,dpi=100
         self.ax = self.fig.add_subplot(111)
         
-        # Style du graphique
-        self.ax.tick_params(axis='both', colors='#DCE4EE',labelsize=20)
-        self.ax.tick_params(which='minor', axis='both', colors='#DCE4EE',labelsize=20)
-        for spine in self.ax.spines.values():
-            spine.set_color('#DCE4EE')
 
-        self.ax.set_facecolor(self.fg_color)
-        self.ax.grid(True, linestyle='--', alpha=0.3,color='#DCE4EE') #, color='#95a5a6'
-        self.ax.grid(which='minor', linestyle=':', alpha=0.2, color='#DCE4EE')
-        self.ax.set_xlabel('Epoch', fontsize=24, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_ylabel('Loss', fontsize=24, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_title('Évolution de la Loss', fontsize=24, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
+
+        # Style du graphique
+        self.ax.tick_params(axis='both',labelsize=20,colors=Plot_style.text_color)
+        self.ax.tick_params(which='minor', axis='both',labelsize=20,colors=Plot_style.text_color)
+        for spine in self.ax.spines.values():
+            spine.set_color(Plot_style.text_color)
+          
+
+        self.ax.set_facecolor(Plot_style.plot_background)
+        self.ax.grid(True, linestyle='--', alpha=0.3,color=Plot_style.text_color)
+        self.ax.grid(which='minor', linestyle=':', alpha=0.2,color=Plot_style.text_color)
+        self.ax.set_xlabel('Epoch', fontsize=24, fontweight='bold',color=Plot_style.text_color) 
+        self.ax.set_ylabel('Loss', fontsize=24, fontweight='bold',color=Plot_style.text_color) 
+        self.ax.set_title('Évolution de la Loss', fontsize=24, fontweight='bold', pad=20,color=Plot_style.text_color) 
         
         # Ligne de tracé (sera mise à jour)
-        self.line, = self.ax.plot([], [],'o-', linewidth=2.5,
-                                   color="#e74c3c", markerfacecolor="#9c9c9c")
+        self.line, = self.ax.plot([], [],'o-', linewidth=2.5,color=Plot_style.train_line,markerfacecolor=Plot_style.markerfacecolor)
         
         # Canvas pour afficher le graphique
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
@@ -776,25 +723,24 @@ class Cadre_Entrainement(ctk.CTkFrame):
 
         # Réinitialiser le graphique
         self.ax.clear()
-        # self.ax.set_facecolor(self.cadres_bg)
-        # Style du graphique
-        # self.ax.tick_params(axis='x', colors='#DCE4EE')
-        # self.ax.tick_params(axis='y', colors='#DCE4EE')
-        # for spine in self.ax.spines.values():
-        #     spine.set_color('#DCE4EE')
-
-        self.ax.set_facecolor(self.fg_color)
-        self.ax.grid(True, linestyle='--', alpha=0.3,color='#DCE4EE') #, color='#95a5a6'
-        self.ax.grid(which='minor', linestyle=':', alpha=0.2, color='#DCE4EE')
-        self.ax.set_xlabel('Epoch', fontsize=28, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_ylabel('Loss', fontsize=28, fontweight='bold',color='#DCE4EE') #, color='#2c3e50'
-        self.ax.set_title('Évolution de la Loss', fontsize=28, fontweight='bold', pad=20,color='#DCE4EE') #, color='#2c3e50'
+        self.ax.set_facecolor(Plot_style.plot_background)
         
-        self.ax.tick_params(axis='both', colors='#DCE4EE',labelsize=20)
-        self.ax.tick_params(which='minor', axis='both', colors='#DCE4EE',labelsize=20)
+        self.ax.tick_params(axis='x', colors=Plot_style.primary_color)
+        self.ax.tick_params(axis='y', colors=Plot_style.primary_color)
+        for spine in self.ax.spines.values():
+            spine.set_color(Plot_style.primary_color)
 
-        self.line, = self.ax.plot([], [],'o-', linewidth=2.5,
-                                   color="#e74c3c", markerfacecolor="#9c9c9c",)
+        # self.ax.set_facecolor(self.fg_color)
+        self.ax.grid(True, linestyle='--', alpha=0.3,color=Plot_style.primary_color)
+        self.ax.grid(which='minor', linestyle=':', alpha=0.2,color=Plot_style.primary_color)
+        self.ax.set_xlabel('Epoch', fontsize=28, fontweight='bold',color=Plot_style.text_color)
+        self.ax.set_ylabel('Loss', fontsize=28, fontweight='bold',color=Plot_style.text_color)
+        self.ax.set_title('Évolution de la Loss', fontsize=28, fontweight='bold', pad=20,color=Plot_style.text_color)
+        
+        self.ax.tick_params(axis='both',labelsize=20,color=Plot_style.primary_color)
+        self.ax.tick_params(which='minor', axis='both',labelsize=20,color=Plot_style.primary_color)
+
+        self.line, = self.ax.plot([], [],'o-', linewidth=2.5,color=Plot_style.train_line,markerfacecolor=Plot_style.markerfacecolor)
         
         self.label_status.configure(text="🚀 En cours...",text_color="#27ae60")
         self.canvas.draw()
@@ -872,7 +818,8 @@ class Cadre_Entrainement(ctk.CTkFrame):
         # Traiter toutes les données restantes dans la queue avant d'arrêter
         while not self.data_queue.empty():
             try:
-                epoch, loss, epoch_s = self.data_queue.get_nowait()
+                epoch, loss, *rest  = self.data_queue.get_nowait()
+                
                 self.epochs.append(epoch)
                 self.losses.append(loss)
                 
@@ -920,17 +867,13 @@ class Cadre_Entrainement(ctk.CTkFrame):
 class Cadre_Testing(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.configure(fg_color=master.cget("fg_color"))
-        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
-        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
         
 
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
             text="📊 Affichage de la phase de test", 
-            font=Fonts.Tabs_title,
-            text_color=Colors.text_color_primary
+            font=Fonts.Tabs_title
         )
         self.titre.pack(pady=(0, 10))
 
@@ -954,28 +897,28 @@ class Cadre_Testing(ctk.CTkFrame):
         #     widget.destroy()
 
         # Création figure + axes
-        self.fig = Figure(figsize=(10, 6), dpi=100, facecolor=Colors.background_color)
+        self.fig = Figure(figsize=(10, 6), dpi=100,facecolor=Plot_style.plot_background)
         self.ax = self.fig.add_subplot(111)
-        self.ax.set_facecolor(Colors.background_color)
+        self.ax.set_facecolor(Plot_style.plot_background)
 
         # Couleurs des axes (spines)
         for spine in self.ax.spines.values():
-            spine.set_color(Colors.plot_axes_color)
+            spine.set_color(Plot_style.primary_color)
         
         # Couleurs des labels d'axes
-        self.ax.xaxis.label.set_color(Colors.plot_text_color)
-        self.ax.yaxis.label.set_color(Colors.plot_text_color)
+        self.ax.xaxis.label.set_color(Plot_style.primary_color)
+        self.ax.yaxis.label.set_color(Plot_style.primary_color)
 
         # Couleur des ticks + taille
-        self.ax.tick_params(axis="both", colors=Colors.plot_axes_color, labelsize=20)
+        self.ax.tick_params(axis="both", labelsize=20, colors=Plot_style.primary_color)#, colors=Colors.plot_axes_color
 
         # Grille par défaut
         # self.ax.grid(True, linestyle='--', alpha=0.3, color=Colors.plot_grid_color)
-        self.ax.grid(True, which="major", color=Colors.plot_grid_color, linestyle=":",alpha=0.2)
-        self.ax.grid(True, which="minor", color=Colors.plot_grid_color, linestyle="--", linewidth=0.5)
+        self.ax.grid(True, which="major", linestyle=":",alpha=0.2,color=Plot_style.primary_color)
+        self.ax.grid(True, which="minor", linestyle="--", linewidth=0.5,color=Plot_style.primary_color)
         # self.ax.minorticks_on()
 
-        self.ax.set_title('Test de prédiction (vide)', fontdict=Fonts.plot_title)
+        self.ax.set_title('Test de prédiction (vide)', fontdict=Plot_style.plot_title)
 
         # Canvas Matplotlib
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
@@ -991,8 +934,6 @@ class Cadre_Testing(ctk.CTkFrame):
             master=self,
             text="💾 Enregistrer la figure",
             font=Fonts.button_font,
-            text_color=Colors.button_text_color,
-            # hover_color="#1B4F72",
             corner_radius=8,
             width=180,
             height=35,
@@ -1006,7 +947,7 @@ class Cadre_Testing(ctk.CTkFrame):
         y_true et y_pred : 1D arrays de même taille.
         """
 
-        # Sécurité
+
         if not hasattr(self, "ax"):
             raise RuntimeError("La figure n'a pas été créée. Appelle create_empty_prediction_plot() d'abord.")
 
@@ -1026,13 +967,13 @@ class Cadre_Testing(ctk.CTkFrame):
         true_line, = self.ax.plot(
             # x, y_true,
             x, y_total,
-            color=Colors.plot_prediction_reel,
+            color=Plot_style.test_prediction_reel,
             linewidth=2,
             marker='o',
             markersize=4,
-            markerfacecolor='white',
+            markerfacecolor=Plot_style.markerfacecolor,
             markeredgewidth=1.5,
-            markeredgecolor='#2E86AB',
+            markeredgecolor=Plot_style.test_prediction_reel,
             alpha=0.9
         )
 
@@ -1040,25 +981,27 @@ class Cadre_Testing(ctk.CTkFrame):
         pred_line, = self.ax.plot(
             # x, y_pred,
             x_pred, y_pred,
-            color=Colors.plot_prediction_test,
+            color=Plot_style.test_prediction_test,
             linewidth=2,
             marker='s',
             markersize=4,
-            markerfacecolor='white',
+            markerfacecolor=Plot_style.markerfacecolor,
             markeredgewidth=1.5,
-            markeredgecolor='#A23B72',
+            markeredgecolor=Plot_style.test_prediction_test,
             linestyle="--",
             alpha=0.9
         )
 
-        ligne_separation=self.ax.axvline(x_pred[0], color=Colors.plot_grid_color, linestyle='--')
+        ligne_separation=self.ax.axvline(x_pred[0], 
+                                        color=Plot_style.primary_color, 
+                                        linestyle='--')
 
         self.ax.legend(handles=[true_line,pred_line,ligne_separation],
                        labels=["Valeurs réelles","Valeurs Prédites",'Séparation entrainement / test'],
                        fancybox=True,
-                       labelcolor=Colors.plot_axes_color,
-                       prop=Fonts.plot_legend,
-                       facecolor=Colors.background_color,
+                       labelcolor=Plot_style.text_color,
+                       prop=Plot_style.plot_legend,
+                       facecolor=Plot_style.plot_background,
                        loc='best')
 
         # Stockage des lignes si futur effacement / rafraîchissement
@@ -1066,173 +1009,25 @@ class Cadre_Testing(ctk.CTkFrame):
         self.pred_lines.append(pred_line)
 
         # Mise à jour du titre
-        self.ax.set_title('Test de prédiction', fontdict=Fonts.plot_title)
+        self.ax.set_title('Test de prédiction', fontdict=Plot_style.plot_title)
+
+        self.ax.relim()              # recalculer les limites à partir des nouvelles données
+        self.ax.autoscale_view()     # appliquer automatiquement les nouvelles limites
+
 
         # Rafraîchissement
         self.fig.tight_layout()
         self.canvas.draw()
 
-    def plot_predictions(self, y_true_pairs, y_pred_pairs):
-        for widget in self.winfo_children():
-            widget.destroy()
-        """
-        y_true_pairs, y_pred_pairs : listes de listes (N x D)
-        Affiche y vs yhat pour D dimensions (ou une seule si D=1) avec un style élégant.
-        """
-        if not y_true_pairs or not y_pred_pairs:
-            return
-
-        yt = np.array(y_true_pairs, dtype=float)  # (N, D)
-        yp = np.array(y_pred_pairs, dtype=float)  # (N, D)
-
-        # Squeeze si D=1
-        if yt.ndim == 2 and yt.shape[1] == 1:
-            yt = yt.squeeze(1)
-            yp = yp.squeeze(1)
-
-        # Création du graphique matplotlib avec style moderne
-        fig = Figure(facecolor=self.fg_color)
-        ax = fig.add_subplot(111)
-        
-        
-        # Style du graphique
-        ax.set_facecolor(self.fg_color)
-        ax.grid(True, linestyle='--', alpha=0.3, color='#DCE4EE')
-        
-        
-        if yt.ndim == 1:
-            x = np.arange(len(yt))
-            
-            # Tracer avec un style élégant
-            ax.plot(x, yt, 
-                    color='#2E86AB', 
-                    linewidth=2, 
-                    marker='o', 
-                    markersize=4, 
-                    markerfacecolor='white',
-                    markeredgewidth=1.5,
-                    markeredgecolor='#2E86AB',
-                    label='y (vraies valeurs)', 
-                    alpha=0.8,
-                    zorder=2)
-            
-            ax.plot(x, yp, 
-                    color="#e74c3c", 
-                    linewidth=2, 
-                    marker='s', 
-                    markersize=4, 
-                    markerfacecolor='white',
-                    markeredgewidth=1.5,
-                    markeredgecolor='#A23B72',
-                    label='ŷ (prédictions)', 
-                    alpha=0.8,
-                    zorder=2)
-            
-            # Remplissage entre les courbes pour montrer l'erreur
-            ax.fill_between(x, yt, yp, alpha=0.2, color='gray', label='Erreur')
-            
-        else:
-            x = np.arange(yt.shape[0])
-            colors_true = ['#2E86AB', '#06A77D', '#F77F00', '#D62828']
-            colors_pred = ['#A23B72', '#F18F01', '#C73E1D', '#6A4C93']
-            
-            for d in range(min(yt.shape[1], 4)):  # Limiter à 4 dimensions pour la lisibilité
-                ax.plot(x, yt[:, d], 
-                        color=colors_true[d % len(colors_true)],
-                        linewidth=2,
-                        marker='o',
-                        markersize=3,
-                        markerfacecolor='white',
-                        markeredgewidth=1,
-                        markeredgecolor=colors_true[d % len(colors_true)],
-                        label=f'y (vrai) dim {d}',
-                        alpha=0.8,
-                        zorder=2)
-                
-                ax.plot(x, yp[:, d],
-                        color=colors_pred[d % len(colors_pred)],
-                        linewidth=2,
-                        marker='s',
-                        markersize=3,
-                        markerfacecolor='white',
-                        markeredgewidth=1,
-                        markeredgecolor=colors_pred[d % len(colors_pred)],
-                        label=f'ŷ (prédit) dim {d}',
-                        alpha=0.8,
-                        linestyle='--',
-                        zorder=2)
-
-        # Titre et labels
-        ax.set_title('Comparaison des prédictions avec les valeurs réelles', 
-                    fontsize=14, 
-                    fontweight='bold',
-                    pad=20)
-        ax.set_xlabel('Index de l\'échantillon', fontsize=11, fontweight='bold')
-        ax.set_ylabel('Valeur', fontsize=11, fontweight='bold')
-        
-        # Légende élégante
-        legend = ax.legend(loc='best', 
-                        frameon=True, 
-                        fancybox=True, 
-                        shadow=True,
-                        fontsize=10)
-        legend.get_frame().set_alpha(0.9)
-        
-        # Grille plus subtile
-        ax.grid(True, linestyle='--', alpha=0.4, zorder=1)
-        ax.set_axisbelow(True)
-
-        
-        ax.set_facecolor(self.fg_color)
-        ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
-        
-        
-        # Ajuster les marges
-        fig.tight_layout()
-        # fig.patch.set_facecolor(self.fg_color)
-        
-
-
-        canvas = FigureCanvasTkAgg(fig, master=self)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True,padx=(0,10))
-
-
-       
-        # Bouton de sauvegarde stylisé
-        bouton_sauvegarde = ctk.CTkButton(
-            master=self,
-            text="💾 Enregistrer la figure",
-            font=("Helvetica", 11, "bold"),
-            fg_color="#2E86AB",       # Fond bleu profond
-            text_color="white",       # Texte blanc
-            hover_color="#1B4F72",    # Couleur au survol
-            corner_radius=8,           # Bords arrondis
-            width=180,                 # Largeur
-            height=35,                 # Hauteur
-            command=lambda: self.save_figure(fig)
-        )
-        bouton_sauvegarde.pack(pady=(10, 5))
-
-
-
-        
-        # Afficher
-        #plt.show()
-
 class Cadre_Metrics(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.configure(fg_color=master.cget("fg_color"))
-        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
-        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
-        
+
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
             text="📊 Affichage des metriques", 
-            font=Fonts.Tabs_title,
-            text_color=Colors.text_color_primary
+            font=Fonts.Tabs_title
         )
         self.titre.pack(pady=(0, 10))
 
@@ -1241,22 +1036,18 @@ class Cadre_Metrics(ctk.CTkFrame):
             if widget != self.titre:
                 widget.destroy()
         for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
-            label = ctk.CTkLabel(self, text=f"{metric}: {val:.8f}", font=Fonts.Metrics, text_color=Colors.text_color_primary)
+            label = ctk.CTkLabel(self, text=f"{metric}: {val:.8f}", font=Fonts.Metrics)
             label.pack(anchor="w", padx=15, pady=5)
 
 class Cadre_Prediction(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-        self.configure(fg_color=master.cget("fg_color"))
-        self.fg_color = master.winfo_rgb(master.cget("fg_color"))
-        self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
-        
+
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
             text="📊 Affichage de la prédiction", 
-            font=Fonts.Tabs_title,
-            text_color=Colors.text_color_primary
+            font=Fonts.Tabs_title
         )
         self.titre.pack(pady=(0, 10))
 
@@ -1408,9 +1199,6 @@ class Fenetre_Params(ctk.CTkToplevel):
             text="❌ Annuler",
             font=("Roboto", 13),
             height=40,
-            fg_color="transparent",
-            border_width=2,
-            text_color=("gray10", "gray90"),
             command=self.destroy
         ).grid(row=last_row, column=1,padx=10,pady=(30,20),sticky="ew")
         self.on_model_change(self.model_var.get())
@@ -1796,9 +1584,6 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
             text="❌ Annuler",
             font=("Roboto", 13),
             height=40,
-            fg_color="transparent",
-            border_width=2,
-            text_color=("gray10", "gray90"),
             command=self.destroy
         ).grid(row=last_row, column=1,padx=10,pady=(50,20),sticky="ew")
 
@@ -1832,6 +1617,25 @@ def validate_fct(text,type_):
             return True
         except ValueError:
             return False
+
+def gray_to_hex(gray_code: str) -> str:
+    # gray_code attendu sous forme "gray86", "gray17", etc.
+    if not gray_code.startswith("gray"):
+        raise ValueError("Format invalide : utilisez 'grayXX'.")
+
+    # on récupère la valeur numérique (0–100)
+    value = int(gray_code[4:])
+
+    if not (0 <= value <= 100):
+        raise ValueError("La valeur doit être entre 0 et 100.")
+
+    # conversion en niveau 0–255
+    level = round(value * 255 / 100)
+
+    # couleur HEX en niveau de gris
+    return "#{0:02x}{0:02x}{0:02x}".format(level)
+
+Plot_style=Plot_style_class()
 
 # Lancer la boucle principale
 if __name__ == "__main__":
