@@ -20,6 +20,21 @@ MODEL_DIR = BASE_DIR / "models"
 # Modèles de requêtes
 # ----------------------------
 
+class TimeSeriesData(BaseModel):
+    """
+    Une unique série temporelle : timestamps et valeurs alignés (même longueur).
+    """
+    timestamps: List[datetime] 
+    values: List[Optional[float]]
+     
+     # Mini garde-fou : même taille
+    def model_post_init(self, __context) -> None:
+        if len(self.timestamps) != len(self.values):
+            raise ValueError("timestamps et values doivent avoir la même longueur")
+
+
+
+
 class ChoixDatasetRequest(BaseModel):
     message: str
 
@@ -31,10 +46,11 @@ class ChoixDatasetRequest2(BaseModel):
 
 class newDatasetRequest(BaseModel):
     name: str
-    data: Dict[str, Any]
+    data: TimeSeriesData
 
 class deleteDatasetRequest(BaseModel):
     name: str
+
 class ChoixModelerequest(BaseModel):
     message: str
 # ----------------------------
@@ -247,9 +263,10 @@ def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: int) -
     # si on a rien trouvé
     return {"error": f"Dataset '{name}' not found"}
 
-def add_new_dataset(name: str, data: Dict[str, Any]) -> None:
+def add_new_dataset(name: str, data: TimeSeriesData) -> None:
     """
     Ajoute un nouveau dataset dans DATA_DIR avec le nom `name` et les données `data`.
+    `data` est un TimeSeriesData (Pydantic).
     """
     if not DATA_DIR.exists():
         raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
@@ -259,10 +276,13 @@ def add_new_dataset(name: str, data: Dict[str, Any]) -> None:
     if path_new_dataset.exists():
         raise ValueError(f"Dataset '{name}' existe déjà et ne peut pas être ajouté")
     
+    data_dict = data.model_dump(mode="json")
+    
     with open(path_new_dataset, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(data_dict, f, ensure_ascii=False, indent=2)
 
     print(f"Dataset '{name}' ajouté avec succès dans {path_new_dataset}")
+
 
 def remove_dataset(name: str) -> None:
     """
@@ -324,11 +344,9 @@ async def data_solo(payload: ChoixDatasetRequest2):
 
     return json_final
 
-## Pourquoi il y a une erreur 404 ici ?  modifie copilot stp
-##
+
 @app.post("/datasets/data_add")
 async def data_addd(payload: newDatasetRequest):
-    ## c'est bon ici ?  
     print("DATA SERVER received fetch_dataset for:", payload.name)
 
     try:
@@ -343,10 +361,8 @@ async def data_addd(payload: newDatasetRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
     print("\nOn est bien\n")
-
-    
-
     return "dataset ajouté avec succès"
+
 @app.post("/datasets/data_supression")
 async def data_suppression(payload: deleteDatasetRequest):
     print("DATA SERVER received delete_dataset for:", payload.name)
@@ -365,6 +381,10 @@ async def data_suppression(payload: deleteDatasetRequest):
 
     return "dataset supprimé avec succès"
 
+
+@app.get("/")
+def root():
+    return {"message": "Serveur DATA actif !"}
 
 if __name__ == "__main__":
     uvicorn.run("main2:app", host="0.0.0.0", port=8001, reload=True)

@@ -6,6 +6,9 @@
 # ====================================
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi import HTTPException
+
 import json
 import torch
 import numpy as np
@@ -24,8 +27,6 @@ from .test.test_prediction_strategie import (
     PredictionConfig
 )
 
-from .launcher_serveur import json_path
-
 from typing import List, Optional, Dict, Any, Tuple
 
 from .classes import (
@@ -34,7 +35,10 @@ from .classes import (
     Parametres_archi_reseau_CNN,
     Parametres_archi_reseau_LSTM,
     Tx_choix_dataset,
-    PaquetComplet)
+    PaquetComplet,
+    newDatasetRequest,
+    deleteDatasetRequest
+    )
 
 from .test_fonctions_pour_main import (
     filter_series_by_dates,
@@ -49,7 +53,7 @@ from .test_fonctions_pour_main import (
 import os
 import requests
 
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.27.66:8001")
 
 app = FastAPI()
 
@@ -715,6 +719,45 @@ def proxy_fetch_dataset(payload: dict):
     except Exception as e:
         print("Exception côté IA lors du fetch_dataset :", e)
         return {"status": "error", "message": str(e)}
+
+
+
+@app.post("/datasets/data_add_proxy")
+def proxy_add_dataset(payload: dict):
+    url = f"{DATA_SERVER_URL}/datasets/data_add"
+    data_to_send = jsonable_encoder(payload)
+    print("=== ENVOYÉ AU SERVEUR DATA ===")
+    # print(data_to_send)
+
+    try:
+        response = requests.post(url, json=data_to_send, timeout=1000)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur de connexion au serveur DATA: {e}")
+
+    print("=== RÉPONSE SERVEUR DATA ===")
+    # print("Status:", response.status_code)
+    # print("Body  :", response.text)
+
+    if response.status_code >= 400:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=f"Erreur serveur DATA: {response.text}"
+        )
+
+    return response.json()
+
+
+
+@app.post("/datasets/data_suppression_proxy")
+def proxy_suppression_dataset(payload:deleteDatasetRequest):
+    # print("Message reçu depuis UI :", payload.name)
+    url = f"{DATA_SERVER_URL}/datasets/data_supression"
+    response = requests.post(url, json=payload, timeout=1000)
+    response.raise_for_status()
+    return response.json()
+
+
+
 
 
 @app.post("/train_full")
