@@ -19,7 +19,8 @@ import customtkinter as ctk
 
 # URL = "http://192.168.27.66:8000"
 # URL = "http://138.231.149.81:8000"
-URL = "http://192.168.1.190:8000"
+#URL = "http://192.168.1.190:8000"
+URL ="http://192.168.1.94:8000"
 
 # Paramètres et variables
 
@@ -125,7 +126,6 @@ class Fonts_class():
         # self.plot_title = ("Roboto", 24, "bold")
         self.plot_title = {'fontname':'sans-serif','fontsize':24, 'fontweight':'bold','color':'#DCE4EE'}
         self.plot_legend = {'family':'sans-serif','size':20}
-
 class Colors_IRMA_class():
     def __init__(self):
         # Couleurs style IRMA Conseil
@@ -140,30 +140,12 @@ class Colors_IRMA_class():
 
 class Colors_Light_class():
     def __init__(self):
-        self.back_color="#FF6B6B"
-        self.background_color = "#B9FFA3"
-        self.tab_background_color = "#7AAE6B"
-        
-        #Graphiques
-        self.plot_axes_color = '#DCE4EE'
-        self.plot_grid_color = '#DCE4EE'
-
-        self.plot_prediction_reel='#2E86AB'
-        self.plot_prediction_test='#A23B72'
-
-        #Texte
-        self.plot_text_color="#EA00FF"
-        self.text_color_primary = "#AA5500"
-        self.button_text_color = "#FFEE00"
-
-        #Autres
-        self.button_color="#0C324F"
+        self.text_color_primary = '#2C3E50'
 
 class Colors_Dark_class():
     def __init__(self):
-        self.back_color="#242424" #gray14
-        self.background_color = '#2B2B2B' #gray92
-        self.tab_background_color = "#2B2B2B"
+        self.back_color=None
+        self.background_color = '#2B2B2B'
         
         #Graphiques
         self.plot_axes_color = '#DCE4EE'
@@ -177,15 +159,7 @@ class Colors_Dark_class():
         self.text_color_primary = '#DCE4EE'
         self.button_text_color = '#DCE4EE'
 
-        #Autres
-        self.button_color='#1F6AA5'
-
-        self.notebook_color={
-            
-        }
-
 Colors_Dark=Colors_Dark_class()
-Colors_Light=Colors_Light_class()
 Fonts=Fonts_class()
 Colors=Colors_Dark
 
@@ -227,7 +201,6 @@ class Fenetre_Acceuil(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)                # extensible
         self.grid_rowconfigure(0, weight=1)
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
-        self.configure(fg_color=Colors.back_color)
         #self.configure(bg=self.fenetre_bg)
         # self.geometry("1200x700")
 
@@ -251,7 +224,6 @@ class Fenetre_Acceuil(ctk.CTk):
 
         # Cadre principal de configuration
         self.cadre = ctk.CTkFrame(self, corner_radius=10)
-        self.cadre.configure(fg_color=Colors.background_color)
         self.cadre.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         self.cadre.grid_columnconfigure(0, weight=1)
 
@@ -263,7 +235,6 @@ class Fenetre_Acceuil(ctk.CTk):
         # self.Cadre_results_global.grid(row=0, column=1, sticky="nsew", padx=(0,20), pady=20)
     
         self.Results_notebook = ctk.CTkTabview(self,corner_radius=10)
-        # self.Results_notebook.configure(fg_color=Colors.background_color,segmented_button_fg_color=Colors.tab_background_color)
         self.Results_notebook.grid(row=0, column=1, sticky="nsew", padx=(0,20),pady=(0,20))
 
         #Créer les onglets
@@ -292,45 +263,35 @@ class Fenetre_Acceuil(ctk.CTk):
             self, self.Results_notebook.tab("Prediction")
         )
         self.Cadre_results_Prediction.pack(fill="both", expand=True)
-        
-        self.Results_notebook.configure(fg_color="#00377A",
-                                        text_color="#007E06",
-                                        segmented_button_fg_color="#A30093",
-                                        segmented_button_selected_color="#FF0000",
-                                        segmented_button_unselected_color="#00A995",
-                                        segmented_button_unselected_hover_color="#A0AC00"
-                                        )
+
+
         # Titre
         ctk.CTkLabel(
             self.cadre, 
             text="MLApp", 
-            font=Fonts.Titre_app,
-            text_color=Colors.text_color_primary,
-            fg_color=Colors.background_color
+            font=Fonts.Titre_app
         ).pack(pady=(20, 10))
         # Sous-titre
         ctk.CTkLabel(
             self.cadre,
             text="Machine Learning Application",
-            font=Fonts.sous_Titre_app,
-            text_color=Colors.text_color_primary,
-            fg_color=Colors.background_color
+            font=Fonts.sous_Titre_app
         ).pack(pady=(0, 40))
 
 
         # Section 1 : Modèle
-        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=Fonts.Section_params,background_color=Colors.background_color,text_color=Colors.text_color_primary)
+        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=Fonts.Section_params,background_color=Colors.background_color)
         Titre_frame_Modele.pack()
         Label_frame_Modele.pack(fill="both",padx=10)
         Label_frame_Modele.grid_columnconfigure(0, weight=1)
         Label_frame_Modele.grid_rowconfigure(0, weight=1)
         
-        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
-        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40,font=Fonts.button_font).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
 
 
         # Section 2 : Données
-        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=Fonts.Section_params,background_color=Colors.background_color,text_color=Colors.text_color_primary)
+        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=Fonts.Section_params,background_color=Colors.background_color)
         Titre_frame_Donnees.pack(pady=(30,0))
         Label_frame_Donnees.pack(fill="both",padx=10)
         Label_frame_Donnees.grid_columnconfigure(0, weight=1)
@@ -361,12 +322,12 @@ class Fenetre_Acceuil(ctk.CTk):
         combobox.grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
         
         
-        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
         
-        self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).pack(fill="both",padx=30,pady=(40,0))
+        self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font).pack(fill="both",padx=30,pady=(40,0))
 
         # Section 3 : Actions
-        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=Colors.background_color) #fg_color=root.cget('fg_color')
+        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=self.cadre.cget("fg_color")) #fg_color=root.cget('fg_color')
         section_actions.pack(side="bottom",fill="both",pady=(0,10),padx=10)
         section_actions.grid_columnconfigure(0, weight=1)
         section_actions.grid_columnconfigure(1, weight=1)
@@ -397,12 +358,12 @@ class Fenetre_Acceuil(ctk.CTk):
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
 
-    def label_frame(self, root, title, font, background_color, text_color, width=200, height=200):
+    def label_frame(self, root, title, font,background_color, width=200, height=200):
         # Crée un cadre avec un titre simulant un LabelFrame
         frame = ctk.CTkFrame(root, width=width, height=height, corner_radius=10, fg_color=background_color, border_width=2, border_color="gray")
         #frame.pack_propagate(False)
 
-        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font, fg_color=background_color, text_color=text_color)
+        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font)
         return frame, title_label
     
     def bouton(self, parent, texte, commande,padx=5, pady=20,background_color=None, text_color=None, font=None, width=None, height=None,pack=False):
@@ -551,12 +512,28 @@ class Fenetre_Acceuil(ctk.CTk):
                     )
 
 
+            # ============================================================================
+            # MODIFICATIONS POUR EnvoyerConfig() dans interface_local_ctk.py
+            # Remplacer la fonction run_training() à l'intérieur de EnvoyerConfig()
+            # ============================================================================
+
             def run_training():
                 """Fonction pour exécuter l'entraînement dans un thread séparé"""
                 run_fetch_dataset()
-                y_total=[]
-                y=[]
-                yhat=[]
+                
+                # Variables pour collecter les données du nouveau pipeline
+                y_total = []
+                split_info = {}
+                val_predictions = []
+                val_true = []
+                pred_predictions = []
+                pred_low = []
+                pred_high = []
+                pred_true = []
+                val_metrics = None
+                pred_metrics = None
+                current_phase = "init"
+                
                 try:
                     with requests.post(
                         f"{URL}/train_full", 
@@ -578,48 +555,123 @@ class Fenetre_Acceuil(ctk.CTk):
                             if line.startswith(b"data: "):
                                 try:
                                     msg = json.loads(line[6:].decode("utf-8"))
-                                    print("EVENT:", msg)
+                                    print("EVENT:", msg.get("type", msg))
                                     
-                                    # Traiter les différents types de messages
-                                    if msg.get("type") == "epoch":
-                                        # Message d'epoch avec loss
-                                        epoch = msg.get("epoch")
-                                        avg_loss = msg.get("avg_loss")
-                                        epoch_s = msg.get("epoch_s")
-                                        
-                                        if epoch is not None and avg_loss is not None:
-                                            # Ajouter le point au graphique
-                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss,epoch_s)
+                                    # ===== GESTION DES NOUVEAUX ÉVÉNEMENTS =====
                                     
-                                    elif "epochs" in msg and "avg_loss" in msg:
-                                        # Format alternatif (comme dans votre exemple)
-                                        epoch = msg.get("epochs")
-                                        avg_loss = msg.get("avg_loss")
-                                        epoch_s = msg.get("epoch_s")
-                                        
-                                        if epoch is not None and avg_loss is not None:
-                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss,epoch_s)
+                                    # Info de split initial
+                                    if msg.get("type") == "split_info":
+                                        split_info = {
+                                            "n_train": msg.get("n_train"),
+                                            "n_val": msg.get("n_val"),
+                                            "n_test": msg.get("n_test"),
+                                            "idx_val_start": msg.get("idx_val_start"),
+                                            "idx_test_start": msg.get("idx_test_start"),
+                                        }
+                                        print(f"[SPLIT] Train: {split_info['n_train']}, "
+                                            f"Val: {split_info['n_val']}, "
+                                            f"Test: {split_info['n_test']}")
                                     
-                                    elif msg.get("type") == "test_pair":
-                                        y.append(msg.get("y"))
-                                        yhat.append(msg.get("yhat"))
-                                    
+                                    # Série complète
                                     elif msg.get("type") == "serie_complete":
-                                        y_total=msg.get("values")
-                                        print(y_total)
+                                        y_total = msg.get("values", [])
+                                        print(f"[SÉRIE] {len(y_total)} points reçus")
+                                    
+                                    # Changement de phase
+                                    elif msg.get("type") == "phase":
+                                        current_phase = msg.get("phase")
+                                        status = msg.get("status")
+                                        print(f"[PHASE] {current_phase} -> {status}")
+                                    
+                                    # ===== PHASE ENTRAÎNEMENT =====
+                                    elif msg.get("type") == "epoch" or ("epochs" in msg and "avg_loss" in msg):
+                                        epoch = msg.get("epochs") or msg.get("epoch")
+                                        avg_loss = msg.get("avg_loss")
+                                        epoch_s = msg.get("epoch_s", 0)
                                         
-                                    elif msg.get("type") == "test_final":
-                                        self.Cadre_results_Metrics.afficher_Metrics(msg.get("metrics"))
+                                        if epoch is not None and avg_loss is not None:
+                                            self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss, epoch_s)
+                                    
+                                    # ===== PHASE VALIDATION =====
+                                    elif msg.get("type") == "val_start":
+                                        print(f"[VAL] Début: {msg.get('n_points')} points")
+                                    
+                                    elif msg.get("type") == "val_pair":
+                                        val_true.append(msg.get("y"))
+                                        val_predictions.append(msg.get("yhat"))
+                                    
+                                    elif msg.get("type") == "val_end":
+                                        val_metrics = msg.get("metrics")
+                                        residual_std = msg.get("residual_std", 0)
+                                        print(f"[VAL] Fin: MSE={val_metrics['overall_mean']['MSE']:.6f}, "
+                                            f"residual_std={residual_std:.6f}")
+                                    
+                                    # ===== PHASE PRÉDICTION =====
+                                    elif msg.get("type") == "pred_start":
+                                        print(f"[PRED] Début: {msg.get('n_steps')} pas")
+                                    
+                                    elif msg.get("type") == "pred_point":
+                                        pred_predictions.append(msg.get("yhat"))
+                                        pred_low.append(msg.get("low"))
+                                        pred_high.append(msg.get("high"))
+                                        if msg.get("y") is not None:
+                                            pred_true.append(msg.get("y"))
+                                    
+                                    elif msg.get("type") == "pred_end":
+                                        pred_metrics = msg.get("metrics")
+                                        if pred_metrics:
+                                            print(f"[PRED] Fin: MSE={pred_metrics.get('MSE', 'N/A')}")
+                                    
+                                    # ===== DONNÉES FINALES =====
+                                    elif msg.get("type") == "final_plot_data":
+                                        # Utiliser directement les données envoyées par le serveur
+                                        final_data = {
+                                            "series_complete": msg.get("series_complete", y_total),
+                                            "val_predictions": msg.get("val_predictions", val_predictions),
+                                            "pred_predictions": msg.get("pred_predictions", pred_predictions),
+                                            "pred_low": msg.get("pred_low", pred_low),
+                                            "pred_high": msg.get("pred_high", pred_high),
+                                            "idx_val_start": msg.get("idx_val_start", split_info.get("idx_val_start", 0)),
+                                            "idx_test_start": msg.get("idx_test_start", split_info.get("idx_test_start", 0)),
+                                        }
                                         
+                                        # Afficher les métriques
+                                        combined_metrics = {}
+                                        if msg.get("val_metrics"):
+                                            combined_metrics["validation"] = msg["val_metrics"]
+                                        if msg.get("pred_metrics"):
+                                            combined_metrics["prediction"] = msg["pred_metrics"]
+                                        
+                                        if combined_metrics:
+                                            self.Cadre_results_Metrics.afficher_Metrics(combined_metrics)
+                                        
+                                        # Mettre à jour le graphique
+                                        self.Cadre_results_Testing.update_full_plot(final_data)
+                                    
+                                    # ===== FIN DU PIPELINE =====
+                                    elif msg.get("type") == "fin_pipeline":
+                                        print("[PIPELINE] Terminé!")
+                                        break
+                                    
+                                    # ===== ERREURS =====
                                     elif msg.get("type") == "error":
-                                        # Afficher les erreurs
                                         print(f"ERREUR: {msg.get('message')}")
                                         messagebox.showerror("Erreur", msg.get('message', 'Erreur inconnue'))
                                         break
                                     
-                                    elif msg.get("type")=="fin_test":
-                                        # Entraînement terminé
-                                        self.Cadre_results_Testing.update_prediction_plot(y_total,y,yhat)
+                                    # ===== ANCIENS FORMATS (compatibilité) =====
+                                    elif msg.get("type") == "test_pair":
+                                        # Ancien format - collecter comme validation
+                                        val_true.append(msg.get("y"))
+                                        val_predictions.append(msg.get("yhat"))
+                                    
+                                    elif msg.get("type") == "test_final":
+                                        self.Cadre_results_Metrics.afficher_Metrics(msg.get("metrics"))
+                                    
+                                    elif msg.get("type") == "fin_test":
+                                        # Ancien format - utiliser l'ancienne méthode
+                                        if not pred_predictions:  # Si pas de nouvelles données
+                                            self.Cadre_results_Testing.update_prediction_plot(y_total, val_true, val_predictions)
                                         break
                                 
                                 except json.JSONDecodeError as e:
@@ -631,10 +683,13 @@ class Fenetre_Acceuil(ctk.CTk):
                     messagebox.showerror("Erreur de connexion", f"Impossible de se connecter au serveur:\n{str(e)}")
                 
                 finally:
-                    # Arrêter l'affichage de l'entraînement
                     self.Cadre_results_Entrainement.stop_training()
             
-            
+            # ============================================================================
+            # FIN MODIFICATIONS POUR EnvoyerConfig() dans interface_local_ctk.py
+            # Remplacer la fonction run_training() à l'intérieur de EnvoyerConfig()
+            # ============================================================================
+
 
             # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
             training_thread = threading.Thread(target=run_training, daemon=True)
@@ -917,18 +972,30 @@ class Cadre_Entrainement(ctk.CTkFrame):
             min_loss = min(self.losses)
             self.label_loss.configure(text=f"Loss finale: {final_loss:.6f} (min: {min_loss:.6f})")
 
+
+# ============================================================================
+# NOUVEAU Cadre_Testing - À insérer dans interface_local_ctk.py
+# (remplace l'ancien Cadre_Testing)
+# ============================================================================
+
 class Cadre_Testing(ctk.CTkFrame):
+    """
+    Cadre d'affichage des résultats de test avec 3 zones :
+    - Série complète (bleu)
+    - Validation (vert)
+    - Prédiction autorégressive avec halo (rouge/orange)
+    """
+    
     def __init__(self, app, master=None):
         super().__init__(master)
         self.configure(fg_color=master.cget("fg_color"))
         self.fg_color = master.winfo_rgb(master.cget("fg_color"))
         self.fg_color = '#%02x%02x%02x' % (self.fg_color[0]//256, self.fg_color[1]//256, self.fg_color[2]//256)
         
-
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
-            text="📊 Affichage de la phase de test", 
+            text="📊 Résultats : Validation & Prédiction", 
             font=Fonts.Tabs_title,
             text_color=Colors.text_color_primary
         )
@@ -936,289 +1003,377 @@ class Cadre_Testing(ctk.CTkFrame):
 
         # Création du graphique vide au départ
         self.create_empty_prediction_plot()
+        
+        # Données stockées
+        self.series_complete = []
+        self.val_predictions = []
+        self.pred_predictions = []
+        self.pred_low = []
+        self.pred_high = []
+        self.idx_val_start = 0
+        self.idx_test_start = 0
 
-    def save_figure(self,fig):
+    def save_figure(self, fig):
+        from tkinter.filedialog import asksaveasfilename
         file_path = asksaveasfilename(
             defaultextension=".png",
             filetypes=[("PNG", "*.png"), ("PDF", "*.pdf"), ("SVG", "*.svg"), ("Tous les fichiers", "*.*")],
             title="Enregistrer la figure"
         )
         if file_path:
-            fig.savefig(file_path)
+            fig.savefig(file_path, dpi=150, bbox_inches='tight')
 
     def create_empty_prediction_plot(self):
         """Crée une figure vide et l'affiche dans le Frame."""
         
-        # Nettoyage du frame
-        # for widget in self.winfo_children():
-        #     widget.destroy()
-
         # Création figure + axes
         self.fig = Figure(figsize=(10, 6), dpi=100, facecolor=Colors.background_color)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_facecolor(Colors.background_color)
 
-        # Couleurs des axes (spines)
+        # Couleurs des axes
         for spine in self.ax.spines.values():
             spine.set_color(Colors.plot_axes_color)
         
-        # Couleurs des labels d'axes
         self.ax.xaxis.label.set_color(Colors.plot_text_color)
         self.ax.yaxis.label.set_color(Colors.plot_text_color)
+        self.ax.tick_params(axis="both", colors=Colors.plot_axes_color, labelsize=14)
+        self.ax.grid(True, which="major", color=Colors.plot_grid_color, linestyle=":", alpha=0.3)
 
-        # Couleur des ticks + taille
-        self.ax.tick_params(axis="both", colors=Colors.plot_axes_color, labelsize=20)
-
-        # Grille par défaut
-        # self.ax.grid(True, linestyle='--', alpha=0.3, color=Colors.plot_grid_color)
-        self.ax.grid(True, which="major", color=Colors.plot_grid_color, linestyle=":",alpha=0.2)
-        self.ax.grid(True, which="minor", color=Colors.plot_grid_color, linestyle="--", linewidth=0.5)
-        # self.ax.minorticks_on()
-
-        self.ax.set_title('Test de prédiction (vide)', fontdict=Fonts.plot_title)
+        self.ax.set_title('Test de prédiction (en attente)', fontdict=Fonts.plot_title)
 
         # Canvas Matplotlib
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=(0, 0))
 
-        # Liste pour stocker les courbes (important si plusieurs tracés successifs)
-        self.true_lines = []
-        self.pred_lines = []
-
-        # === BOUTON SAUVEGARDE ===
-        bouton_sauvegarde = ctk.CTkButton(
+        # Bouton sauvegarde
+        self.bouton_sauvegarde = ctk.CTkButton(
             master=self,
             text="💾 Enregistrer la figure",
             font=Fonts.button_font,
             text_color=Colors.button_text_color,
-            # hover_color="#1B4F72",
             corner_radius=8,
             width=180,
             height=35,
             command=lambda: self.save_figure(self.fig)
         )
-        bouton_sauvegarde.pack(pady=(10, 5))
+        self.bouton_sauvegarde.pack(pady=(10, 5))
+
+    def update_full_plot(self, data: dict):
+        """
+        Met à jour le graphique avec les données finales.
+        
+        data attendu :
+        {
+            "series_complete": [...],
+            "val_predictions": [...],
+            "pred_predictions": [...],
+            "pred_low": [...],
+            "pred_high": [...],
+            "idx_val_start": int,
+            "idx_test_start": int,
+        }
+        """
+        print("[Cadre_Testing] update_full_plot appelée")
+        
+        try:
+            self.ax.clear()
+            
+            # Récupération des données
+            series = data.get("series_complete", [])
+            val_preds = data.get("val_predictions", [])
+            pred_preds = data.get("pred_predictions", [])
+            pred_low = data.get("pred_low", [])
+            pred_high = data.get("pred_high", [])
+            idx_val = data.get("idx_val_start", 0)
+            idx_test = data.get("idx_test_start", 0)
+            
+            print(f"[Cadre_Testing] Données reçues: series={len(series)}, val={len(val_preds)}, pred={len(pred_preds)}")
+            
+            if not series:
+                print("[Cadre_Testing] ERREUR: series_complete est vide!")
+                return
+            
+            # Conversion en numpy
+            series = np.array(series, dtype=float)
+            n_total = len(series)
+            x_full = np.arange(n_total)
+            
+            # === 1. SÉRIE COMPLÈTE (bleu) ===
+            self.ax.plot(
+                x_full, series,
+                color='#2E86AB',
+                linewidth=1.5,
+                alpha=0.7,
+                label='Série réelle',
+                zorder=1
+            )
+            print(f"[Cadre_Testing] Série complète tracée: {n_total} points")
+            
+            # === 2. VALIDATION (vert) ===
+            if val_preds and len(val_preds) > 0:
+                val_preds_arr = np.array(val_preds, dtype=float)
+                # Aplatir si nécessaire (liste de listes)
+                if val_preds_arr.ndim > 1:
+                    val_preds_arr = val_preds_arr.flatten()
+                
+                x_val = np.arange(idx_val, idx_val + len(val_preds_arr))
+                self.ax.plot(
+                    x_val, val_preds_arr,
+                    color='#27AE60',
+                    linewidth=2,
+                    marker='o',
+                    markersize=2,
+                    label='Validation (teacher forcing)',
+                    zorder=3
+                )
+                print(f"[Cadre_Testing] Validation tracée: {len(val_preds_arr)} points à partir de idx={idx_val}")
+            
+            # === 3. PRÉDICTION AUTORÉGRESSIVE AVEC HALO ===
+            if pred_preds and len(pred_preds) > 0:
+                pred_preds_arr = np.array(pred_preds, dtype=float)
+                x_pred = np.arange(idx_test, idx_test + len(pred_preds_arr))
+                
+                # Halo (zone de confiance)
+                if pred_low and pred_high and len(pred_low) > 0 and len(pred_high) > 0:
+                    pred_low_arr = np.array(pred_low, dtype=float)
+                    pred_high_arr = np.array(pred_high, dtype=float)
+                    self.ax.fill_between(
+                        x_pred, pred_low_arr, pred_high_arr,
+                        color='#E74C3C',
+                        alpha=0.2,
+                        label='Intervalle de confiance (95%)',
+                        zorder=2
+                    )
+                
+                # Courbe centrale
+                self.ax.plot(
+                    x_pred, pred_preds_arr,
+                    color='#E74C3C',
+                    linewidth=2,
+                    marker='s',
+                    markersize=2,
+                    label='Prédiction (one-step)',
+                    zorder=4
+                )
+                print(f"[Cadre_Testing] Prédiction tracée: {len(pred_preds_arr)} points à partir de idx={idx_test}")
+            
+            # === LIGNES DE SÉPARATION ===
+            if idx_val > 0:
+                self.ax.axvline(idx_val, color='#27AE60', linestyle='--', linewidth=1.5, alpha=0.7)
+            
+            if idx_test > 0 and idx_test != idx_val:
+                self.ax.axvline(idx_test, color='#E74C3C', linestyle='--', linewidth=1.5, alpha=0.7)
+            
+            # === STYLE ===
+            self.ax.set_facecolor(Colors.background_color)
+            for spine in self.ax.spines.values():
+                spine.set_color(Colors.plot_axes_color)
+            self.ax.tick_params(axis="both", colors=Colors.plot_axes_color, labelsize=14)
+            self.ax.grid(True, which="major", color=Colors.plot_grid_color, linestyle=":", alpha=0.3)
+            
+            self.ax.set_xlabel('Index', fontsize=16, fontweight='bold', color=Colors.plot_text_color)
+            self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Colors.plot_text_color)
+            self.ax.set_title('Validation & Prédiction', fontdict=Fonts.plot_title)
+            
+            # Légende
+            self.ax.legend(
+                fancybox=True,
+                labelcolor=Colors.plot_axes_color,
+                prop={'family': 'sans-serif', 'size': 10},
+                facecolor=Colors.background_color,
+                loc='best',
+                framealpha=0.8
+            )
+            
+            self.fig.tight_layout()
+            self.canvas.draw()
+            print("[Cadre_Testing] Graphique mis à jour avec succès!")
+            
+        except Exception as e:
+            print(f"[Cadre_Testing] ERREUR dans update_full_plot: {e}")
+            import traceback
+            traceback.print_exc()
     
+    def plot_strategies_comparison(self, data: dict):
+        """
+        Affiche la comparaison de toutes les stratégies de prédiction.
+        
+        data attendu:
+        {
+            "series_complete": [...],
+            "idx_test_start": int,
+            "strategies": {
+                "one_step": {"predictions": [...], "low": [...], "high": [...], "metrics": {...}},
+                "recalibration": {...},
+                "recursive": {...},
+            }
+        }
+        """
+        print("[Cadre_Testing] plot_strategies_comparison appelée")
+        
+        try:
+            self.ax.clear()
+            
+            series = np.array(data.get("series_complete", []), dtype=float)
+            idx_test = data.get("idx_test_start", 0)
+            strategies = data.get("strategies", {})
+            
+            n_total = len(series)
+            x_full = np.arange(n_total)
+            
+            # Couleurs pour chaque stratégie
+            colors = {
+                "one_step": "#27AE60",      # Vert
+                "recalibration": "#3498DB", # Bleu
+                "recursive": "#E74C3C",     # Rouge
+                "direct": "#9B59B6",        # Violet
+            }
+            
+            # Labels
+            labels = {
+                "one_step": "One-Step (recalib immédiate)",
+                "recalibration": "Recalibration périodique",
+                "recursive": "Récursif pur",
+                "direct": "Direct multi-horizon",
+            }
+            
+            # Série réelle
+            self.ax.plot(
+                x_full, series,
+                color='#7F8C8D',
+                linewidth=1.5,
+                alpha=0.7,
+                label='Série réelle',
+                zorder=1
+            )
+            
+            # Tracer chaque stratégie
+            for strat_name, strat_data in strategies.items():
+                preds = strat_data.get("predictions", [])
+                if not preds:
+                    continue
+                
+                preds_arr = np.array(preds, dtype=float)
+                x_pred = np.arange(idx_test, idx_test + len(preds_arr))
+                color = colors.get(strat_name, "#333333")
+                label = labels.get(strat_name, strat_name)
+                
+                # Courbe de prédiction
+                self.ax.plot(
+                    x_pred, preds_arr,
+                    color=color,
+                    linewidth=2,
+                    alpha=0.8,
+                    label=label,
+                    zorder=3
+                )
+                
+                # Métriques dans la légende
+                metrics = strat_data.get("metrics", {})
+                r2 = metrics.get("R2")
+                if r2 is not None:
+                    self.ax.plot([], [], ' ', label=f"  R²={r2:.4f}")
+            
+            # Ligne de séparation
+            self.ax.axvline(idx_test, color='#95A5A6', linestyle='--', linewidth=1.5, alpha=0.7)
+            
+            # Style
+            self.ax.set_facecolor(Colors.background_color)
+            for spine in self.ax.spines.values():
+                spine.set_color(Colors.plot_axes_color)
+            self.ax.tick_params(axis="both", colors=Colors.plot_axes_color, labelsize=14)
+            self.ax.grid(True, which="major", color=Colors.plot_grid_color, linestyle=":", alpha=0.3)
+            
+            self.ax.set_xlabel('Index', fontsize=16, fontweight='bold', color=Colors.plot_text_color)
+            self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Colors.plot_text_color)
+            self.ax.set_title('Comparaison des Stratégies de Prédiction', fontdict=Fonts.plot_title)
+            
+            self.ax.legend(
+                fancybox=True,
+                labelcolor=Colors.plot_axes_color,
+                prop={'family': 'sans-serif', 'size': 9},
+                facecolor=Colors.background_color,
+                loc='upper left',
+                framealpha=0.9
+            )
+            
+            self.fig.tight_layout()
+            self.canvas.draw()
+            print("[Cadre_Testing] Comparaison tracée avec succès!")
+            
+        except Exception as e:
+            print(f"[Cadre_Testing] ERREUR dans plot_strategies_comparison: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # === Méthode de compatibilité avec l'ancien code ===
     def update_prediction_plot(self, y_total, y_true, y_pred):
         """
-        Ajoute une nouvelle paire de courbes (y, ŷ) sur la figure existante.
-        y_true et y_pred : 1D arrays de même taille.
+        Ancienne interface - conservée pour compatibilité.
+        Convertit vers le nouveau format.
         """
-
-        # Sécurité
-        if not hasattr(self, "ax"):
-            raise RuntimeError("La figure n'a pas été créée. Appelle create_empty_prediction_plot() d'abord.")
-
-        for line in self.ax.lines:
-            line.remove()
-        
-        y_total = np.array(y_total,dtype=float)
-        y_true = np.array(y_true, dtype=float)
-        y_pred = np.array(y_pred, dtype=float)
-
-        x = np.arange(len(y_true))
-        x = np.arange(len(y_total))
-
-        x_pred=x[-len(y_pred):]
-
-        # Courbe réelle
-        true_line, = self.ax.plot(
-            # x, y_true,
-            x, y_total,
-            color=Colors.plot_prediction_reel,
-            linewidth=2,
-            marker='o',
-            markersize=4,
-            markerfacecolor='white',
-            markeredgewidth=1.5,
-            markeredgecolor='#2E86AB',
-            alpha=0.9
-        )
-
-        # Courbe prédite
-        pred_line, = self.ax.plot(
-            # x, y_pred,
-            x_pred, y_pred,
-            color=Colors.plot_prediction_test,
-            linewidth=2,
-            marker='s',
-            markersize=4,
-            markerfacecolor='white',
-            markeredgewidth=1.5,
-            markeredgecolor='#A23B72',
-            linestyle="--",
-            alpha=0.9
-        )
-
-        ligne_separation=self.ax.axvline(x_pred[0], color=Colors.plot_grid_color, linestyle='--')
-
-        self.ax.legend(handles=[true_line,pred_line,ligne_separation],
-                       labels=["Valeurs réelles","Valeurs Prédites",'Séparation entrainement / test'],
-                       fancybox=True,
-                       labelcolor=Colors.plot_axes_color,
-                       prop=Fonts.plot_legend,
-                       facecolor=Colors.background_color,
-                       loc='best')
-
-        # Stockage des lignes si futur effacement / rafraîchissement
-        self.true_lines.append(true_line)
-        self.pred_lines.append(pred_line)
-
-        # Mise à jour du titre
-        self.ax.set_title('Test de prédiction', fontdict=Fonts.plot_title)
-
-        # Rafraîchissement
-        self.fig.tight_layout()
-        self.canvas.draw()
+        data = {
+            "series_complete": y_total,
+            "val_predictions": [],
+            "pred_predictions": y_pred,
+            "pred_low": [],
+            "pred_high": [],
+            "idx_val_start": len(y_total) - len(y_pred),
+            "idx_test_start": len(y_total) - len(y_pred),
+        }
+        self.update_full_plot(data)
 
     def plot_predictions(self, y_true_pairs, y_pred_pairs):
+        """Ancienne méthode conservée pour compatibilité"""
         for widget in self.winfo_children():
-            widget.destroy()
-        """
-        y_true_pairs, y_pred_pairs : listes de listes (N x D)
-        Affiche y vs yhat pour D dimensions (ou une seule si D=1) avec un style élégant.
-        """
+            if widget != self.bouton_sauvegarde:
+                widget.destroy()
+        
         if not y_true_pairs or not y_pred_pairs:
             return
 
-        yt = np.array(y_true_pairs, dtype=float)  # (N, D)
-        yp = np.array(y_pred_pairs, dtype=float)  # (N, D)
+        yt = np.array(y_true_pairs, dtype=float)
+        yp = np.array(y_pred_pairs, dtype=float)
 
-        # Squeeze si D=1
         if yt.ndim == 2 and yt.shape[1] == 1:
             yt = yt.squeeze(1)
             yp = yp.squeeze(1)
 
-        # Création du graphique matplotlib avec style moderne
         fig = Figure(facecolor=self.fg_color)
         ax = fig.add_subplot(111)
-        
-        
-        # Style du graphique
         ax.set_facecolor(self.fg_color)
         ax.grid(True, linestyle='--', alpha=0.3, color='#DCE4EE')
         
-        
         if yt.ndim == 1:
             x = np.arange(len(yt))
-            
-            # Tracer avec un style élégant
-            ax.plot(x, yt, 
-                    color='#2E86AB', 
-                    linewidth=2, 
-                    marker='o', 
-                    markersize=4, 
-                    markerfacecolor='white',
-                    markeredgewidth=1.5,
-                    markeredgecolor='#2E86AB',
-                    label='y (vraies valeurs)', 
-                    alpha=0.8,
-                    zorder=2)
-            
-            ax.plot(x, yp, 
-                    color="#e74c3c", 
-                    linewidth=2, 
-                    marker='s', 
-                    markersize=4, 
-                    markerfacecolor='white',
-                    markeredgewidth=1.5,
-                    markeredgecolor='#A23B72',
-                    label='ŷ (prédictions)', 
-                    alpha=0.8,
-                    zorder=2)
-            
-            # Remplissage entre les courbes pour montrer l'erreur
+            ax.plot(x, yt, color='#2E86AB', linewidth=2, marker='o', markersize=4, 
+                   markerfacecolor='white', markeredgewidth=1.5, markeredgecolor='#2E86AB',
+                   label='y (vraies valeurs)', alpha=0.8, zorder=2)
+            ax.plot(x, yp, color="#e74c3c", linewidth=2, marker='s', markersize=4,
+                   markerfacecolor='white', markeredgewidth=1.5, markeredgecolor='#A23B72',
+                   label='ŷ (prédictions)', alpha=0.8, zorder=2)
             ax.fill_between(x, yt, yp, alpha=0.2, color='gray', label='Erreur')
-            
-        else:
-            x = np.arange(yt.shape[0])
-            colors_true = ['#2E86AB', '#06A77D', '#F77F00', '#D62828']
-            colors_pred = ['#A23B72', '#F18F01', '#C73E1D', '#6A4C93']
-            
-            for d in range(min(yt.shape[1], 4)):  # Limiter à 4 dimensions pour la lisibilité
-                ax.plot(x, yt[:, d], 
-                        color=colors_true[d % len(colors_true)],
-                        linewidth=2,
-                        marker='o',
-                        markersize=3,
-                        markerfacecolor='white',
-                        markeredgewidth=1,
-                        markeredgecolor=colors_true[d % len(colors_true)],
-                        label=f'y (vrai) dim {d}',
-                        alpha=0.8,
-                        zorder=2)
-                
-                ax.plot(x, yp[:, d],
-                        color=colors_pred[d % len(colors_pred)],
-                        linewidth=2,
-                        marker='s',
-                        markersize=3,
-                        markerfacecolor='white',
-                        markeredgewidth=1,
-                        markeredgecolor=colors_pred[d % len(colors_pred)],
-                        label=f'ŷ (prédit) dim {d}',
-                        alpha=0.8,
-                        linestyle='--',
-                        zorder=2)
 
-        # Titre et labels
-        ax.set_title('Comparaison des prédictions avec les valeurs réelles', 
-                    fontsize=14, 
-                    fontweight='bold',
-                    pad=20)
-        ax.set_xlabel('Index de l\'échantillon', fontsize=11, fontweight='bold')
+        ax.set_title('Comparaison des prédictions', fontsize=14, fontweight='bold', pad=20)
+        ax.set_xlabel('Index', fontsize=11, fontweight='bold')
         ax.set_ylabel('Valeur', fontsize=11, fontweight='bold')
+        ax.legend(loc='best', frameon=True, fancybox=True, shadow=True, fontsize=10)
         
-        # Légende élégante
-        legend = ax.legend(loc='best', 
-                        frameon=True, 
-                        fancybox=True, 
-                        shadow=True,
-                        fontsize=10)
-        legend.get_frame().set_alpha(0.9)
-        
-        # Grille plus subtile
-        ax.grid(True, linestyle='--', alpha=0.4, zorder=1)
-        ax.set_axisbelow(True)
-
-        
-        ax.set_facecolor(self.fg_color)
-        ax.grid(True, linestyle='--', alpha=0.3, color='#95a5a6')
-        
-        
-        # Ajuster les marges
         fig.tight_layout()
-        # fig.patch.set_facecolor(self.fg_color)
-        
-
-
         canvas = FigureCanvasTkAgg(fig, master=self)
         canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True,padx=(0,10))
-
-
-       
-        # Bouton de sauvegarde stylisé
-        bouton_sauvegarde = ctk.CTkButton(
-            master=self,
-            text="💾 Enregistrer la figure",
-            font=("Helvetica", 11, "bold"),
-            fg_color="#2E86AB",       # Fond bleu profond
-            text_color="white",       # Texte blanc
-            hover_color="#1B4F72",    # Couleur au survol
-            corner_radius=8,           # Bords arrondis
-            width=180,                 # Largeur
-            height=35,                 # Hauteur
-            command=lambda: self.save_figure(fig)
-        )
-        bouton_sauvegarde.pack(pady=(10, 5))
-
-
+        canvas.get_tk_widget().pack(fill="both", expand=True, padx=(0, 10))
 
         
         # Afficher
         #plt.show()
+
+# ============================================================================
+# NOUVEAU Cadre_Metrics - À insérer dans interface_local_ctk.py
+# (remplace l'ancien Cadre_Metrics.afficher_Metrics)
+# ============================================================================
 
 class Cadre_Metrics(ctk.CTkFrame):
     def __init__(self, app, master=None):
@@ -1230,19 +1385,148 @@ class Cadre_Metrics(ctk.CTkFrame):
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
-            text="📊 Affichage des metriques", 
+            text="📊 Métriques", 
             font=Fonts.Tabs_title,
             text_color=Colors.text_color_primary
         )
         self.titre.pack(pady=(0, 10))
+        
+        # Frame pour les métriques
+        self.metrics_frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
+        self.metrics_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-    def afficher_Metrics(self,metrics):
-        for widget in self.winfo_children():
-            if widget != self.titre:
-                widget.destroy()
-        for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
-            label = ctk.CTkLabel(self, text=f"{metric}: {val:.8f}", font=Fonts.Metrics, text_color=Colors.text_color_primary)
-            label.pack(anchor="w", padx=15, pady=5)
+    def afficher_Metrics(self, metrics):
+        """
+        Affiche les métriques - compatible avec l'ancien et le nouveau format.
+        
+        Ancien format:
+            {"overall_mean": {"MSE": ..., "MAE": ..., ...}, "per_dim": {...}}
+        
+        Nouveau format:
+            {"validation": {"overall_mean": {...}}, "prediction": {"MSE": ..., ...}}
+        """
+        # Nettoyer l'affichage précédent
+        for widget in self.metrics_frame.winfo_children():
+            widget.destroy()
+        
+        if not metrics:
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text="Aucune métrique disponible",
+                font=("Roboto", 14)
+            ).pack(pady=10)
+            return
+        
+        row = 0
+        
+        # ===== NOUVEAU FORMAT (validation + prediction) =====
+        if "validation" in metrics or "prediction" in metrics:
+            
+            # --- Métriques de Validation ---
+            if "validation" in metrics:
+                val_metrics = metrics["validation"]
+                
+                # Titre section
+                ctk.CTkLabel(
+                    self.metrics_frame,
+                    text="📗 Validation (Teacher Forcing)",
+                    font=("Roboto Medium", 18, "bold"),
+                    text_color="#27AE60"
+                ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
+                row += 1
+                
+                # Extraire les métriques
+                overall = val_metrics.get("overall_mean", val_metrics)
+                self._afficher_metrics_dict(overall, row)
+                row += len(overall) + 1
+            
+            # --- Métriques de Prédiction ---
+            if "prediction" in metrics:
+                pred_metrics = metrics["prediction"]
+                
+                # Titre section
+                ctk.CTkLabel(
+                    self.metrics_frame,
+                    text="📕 Prédiction (Autorégressive)",
+                    font=("Roboto Medium", 18, "bold"),
+                    text_color="#E74C3C"
+                ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(20, 5))
+                row += 1
+                
+                # pred_metrics peut être directement les métriques ou avoir "overall_mean"
+                if isinstance(pred_metrics, dict):
+                    if "overall_mean" in pred_metrics:
+                        overall = pred_metrics["overall_mean"]
+                    else:
+                        overall = pred_metrics
+                    self._afficher_metrics_dict(overall, row)
+        
+        # ===== ANCIEN FORMAT (overall_mean direct) =====
+        elif "overall_mean" in metrics:
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text="📊 Métriques Globales",
+                font=("Roboto Medium", 18, "bold"),
+                text_color=Colors.text_color_primary
+            ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
+            row += 1
+            
+            self._afficher_metrics_dict(metrics["overall_mean"], row)
+        
+        # ===== FORMAT SIMPLE (dict direct) =====
+        else:
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text="📊 Métriques",
+                font=("Roboto Medium", 18, "bold"),
+                text_color=Colors.text_color_primary
+            ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
+            row += 1
+            
+            self._afficher_metrics_dict(metrics, row)
+
+    def _afficher_metrics_dict(self, metrics_dict: dict, start_row: int):
+        """Affiche un dictionnaire de métriques sous forme de grille"""
+        
+        # Couleurs pour chaque métrique
+        metric_colors = {
+            "MSE": "#3498DB",
+            "MAE": "#9B59B6", 
+            "RMSE": "#E67E22",
+            "R2": "#1ABC9C"
+        }
+        
+        for i, (metric_name, value) in enumerate(metrics_dict.items()):
+            row = start_row + i
+            
+            # Nom de la métrique
+            color = metric_colors.get(metric_name, Colors.text_color_primary)
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text=f"{metric_name}:",
+                font=("Roboto Medium", 16),
+                text_color=color
+            ).grid(row=row, column=0, sticky="w", padx=(20, 10), pady=3)
+            
+            # Valeur
+            if value is None:
+                val_str = "N/A"
+            elif isinstance(value, float):
+                if abs(value) < 0.0001:
+                    val_str = f"{value:.2e}"
+                elif abs(value) > 1000:
+                    val_str = f"{value:.2f}"
+                else:
+                    val_str = f"{value:.6f}"
+            else:
+                val_str = str(value)
+            
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text=val_str,
+                font=("Roboto", 16),
+                text_color=Colors.text_color_primary
+            ).grid(row=row, column=1, sticky="e", padx=(10, 20), pady=3)
 
 class Cadre_Prediction(ctk.CTkFrame):
     def __init__(self, app, master=None):
