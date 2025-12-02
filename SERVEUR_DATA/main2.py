@@ -357,17 +357,7 @@ async def data_suppression(payload: deleteDatasetRequest):
 
     return "dataset supprimé avec succès"
 
-@app.post("/models/info_all")
-async def models_info_all(req: ChoixModelerequest):
-    if req.message != "choix modele":
-        raise HTTPException(status_code=400, detail="Message inconnu")
 
-try:
-        json_final = construire_json_models()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return json_final
 
 # Lancement direct (optionnel)
 # ----------------------------
