@@ -1,5 +1,8 @@
 # ====================================
 # IMPORTs
+#export KMP_DUPLICATE_LIB_OK=TRUEDD
+#export OMP_NUM_THREADS=1
+#python -m uvicorn SERVEUR_IA.test_main:app --host 0.0.0.0 --port 8000 --reload
 # ====================================
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -478,7 +481,7 @@ class TrainingPipeline:
             "direct": PredictionStrategy.DIRECT,
         }
         
-        pred_strategy = strategy_map.get(strategy, PredictionStrategy.ONE_STEP)
+        pred_strategy = strategy_map.get(strategy, PredictionStrategy.RECALIBRATION)
         
         config = PredictionConfig(
             strategy=pred_strategy,

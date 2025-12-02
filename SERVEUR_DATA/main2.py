@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 import json
+import uvicorn
 
 # ------------------ ---------
 # App & chemins
@@ -13,7 +14,7 @@ app = FastAPI()
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "datasets"
-
+MODEL_DIR = BASE_DIR / "models"
 
 # ----------------------------
 # Modèles de requêtes
@@ -21,10 +22,6 @@ DATA_DIR = BASE_DIR / "datasets"
 
 class ChoixDatasetRequest(BaseModel):
     message: str
-    name: Optional[str] = None
-    date_debut: Optional[str] = None
-    date_fin: Optional[str] = None
-    pas_temporel: Optional[int] = None
 
 
 class ChoixDatasetRequest2(BaseModel):
@@ -32,7 +29,14 @@ class ChoixDatasetRequest2(BaseModel):
     dates: List[str]        # [date_debut, date_fin]
     pas_temporel: int       # ENTIER : 1 => tous les points, 2 => 1 sur 2, etc.
 
+class newDatasetRequest(BaseModel):
+    name: str
+    data: Dict[str, Any]
 
+class deleteDatasetRequest(BaseModel):
+    name: str
+class ChoixModelerequest(BaseModel):
+    message: str
 # ----------------------------
 # Utils
 # ----------------------------
@@ -243,7 +247,41 @@ def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: int) -
     # si on a rien trouvé
     return {"error": f"Dataset '{name}' not found"}
 
+def add_new_dataset(name: str, data: Dict[str, Any]) -> None:
+    """
+    Ajoute un nouveau dataset dans DATA_DIR avec le nom `name` et les données `data`.
+    """
+    if not DATA_DIR.exists():
+        raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
 
+    path_new_dataset = DATA_DIR / f"{name}.json"
+
+    if path_new_dataset.exists():
+        raise ValueError(f"Dataset '{name}' existe déjà et ne peut pas être ajouté")
+    
+    with open(path_new_dataset, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    print(f"Dataset '{name}' ajouté avec succès dans {path_new_dataset}")
+
+def remove_dataset(name: str) -> None:
+    """
+    Supprime le dataset `name` de DATA_DIR.
+    """
+    if not DATA_DIR.exists():
+        raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
+
+    path_dataset = DATA_DIR / f"{name}.json"
+
+    if not path_dataset.exists():
+        raise ValueError(f"Dataset '{name}' n'existe pas et ne peut pas être supprimé")
+
+    path_dataset.unlink()
+
+    print(f"Dataset '{name}' supprimé avec succès de {path_dataset}")
+
+
+      
 # ----------------------------
 # Endpoints
 # ----------------------------
@@ -286,10 +324,48 @@ async def data_solo(payload: ChoixDatasetRequest2):
 
     return json_final
 
+## Pourquoi il y a une erreur 404 ici ?  modifie copilot stp
+##
+@app.post("/datasets/data_add")
+async def data_addd(payload: newDatasetRequest):
+    ## c'est bon ici ?  
+    print("DATA SERVER received fetch_dataset for:", payload.name)
 
-# ----------------------------
-# Lancement direct (optionnel)
-# ----------------------------
+    try:
+        add_new_dataset(
+            name=payload.name,
+            data=payload.data
+        )
+    except ValueError as e:
+        # erreurs de format (dates, pas, etc.)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+
+    
+
+    return "dataset ajouté avec succès"
+@app.post("/datasets/data_supression")
+async def data_suppression(payload: deleteDatasetRequest):
+    print("DATA SERVER received delete_dataset for:", payload.name)
+
+    try:
+        remove_dataset(
+            name=payload.name
+        )
+    except ValueError as e:
+        # erreurs de format (dates, pas, etc.)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+
+    return "dataset supprimé avec succès"
+
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main2:app", host="0.0.0.0", port=8001, reload=True)
+
