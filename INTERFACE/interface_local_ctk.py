@@ -125,6 +125,7 @@ class Fonts_class():
         # self.plot_title = ("Roboto", 24, "bold")
         self.plot_title = {'fontname':'sans-serif','fontsize':24, 'fontweight':'bold','color':'#DCE4EE'}
         self.plot_legend = {'family':'sans-serif','size':20}
+
 class Colors_IRMA_class():
     def __init__(self):
         # Couleurs style IRMA Conseil
@@ -139,12 +140,30 @@ class Colors_IRMA_class():
 
 class Colors_Light_class():
     def __init__(self):
-        self.text_color_primary = '#2C3E50'
+        self.back_color="#FF6B6B"
+        self.background_color = "#B9FFA3"
+        self.tab_background_color = "#7AAE6B"
+        
+        #Graphiques
+        self.plot_axes_color = '#DCE4EE'
+        self.plot_grid_color = '#DCE4EE'
+
+        self.plot_prediction_reel='#2E86AB'
+        self.plot_prediction_test='#A23B72'
+
+        #Texte
+        self.plot_text_color="#EA00FF"
+        self.text_color_primary = "#AA5500"
+        self.button_text_color = "#FFEE00"
+
+        #Autres
+        self.button_color="#0C324F"
 
 class Colors_Dark_class():
     def __init__(self):
-        self.back_color=None
-        self.background_color = '#2B2B2B'
+        self.back_color="#242424" #gray14
+        self.background_color = '#2B2B2B' #gray92
+        self.tab_background_color = "#2B2B2B"
         
         #Graphiques
         self.plot_axes_color = '#DCE4EE'
@@ -158,7 +177,15 @@ class Colors_Dark_class():
         self.text_color_primary = '#DCE4EE'
         self.button_text_color = '#DCE4EE'
 
+        #Autres
+        self.button_color='#1F6AA5'
+
+        self.notebook_color={
+            
+        }
+
 Colors_Dark=Colors_Dark_class()
+Colors_Light=Colors_Light_class()
 Fonts=Fonts_class()
 Colors=Colors_Dark
 
@@ -200,6 +227,7 @@ class Fenetre_Acceuil(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)                # extensible
         self.grid_rowconfigure(0, weight=1)
         self.title("🧠 Paramétrage du Réseau de Neuronnes")
+        self.configure(fg_color=Colors.back_color)
         #self.configure(bg=self.fenetre_bg)
         # self.geometry("1200x700")
 
@@ -223,6 +251,7 @@ class Fenetre_Acceuil(ctk.CTk):
 
         # Cadre principal de configuration
         self.cadre = ctk.CTkFrame(self, corner_radius=10)
+        self.cadre.configure(fg_color=Colors.background_color)
         self.cadre.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         self.cadre.grid_columnconfigure(0, weight=1)
 
@@ -234,6 +263,7 @@ class Fenetre_Acceuil(ctk.CTk):
         # self.Cadre_results_global.grid(row=0, column=1, sticky="nsew", padx=(0,20), pady=20)
     
         self.Results_notebook = ctk.CTkTabview(self,corner_radius=10)
+        # self.Results_notebook.configure(fg_color=Colors.background_color,segmented_button_fg_color=Colors.tab_background_color)
         self.Results_notebook.grid(row=0, column=1, sticky="nsew", padx=(0,20),pady=(0,20))
 
         #Créer les onglets
@@ -262,35 +292,45 @@ class Fenetre_Acceuil(ctk.CTk):
             self, self.Results_notebook.tab("Prediction")
         )
         self.Cadre_results_Prediction.pack(fill="both", expand=True)
-
-
+        
+        self.Results_notebook.configure(fg_color="#00377A",
+                                        text_color="#007E06",
+                                        segmented_button_fg_color="#A30093",
+                                        segmented_button_selected_color="#FF0000",
+                                        segmented_button_unselected_color="#00A995",
+                                        segmented_button_unselected_hover_color="#A0AC00"
+                                        )
         # Titre
         ctk.CTkLabel(
             self.cadre, 
             text="MLApp", 
-            font=Fonts.Titre_app
+            font=Fonts.Titre_app,
+            text_color=Colors.text_color_primary,
+            fg_color=Colors.background_color
         ).pack(pady=(20, 10))
         # Sous-titre
         ctk.CTkLabel(
             self.cadre,
             text="Machine Learning Application",
-            font=Fonts.sous_Titre_app
+            font=Fonts.sous_Titre_app,
+            text_color=Colors.text_color_primary,
+            fg_color=Colors.background_color
         ).pack(pady=(0, 40))
 
 
         # Section 1 : Modèle
-        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=Fonts.Section_params,background_color=Colors.background_color)
+        Label_frame_Modele,Titre_frame_Modele = self.label_frame(self.cadre, title="🧬 Modèle", font=Fonts.Section_params,background_color=Colors.background_color,text_color=Colors.text_color_primary)
         Titre_frame_Modele.pack()
         Label_frame_Modele.pack(fill="both",padx=10)
         Label_frame_Modele.grid_columnconfigure(0, weight=1)
         Label_frame_Modele.grid_rowconfigure(0, weight=1)
         
-        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40,font=Fonts.button_font).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
-        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Modele, "📂 Charger Modèle", self.test,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        self.bouton(Label_frame_Modele, "⚙️ Paramétrer Modèle", self.Parametrer_modele,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
 
 
         # Section 2 : Données
-        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=Fonts.Section_params,background_color=Colors.background_color)
+        Label_frame_Donnees,Titre_frame_Donnees = self.label_frame(self.cadre, title="📊 Données", font=Fonts.Section_params,background_color=Colors.background_color,text_color=Colors.text_color_primary)
         Titre_frame_Donnees.pack(pady=(30,0))
         Label_frame_Donnees.pack(fill="both",padx=10)
         Label_frame_Donnees.grid_columnconfigure(0, weight=1)
@@ -321,12 +361,12 @@ class Fenetre_Acceuil(ctk.CTk):
         combobox.grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
         
         
-        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
         
-        self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font).pack(fill="both",padx=30,pady=(40,0))
+        self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font,text_color=Colors.text_color_primary,background_color=Colors.button_color).pack(fill="both",padx=30,pady=(40,0))
 
         # Section 3 : Actions
-        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=self.cadre.cget("fg_color")) #fg_color=root.cget('fg_color')
+        section_actions = ctk.CTkFrame(self.cadre,corner_radius=10,fg_color=Colors.background_color) #fg_color=root.cget('fg_color')
         section_actions.pack(side="bottom",fill="both",pady=(0,10),padx=10)
         section_actions.grid_columnconfigure(0, weight=1)
         section_actions.grid_columnconfigure(1, weight=1)
@@ -357,12 +397,12 @@ class Fenetre_Acceuil(ctk.CTk):
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
 
-    def label_frame(self, root, title, font,background_color, width=200, height=200):
+    def label_frame(self, root, title, font, background_color, text_color, width=200, height=200):
         # Crée un cadre avec un titre simulant un LabelFrame
         frame = ctk.CTkFrame(root, width=width, height=height, corner_radius=10, fg_color=background_color, border_width=2, border_color="gray")
         #frame.pack_propagate(False)
 
-        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font)
+        title_label = ctk.CTkLabel(root, text="  "+title+"  ", font=font, fg_color=background_color, text_color=text_color)
         return frame, title_label
     
     def bouton(self, parent, texte, commande,padx=5, pady=20,background_color=None, text_color=None, font=None, width=None, height=None,pack=False):
