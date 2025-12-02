@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 import json
+import uvicorn
 
 # ------------------ ---------
 # App & chemins
@@ -319,8 +320,12 @@ async def data_solo(payload: ChoixDatasetRequest2):
         raise HTTPException(status_code=404, detail=json_final["error"])
 
     return json_final
+
+## Pourquoi il y a une erreur 404 ici ?  modifie copilot stp
+##
 @app.post("/datasets/data_add")
-async def data_solo(payload: newDatasetRequest):
+async def data_addd(payload: newDatasetRequest):
+    ## c'est bon ici ?  
     print("DATA SERVER received fetch_dataset for:", payload.name)
 
     try:
@@ -358,9 +363,6 @@ async def data_suppression(payload: deleteDatasetRequest):
     return "dataset supprimé avec succès"
 
 
-
-# Lancement direct (optionnel)
-# ----------------------------
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main2:app", host="0.0.0.0", port=8001, reload=True)
+
