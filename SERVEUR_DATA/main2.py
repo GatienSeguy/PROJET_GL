@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 import json
 import uvicorn
+import base64
 
 # ------------------ ---------
 # App & chemins
@@ -20,6 +21,21 @@ MODEL_DIR = BASE_DIR / "models"
 # Modèles de requêtes
 # ----------------------------
 
+class TimeSeriesData(BaseModel):
+    """
+    Une unique série temporelle : timestamps et valeurs alignés (même longueur).
+    """
+    timestamps: List[datetime] 
+    values: List[Optional[float]]
+     
+     # Mini garde-fou : même taille
+    def model_post_init(self, __context) -> None:
+        if len(self.timestamps) != len(self.values):
+            raise ValueError("timestamps et values doivent avoir la même longueur")
+
+
+
+
 class ChoixDatasetRequest(BaseModel):
     message: str
 
@@ -31,12 +47,21 @@ class ChoixDatasetRequest2(BaseModel):
 
 class newDatasetRequest(BaseModel):
     name: str
-    data: Dict[str, Any]
+    data: TimeSeriesData
 
 class deleteDatasetRequest(BaseModel):
     name: str
+
 class ChoixModelerequest(BaseModel):
     message: str
+
+class newModelRequest(BaseModel):
+    name: str
+    data: str  # Base64 encoded string
+
+class DeleteModelRequest(BaseModel):
+    name: str
+    
 # ----------------------------
 # Utils
 # ----------------------------
@@ -247,9 +272,10 @@ def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: int) -
     # si on a rien trouvé
     return {"error": f"Dataset '{name}' not found"}
 
-def add_new_dataset(name: str, data: Dict[str, Any]) -> None:
+def add_new_dataset(name: str, data: TimeSeriesData) -> None:
     """
     Ajoute un nouveau dataset dans DATA_DIR avec le nom `name` et les données `data`.
+    `data` est un TimeSeriesData (Pydantic).
     """
     if not DATA_DIR.exists():
         raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
@@ -259,10 +285,13 @@ def add_new_dataset(name: str, data: Dict[str, Any]) -> None:
     if path_new_dataset.exists():
         raise ValueError(f"Dataset '{name}' existe déjà et ne peut pas être ajouté")
     
+    data_dict = data.model_dump(mode="json")
+    
     with open(path_new_dataset, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(data_dict, f, ensure_ascii=False, indent=2)
 
     print(f"Dataset '{name}' ajouté avec succès dans {path_new_dataset}")
+
 
 def remove_dataset(name: str) -> None:
     """
@@ -280,8 +309,74 @@ def remove_dataset(name: str) -> None:
 
     print(f"Dataset '{name}' supprimé avec succès de {path_dataset}")
 
+def construire_modeles() -> Dict[str, Any]:
+    """
+    Lit les fichiers .pth, les encode en Base64 et renvoie le contenu.
+    """
+    if not MODEL_DIR.exists():
+        raise RuntimeError(f"Le dossier {MODEL_DIR} n’existe pas")
 
-      
+    result: Dict[str, Any] = {}
+
+    for file in MODEL_DIR.iterdir():
+        if not file.is_file():
+            continue
+        if file.suffix.lower() != ".pth":
+            continue
+
+        modele_id = file.stem
+
+        # LECTURE ET ENCODAGE DU FICHIER
+        with open(file, "rb") as f:
+            # On lit les bytes et on les encode en base64 pour le transport JSON
+            file_content = base64.b64encode(f.read()).decode('utf-8')
+            print(modele_id)
+
+        result[modele_id] = {
+            "nom": modele_id,
+            # On envoie le contenu encodé
+            "model_state_dict": file_content 
+        }
+    return result
+
+def add_new_model(name: str, data: str) -> None:
+    """
+    Ajoute un nouveau modèle .pth dans MODEL_DIR avec le nom `name` et les données `data`.
+    `data` est une chaîne Base64.
+    """
+    if not MODEL_DIR.exists():
+        raise RuntimeError(f"Le dossier {MODEL_DIR} n’existe pas")
+
+    path_new_model = MODEL_DIR / f"{name}.pth"
+
+    if path_new_model.exists():
+        raise ValueError(f"Modèle '{name}' existe déjà et ne peut pas être ajouté")
+    
+    # Décodage Base64
+    try:
+        model_bytes = base64.b64decode(data)
+    except Exception as e:
+        raise ValueError(f"Erreur de décodage Base64 pour le modèle '{name}': {e}")
+    
+    with open(path_new_model, "wb") as f:
+        f.write(model_bytes)
+
+    print(f"Modèle '{name}' ajouté avec succès dans {path_new_model}")
+def remove_model(name: str) -> None:
+    """
+    Supprime le modèle `name` de MODEL_DIR.
+    """
+    if not MODEL_DIR.exists():
+        raise RuntimeError(f"Le dossier {MODEL_DIR} n’existe pas")
+
+    path_model = MODEL_DIR / f"{name}.pth"
+
+    if not path_model.exists():
+        raise ValueError(f"Modèle '{name}' n'existe pas et ne peut pas être supprimé")
+
+    path_model.unlink()
+
+    print(f"Modèle '{name}' supprimé avec succès de {path_model}")
 # ----------------------------
 # Endpoints
 # ----------------------------
@@ -324,11 +419,9 @@ async def data_solo(payload: ChoixDatasetRequest2):
 
     return json_final
 
-## Pourquoi il y a une erreur 404 ici ?  modifie copilot stp
-##
+
 @app.post("/datasets/data_add")
 async def data_addd(payload: newDatasetRequest):
-    ## c'est bon ici ?  
     print("DATA SERVER received fetch_dataset for:", payload.name)
 
     try:
@@ -343,10 +436,8 @@ async def data_addd(payload: newDatasetRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
     print("\nOn est bien\n")
-
-    
-
     return "dataset ajouté avec succès"
+
 @app.post("/datasets/data_supression")
 async def data_suppression(payload: deleteDatasetRequest):
     print("DATA SERVER received delete_dataset for:", payload.name)
@@ -365,6 +456,55 @@ async def data_suppression(payload: deleteDatasetRequest):
 
     return "dataset supprimé avec succès"
 
+@app.post("/models/model_all")
+async def model_all(req: ChoixModelerequest):
+    # Modification de la condition pour accepter "choix_models"
+    if req.message != "choix_models":
+        raise HTTPException(status_code=400, detail="Message inconnu. Attendu: 'choix_models'")
+    
+    try:
+          modeles = construire_modeles()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return modeles
+
+@app.post("/models/model_add")
+async def model_add(payload: newModelRequest):
+    print("DATA SERVER received fetch_dataset for:", payload.name)
+
+    try:
+        add_new_model(
+            name=payload.name,
+            data=payload.data
+        )
+    except ValueError as e:
+    
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+    return "modele .pth ajouté avec succès"
+@app.post("/models/model_delete")
+async def model_delete(payload: DeleteModelRequest):
+    print("DATA SERVER received delete_model for:", payload.name)
+
+    try:
+        remove_model(
+            name=payload.name
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+
+    return "modèle supprimé avec succès"
+
+@app.get("/")
+def root():
+    return {"message": "Serveur DATA actif !"}
 
 if __name__ == "__main__":
     uvicorn.run("main2:app", host="0.0.0.0", port=8001, reload=True)

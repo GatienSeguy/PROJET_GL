@@ -164,6 +164,12 @@ class Tx_choix_dataset(BaseModel):
     name: Optional[str] = Field(None, description="Nom du fichier à utiliser")
     pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
 
+class newDatasetRequest(BaseModel):
+    name: str
+    data: TimeSeriesData
+
+class deleteDatasetRequest(BaseModel):
+    name: str
 
 
 class PaquetComplet(BaseModel):
