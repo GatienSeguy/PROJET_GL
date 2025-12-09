@@ -1,0 +1,17 @@
+{
+    "treeview": {
+        "font": ["Roboto", 14],
+        "rowheight": 30,
+        "background": "#FFFFFF",
+        "foreground": "#000000",
+        "fieldbackground": "#FFFFFF",
+        "selected_background": "#3399FF",
+        "selected_foreground": "#FFFFFF"
+    },
+    "treeview_heading": {
+        "font": ["Roboto Medium", 16, "bold"],
+        "background": "#3b8ed0",
+        "foreground": "#FFFFFF",
+        "relief": "flat"
+    }
+}

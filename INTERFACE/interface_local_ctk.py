@@ -13,6 +13,10 @@ import matplotlib
 from tkinter.filedialog import asksaveasfilename
 matplotlib.use("TkAgg")
 import customtkinter as ctk
+import random
+import json
+import tkinter.font as tkfont
+
 
 
 URL = "http://192.168.1.190:8000"
@@ -154,7 +158,6 @@ class Colors_IRMA_class():
 
 Fonts=Fonts_class()
 
-
 Datasets_list=[]
 Dataset=""
 
@@ -174,11 +177,11 @@ Selected_Dataset=Selected_Dataset_class()
 # Créer la fenêtre d'accueil
 class Fenetre_Acceuil(ctk.CTk):
     def __init__(self):
-        self.JSON_Datasets=self.obtenir_datasets()
-
         self.cadres_bg="#eaf2f8"
         self.cadres_fg="#e4eff8"
         self.fenetre_bg="#f0f4f8"
+
+        self.JSON_Datasets={}
 
         self.stop_training = False  # drapeau d’annulation
         self.Payload={}
@@ -186,6 +189,7 @@ class Fenetre_Acceuil(ctk.CTk):
         self.Fenetre_Params_horizon_instance = None
         self.Fenetre_Choix_datasets_instance = None
         self.Fenetre_Choix_metriques_instance = None
+        self.Gestion_Datasets_instance = None
         # self.feur_instance = None
 
         ctk.CTk.__init__(self)
@@ -219,8 +223,8 @@ class Fenetre_Acceuil(ctk.CTk):
         self.cadre.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         self.cadre.grid_columnconfigure(0, weight=1)
 
-
-
+        #Chargement des Datasets disponibles
+        threading.Thread(target=self.obtenir_datasets, daemon=True).start()
 
         # Cadre des résultats
         # self.Cadre_results_global = ctk.CTkFrame(self, corner_radius=10)
@@ -288,33 +292,18 @@ class Fenetre_Acceuil(ctk.CTk):
         Label_frame_Donnees.grid_columnconfigure(0, weight=1)
         Label_frame_Donnees.grid_rowconfigure(0, weight=1)
 
+
         
         # self.bouton(Label_frame_Donnees, "📁 Choix Dataset", self.Parametrer_dataset,height=40).grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
         # JSON_Datasets_String=JSON_Datasets_String.replace("'", '"')
         # JSON_Datasets_Dict=json.loads(JSON_Datasets_String)
 
 
-        def optionmenu_callback(choice):            
-            Selected_Dataset.name=choice
-            Selected_Dataset.dates=[d.split(" ")[0] for d in self.JSON_Datasets[choice]['dates']]
-            Selected_Dataset.pas_temporel=self.JSON_Datasets[choice]['pas_temporel']
-
-            Parametres_temporels.nom_dataset=Selected_Dataset.name
-            Parametres_temporels.dates=Selected_Dataset.dates
-            Parametres_temporels.pas_temporel=1
+     
         
-        optionmenu_var = ctk.StringVar(value=Dataset)  # set initial value
-
-        combobox = ctk.CTkOptionMenu(master=Label_frame_Donnees,
-                                            values=list(self.JSON_Datasets.keys()),
-                                            command=optionmenu_callback,
-                                            variable=optionmenu_var,
-                                            )
-        combobox.configure(font=Fonts.button_font)
-        combobox.grid(row=0, column=0,padx=20,pady=20, sticky="nsew")
+        self.bouton(Label_frame_Donnees, "Datasets", self.Gestion_Datasets,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(20,20), sticky="nsew")
         
-        
-        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font).grid(row=1, column=0,padx=20,pady=(0,20), sticky="nsew")
+        self.bouton(Label_frame_Donnees, "📅 Paramétrer Horizon", self.Parametrer_horizon,height=40,font=Fonts.button_font).grid(row=2, column=0,padx=20,pady=(0,20), sticky="nsew")
         
         self.bouton(self.cadre, "📈 Choix Métriques et Visualisations", self.Parametrer_metriques,height=40,font=Fonts.button_font).pack(fill="both",padx=30,pady=(40,0))
 
@@ -386,9 +375,9 @@ class Fenetre_Acceuil(ctk.CTk):
         """Annule l'entraînement sans fermer le programme."""
         if not self.stop_training:
             self.stop_training = True
-            messagebox.showinfo("Annulation", "L'entraînement en cours a été annulé.")
+            messagebox.showinfo("Annulation", "L'entraînement en cours a été annulé.",parent=self)
         else:
-            messagebox.showwarning("Info", "Aucun entraînement en cours ou déjà annulé.")
+            messagebox.showwarning("Info", "Aucun entraînement en cours ou déjà annulé.",parent=self)
 
     def test(self):
         print("test")
@@ -411,6 +400,12 @@ class Fenetre_Acceuil(ctk.CTk):
         else:
             self.Fenetre_Choix_metriques_instance.lift()  # Ramène la fenêtre secondaire au premier plan
     
+    def Gestion_Datasets(self):
+        if self.Gestion_Datasets_instance is None or not self.Gestion_Datasets_instance.est_ouverte():
+            self.Gestion_Datasets_instance = Fenetre_Gestion_Datasets(self)
+        else:
+            self.Gestion_Datasets_instance.lift()  # Ramène la fenêtre secondaire au premier plan
+
     def Formatter_JSON_global(self):
         self.config_totale={}
         # self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
@@ -453,11 +448,14 @@ class Fenetre_Acceuil(ctk.CTk):
             r = requests.post(url, json=payload, timeout=10000)
             r.raise_for_status()
             data = r.json()
-            return data
+            self.JSON_Datasets=data
+            return 1
         
         except Exception as e:
             print("Erreur UI → IA :", e)
-            return None
+            self.JSON_Datasets=None
+            messagebox.showwarning("Erreur dans le chargement des Datasets", "Erreur lors de la récupération des datasets depuis le serveur.\nVeuillez vérifier la connexion au serveur ou le bon fonctionnement de ce dernier.",parent=self)
+            return 0
 
     def EnvoyerConfig(self):
         if self.Cadre_results_Entrainement.is_training==False:
@@ -500,7 +498,7 @@ class Fenetre_Acceuil(ctk.CTk):
                     print(f"Erreur de connexion lors de fetch_dataset: {e}")
                     messagebox.showerror(
                         "Erreur de connexion",
-                        f"Impossible de se connecter au serveur (fetch_dataset):\n{str(e)}"
+                        f"Impossible de se connecter au serveur (fetch_dataset):\n{str(e)}",parent=self
                     )
 
 
@@ -567,7 +565,7 @@ class Fenetre_Acceuil(ctk.CTk):
                                     elif msg.get("type") == "error":
                                         # Afficher les erreurs
                                         print(f"ERREUR: {msg.get('message')}")
-                                        messagebox.showerror("Erreur", msg.get('message', 'Erreur inconnue'))
+                                        messagebox.showerror("Erreur", msg.get('message', 'Erreur inconnue'),parent=self)
                                         break
                                     
                                     elif msg.get("type")=="fin_test":
@@ -581,7 +579,7 @@ class Fenetre_Acceuil(ctk.CTk):
                 
                 except requests.exceptions.RequestException as e:
                     print(f"Erreur de connexion: {e}")
-                    messagebox.showerror("Erreur de connexion", f"Impossible de se connecter au serveur:\n{str(e)}")
+                    messagebox.showerror("Erreur de connexion", f"Impossible de se connecter au serveur:\n{str(e)}",parent=self)
                 
                 finally:
                     # Arrêter l'affichage de l'entraînement
@@ -819,7 +817,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
         while not self.data_queue.empty():
             try:
                 epoch, loss, *rest  = self.data_queue.get_nowait()
-                
+
                 self.epochs.append(epoch)
                 self.losses.append(loss)
                 
@@ -1589,20 +1587,176 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
 
         # Applique la largeur fixe et la hauteur calculée
         # self.ajuster_hauteur_auto()
-
-
-    def ajuster_hauteur_auto(self, largeur_fixe=700):
-        self.geometry(f"{largeur_fixe}x1")
-        self.update_idletasks()
-        hauteur = self.winfo_height()
-        self.geometry(f"{largeur_fixe}x{hauteur+40}")
-
     
     def est_ouverte(self):
         return self.winfo_exists()
 
     def save_params(self):
         Parametres_visualisation_suivi.metriques = [m.strip() for m in self.Params_visualisation_suivi_metriques.get().split(",") if m.strip()]
+        self.destroy()
+
+#Creer la fenêtre de gestion des datasets
+class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
+    def __init__(self, master=None):
+        super().__init__(master)
+        
+        self.after(100, lambda: self.focus_force())
+        self.title("Datasets")
+        
+        # Polices
+        self.font_titre = ("Helvetica", 18, "bold")
+        self.font_section = ("Helvetica", 14, "bold")
+        self.font_bouton = ("Helvetica", 12)
+
+        # self.geometry("500x1")  # largeur fixe, hauteur minimale
+
+        # Frame principale
+        self.params_frame = ctk.CTkFrame(self)
+        self.params_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        self.params_frame.columnconfigure((0, 1, 2), weight=1)
+
+        self.params_frame.rowconfigure(0, weight=0)   # titre
+        self.params_frame.rowconfigure(1, weight=1)   # Treeview → prend tout l'espace disponible
+        self.params_frame.rowconfigure(2, weight=0)   # boutons en bas
+        
+
+        self.Selected_Dataset={}
+
+        # # Titre simulé
+        # tk.Label(self.cadre, text="Paramètres", font=self.font_titre, bg=self.fenetre_bg).pack(anchor="w", pady=(0, 10))
+        
+        # Polices
+        self.font_titre = ("Roboto Medium", 16)
+        self.font_label = ("Roboto", 12)
+
+        # Titre
+        ctk.CTkLabel(
+            self.params_frame,
+            text="Gestion des Datasets",
+            font=("Roboto Medium", 22)
+        ).grid(row=0, column=0, columnspan=2,padx=20,pady=(20,20))
+        self.geometry("1000x500")
+
+        self.gestion_datasets()
+
+        ctk.CTkButton(
+            self.params_frame,
+            text="Ajouter un Dataset",
+            font=("Roboto", 13),
+            height=40,
+            command=self.test
+        ).grid(row=2, column=0,padx=10,pady=(50,20),sticky="ew")
+
+        ctk.CTkButton(
+            self.params_frame,
+            text="Supprimer un Dataset",
+            font=("Roboto", 13),
+            height=40,
+            command=self.test
+        ).grid(row=2, column=1,padx=10,pady=(50,20),sticky="ew")
+
+        ctk.CTkButton(
+            self.params_frame,
+            text="Sélectionner le Dataset",
+            font=("Roboto", 13),
+            height=40,
+            command=self.Select_Dataset
+        ).grid(row=2, column=2,padx=10,pady=(50,20),sticky="ew")
+
+    def gestion_datasets(self):
+        style = ttk.Style()
+    
+        style.theme_use("default")
+    
+        style.configure("Treeview",
+                            background="#2a2d2e",
+                            foreground="white",
+                            fieldbackground="#343638",
+                            bordercolor="#343638",
+                            borderwidth=0,
+                            rowheight=50,
+                            font=("Arial", 22))
+        style.map('Treeview', background=[('selected', '#22559b')])
+    
+        style.configure("Treeview.Heading",
+                            background="#565b5e",
+                            foreground="white",
+                            relief="flat",
+                            font=("Arial", 26, "bold"))
+        style.map("Treeview.Heading",
+                      background=[('active', '#3484F0')])
+
+        
+        
+        def generate_datasets(n):
+            datasets = []
+            for i in range(1, n+1):
+                name = f"Dataset {i}"
+                start_year = random.randint(2015, 2022)
+                end_year = start_year + random.randint(0, 3)
+                dates = f"{start_year}-01-01 - {end_year}-12-31"
+                timestep = random.choice(["1h", "30min", "15min", "5min", "1d"])
+                size_gb = random.randint(1, 10) * 2  # taille doublée
+                size = f"{size_gb}GB"
+                datasets.append((name, dates, timestep, size))
+            return datasets
+        
+        columns=("Nom Dataset", "Dates Dataset", "Pas Temporel", "Taille Dataset")
+        datasets = generate_datasets(50)
+
+        self.frame_datasets=ctk.CTkFrame(self.params_frame)
+        self.frame_datasets.configure(fg_color="#FFFFFF")
+        self.frame_datasets.grid(row=1,column=0,columnspan=3,padx=20,pady=(20,20),sticky="nsew")
+
+
+        self.Dataset_tree=ttk.Treeview(self.frame_datasets, columns=columns, show="headings", selectmode="browse")
+        self.Dataset_tree.heading("Nom Dataset", text="Nom Dataset")
+        self.Dataset_tree.heading("Dates Dataset", text="Dates Dataset")
+        self.Dataset_tree.heading("Pas Temporel", text="Pas Temporel")
+        self.Dataset_tree.heading("Taille Dataset", text="Taille Dataset")
+
+        for num,entry in enumerate(app.JSON_Datasets.values()):
+            nom=entry['nom']
+            dates="  -  ".join([str(d.split(" ")[0]) for d in entry['dates']])
+            pas=entry['pas_temporel']
+            taille=0
+
+            self.Dataset_tree.insert(parent='', index=num, values=(nom,dates,pas,taille))
+
+        
+        def on_select(event):
+            item = self.Dataset_tree.selection()[0]
+            self.Selected_Dataset["name"]=self.Dataset_tree.item(item, "values")[0]
+            self.Selected_Dataset["dates"]=self.Dataset_tree.item(item, "values")[1]
+            self.Selected_Dataset["dates"]=app.JSON_Datasets[self.Selected_Dataset["name"]]["dates"]
+            
+
+        self.Dataset_tree.bind("<<TreeviewSelect>>", on_select)
+
+        
+
+        scrollbar = ctk.CTkScrollbar(self.frame_datasets, command=self.Dataset_tree.yview)
+
+        self.Dataset_tree.configure(yscroll=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        self.Dataset_tree.pack(fill="both", expand=True)
+
+    def Select_Dataset(self):
+        if self.Selected_Dataset!={}:
+            Parametres_temporels.nom_dataset=self.Selected_Dataset["name"]
+            Parametres_temporels.dates=self.Selected_Dataset["dates"]
+            Parametres_temporels.pas_temporel=1
+            self.destroy()
+        else:
+            messagebox.showwarning("Aucun Dataset sélectionné", "Veuillez sélectionner un Dataset dans la liste.",parent=self)
+
+    def test(self):
+        pass
+    
+    def est_ouverte(self):
+        return self.winfo_exists()
+
+    def save_params(self):
         self.destroy()
 
 # Fonction utilitaires:
