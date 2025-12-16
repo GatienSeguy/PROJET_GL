@@ -171,6 +171,17 @@ class newDatasetRequest(BaseModel):
 class deleteDatasetRequest(BaseModel):
     name: str
 
+class ChoixModeleRequest(BaseModel):
+    name: str
+
+class newModeleRequest(BaseModel):
+    name: str
+    modele: str
+
+class DeleteModeleRequest(BaseModel):
+    name: str
+
+
 
 class PaquetComplet(BaseModel):
     Parametres_temporels: Optional[Parametres_temporels]
@@ -185,3 +196,16 @@ class PaquetComplet(BaseModel):
     # Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
     
 
+class PaquetComplet2(BaseModel):
+    name : str
+    Parametres_temporels: Optional[Parametres_temporels]
+    Parametres_choix_reseau_neurones: Optional[Parametres_choix_reseau_neurones]
+    Parametres_choix_loss_fct: Optional[Parametres_choix_loss_fct]
+    Parametres_optimisateur: Optional[Parametres_optimisateur]
+    Parametres_entrainement: Optional[Parametres_entrainement]
+    Parametres_visualisation_suivi: Optional[Parametres_visualisation_suivi]
+    # Tx_choix_dataset: Optional[Tx_choix_dataset]
+    # Parametres_archi_reseau_MLP: Optional[Parametres_archi_reseau_MLP]
+    # Parametres_archi_reseau_CNN: Optional[Parametres_archi_reseau_CNN]
+    # Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
+    
