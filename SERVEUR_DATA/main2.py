@@ -16,6 +16,7 @@ app = FastAPI()
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "datasets"
 MODEL_DIR = BASE_DIR / "models"
+CONTEXT_DIR = BASE_DIR / "contextes"
 
 # ----------------------------
 # Modèles de requêtes
@@ -62,6 +63,15 @@ class newModelRequest(BaseModel):
 class DeleteModelRequest(BaseModel):
     name: str
     
+class PaquetComplet2(BaseModel):
+    payload: dict
+    payload_model: dict
+    payload_dataset: dict
+    payload_name_model: dict
+
+class ChoixContexteRequest(BaseModel):
+    name: str
+
 # ----------------------------
 # Utils
 # ----------------------------
@@ -377,6 +387,54 @@ def remove_model(name: str) -> None:
     path_model.unlink()
 
     print(f"Modèle '{name}' supprimé avec succès de {path_model}")
+    
+def contexte_add_cnn(**kwargs):
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    
+    path_contexte = CONTEXT_DIR / f"contexte_{kwargs['name']}_cnn.json"
+    if path_contexte.exists():
+        raise ValueError(f"Contexte '{kwargs['name']}' existe déjà et ne peut pas être ajouté")
+    with open(path_contexte, "w", encoding="utf-8") as f:
+        json.dump(kwargs, f, ensure_ascii=False, indent=2)
+    print(f"Contexte '{kwargs['name']}' ajouté avec succès dans {path_contexte}")
+
+def contexte_add_mlp(**kwargs):
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    path_contexte = CONTEXT_DIR / f"contexte_{kwargs['name']}_mlp.json"
+    if path_contexte.exists():
+        raise ValueError(f"Contexte '{kwargs['name']}' existe déjà et ne peut pas être ajouté")
+    with open(path_contexte, "w", encoding="utf-8") as f:
+        json.dump(kwargs, f, ensure_ascii=False, indent=2)
+    print(f"Contexte '{kwargs['name']}' ajouté avec succès dans {path_contexte}") 
+
+def contexte_add_lstm(**kwargs):
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    path_contexte = CONTEXT_DIR / f"contexte_{kwargs['name']}_lstm.json"
+    if path_contexte.exists():
+        raise ValueError(f"Contexte '{kwargs['name']}' existe déjà et ne peut pas être ajouté" )
+    with open(path_contexte, "w", encoding="utf-8") as f:
+        json.dump(kwargs, f, ensure_ascii=False, indent=2)
+    print(f"Contexte '{kwargs['name']}' ajouté avec succès dans {path_contexte}")
+
+def transmettre_contexte(name: str) -> None:
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    
+    found = False
+    for file in CONTEXT_DIR.iterdir():
+        if not file.is_file():
+            continue
+        if file.stem == f"contexte_{name}_cnn" or file.stem == f"contexte_{name}_mlp" or file.stem == f"contexte_{name}_lstm":
+            found = True
+            with open(file, "r", encoding="utf-8") as f:
+                contexte_data = json.load(f)
+            print(f"Contexte '{name}' récupéré avec succès depuis {file}")
+            return contexte_data
+    if not found:
+        raise ValueError(f"Contexte '{name}' n'existe pas et ne peut pas être récupéré")
 # ----------------------------
 # Endpoints
 # ----------------------------
@@ -501,6 +559,69 @@ async def model_delete(payload: DeleteModelRequest):
     print("\nOn est bien\n")
 
     return "modèle supprimé avec succès"
+
+@app.post("/contexte/add_solo")
+async def contexte_add_solo(paquet: PaquetComplet2):
+    print("DATA SERVER received contexte_add_solo")
+
+    try:
+        # Récupération des zones
+        p = paquet.payload
+        m = paquet.payload_model
+        d = paquet.payload_dataset
+        n = paquet.payload_name_model   # <-- le nom vient d’ici
+
+        # Nom du contexte
+        name = n.get("name")
+        if not name:
+            raise ValueError("payload_name_model.name est manquant")
+
+        modele = p["Parametres_choix_reseau_neurones"]["modele"]
+
+        # Construction du contexte générique
+        base_kwargs = {
+            "name": name,
+            "Parametres_temporels": p.get("Parametres_temporels"),
+            "Parametres_choix_reseau_neurones": modele,
+            "Parametres_choix_loss_fct": p.get("Parametres_choix_loss_fct"),
+            "Parametres_optimisateur": p.get("Parametres_optimisateur"),
+            "Parametres_entrainement": p.get("Parametres_entrainement"),
+            "Parametres_visualisation_suivi": p.get("Parametres_visualisation_suivi"),
+        }
+
+        archi = m.get("Parametres_archi_reseau")
+
+        if modele == "CNN":
+            contexte_add_cnn(**base_kwargs, Parametres_archi_reseau_CNN=archi)
+
+        elif modele == "LSTM":
+            contexte_add_lstm(**base_kwargs, Parametres_archi_reseau_LSTM=archi)
+
+        elif modele == "MLP":
+            contexte_add_mlp(**base_kwargs, Parametres_archi_reseau_MLP=archi)
+
+        else:
+            raise ValueError(f"Modèle réseau inconnu : {modele}")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+    return {"status": "ok", "message": "Contexte ajouté avec succès"}
+
+@app.post("/contexte/obtenir_solo")
+async def contexte_obtenir_solo(payload: ChoixContexteRequest):
+    print("DATA SERVER received contexte_get_solo")
+
+    try:
+        json_contexte  = transmettre_contexte(payload.name)
+    except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e))
+        print("\nOn est bien\n")
+    return json_contexte
+
 
 @app.get("/")
 def root():
