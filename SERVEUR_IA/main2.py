@@ -14,7 +14,6 @@ from .trains.training_LSTM import train_LSTM
 from .test.testing import test_model
 from .test.testing_pred import test_model_pred
 
-from .launcher_serveur import json_path
 
 from typing import List, Optional, Dict, Any, Tuple
 
