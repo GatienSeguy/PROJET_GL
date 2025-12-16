@@ -16,6 +16,7 @@ import customtkinter as ctk
 import random
 import json
 import tkinter.font as tkfont
+import pandas as pd
 
 
 
@@ -1738,6 +1739,8 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             self.Selected_Dataset["name"]=self.Dataset_tree.item(item, "values")[0]
             self.Selected_Dataset["dates"]=self.Dataset_tree.item(item, "values")[1]
             self.Selected_Dataset["dates"]=app.JSON_Datasets[self.Selected_Dataset["name"]]["dates"]
+            self.Selected_Dataset["dates"]=pd.to_datetime(self.Selected_Dataset["dates"]).strftime('%Y-%m-%d').tolist()
+            self.Selected_Dataset["pas_temporel"]=app.JSON_Datasets[self.Selected_Dataset["name"]]["pas_temporel"]
             
 
         self.Dataset_tree.bind("<<TreeviewSelect>>", on_select)
@@ -1754,7 +1757,10 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
         if self.Selected_Dataset!={}:
             Parametres_temporels.nom_dataset=self.Selected_Dataset["name"]
             Parametres_temporels.dates=self.Selected_Dataset["dates"]
-            Parametres_temporels.pas_temporel=1
+
+            Selected_Dataset.name=self.Selected_Dataset["name"]
+            Selected_Dataset.dates=self.Selected_Dataset["dates"]
+            Selected_Dataset.pas_temporel=self.Selected_Dataset["pas_temporel"]
             self.destroy()
         else:
             messagebox.showwarning("Aucun Dataset sélectionné", "Veuillez sélectionner un Dataset dans la liste.",parent=self)
