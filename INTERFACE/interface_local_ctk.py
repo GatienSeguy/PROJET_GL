@@ -1473,30 +1473,34 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
     
     # Fonction locale : ouvrir calendrier debut
     def ouvrir_calendrier_debut(self):
-        top = tk.Toplevel(self)
-        top.title("Sélectionner la date de début")
+        topdebut = ctk.CTkToplevel(self)
+        topdebut.title("Sélectionner la date de début")
+        topdebut.geometry('400x300')
+        topdebut.after(50, lambda: topdebut.focus_force())
         try:
             date_obj = datetime.strptime(self.date_debut_str.get(), "%Y-%m-%d")
         except ValueError:
             date_obj = datetime.today()
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',
-                    year=date_obj.year, month=date_obj.month, day=date_obj.day)
-        cal.pack(padx=10, pady=10)
-        tk.Button(top, text="Valider", command=lambda: (self.date_debut_str.set(cal.get_date()), top.destroy())).pack(pady=10)
-
+        cal = Calendar(topdebut, selectmode='day', date_pattern='yyyy-mm-dd',
+                    year=date_obj.year, month=date_obj.month, day=date_obj.day,font=("Roboto", 20))
+        cal.pack(fill="both", expand=True, padx=10, pady=10)
+        ctk.CTkButton(topdebut, text="Valider", command=lambda: (self.date_debut_str.set(cal.get_date()), topdebut.destroy())).pack(pady=10)
+        
     # Fonction locale : ouvrir calendrier fin
     def ouvrir_calendrier_fin(self):
-        top = tk.Toplevel(self)
-        top.title("Sélectionner la date de fin")
+        topfin = ctk.CTkToplevel(self)
+        topfin.title("Sélectionner la date de fin")
+        topfin.geometry('400x300')
+        topfin.after(50, lambda: topfin.focus_force())
         try:
             date_obj = datetime.strptime(self.date_fin_str.get(), "%Y-%m-%d")
         except ValueError:
             date_obj = datetime.today()
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd',
-                    year=date_obj.year, month=date_obj.month, day=date_obj.day)
-        cal.pack(padx=10, pady=10)
-        tk.Button(top, text="Valider", command=lambda: (self.date_fin_str.set(cal.get_date()), top.destroy())).pack(pady=10)
-
+        cal = Calendar(topfin, selectmode='day', date_pattern='yyyy-mm-dd',
+                    year=date_obj.year, month=date_obj.month, day=date_obj.day,font=("Roboto", 20))
+        cal.pack(fill="both", expand=True,padx=10, pady=10)
+        ctk.CTkButton(topfin, text="Valider", command=lambda: (self.date_fin_str.set(cal.get_date()), topfin.destroy())).pack(pady=10)
+        
     def Save_quit(self):
         Parametres_temporels.horizon = self.Params_temporels_horizon.get()
         Parametres_temporels.pas_temporel = self.Params_temporels_pas_temporel.get()
