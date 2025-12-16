@@ -40,7 +40,7 @@ import os
 import requests
 
 # DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://138.231.149.81:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
 
 # python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /Users/gatienseguy/Documents/VSCode/PROJET_GL
 
