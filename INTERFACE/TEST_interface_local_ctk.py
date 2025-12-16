@@ -16,12 +16,13 @@ import time
 import customtkinter as ctk
 
 
-URL = "http://172.20.10.2:8000"
+# URL = "http://172.20.10.2:8000"
 # URL = "http://172.20.10.2:8000"
 # URL = "http://138.231.149.81:8000"
 #URL = "http://192.168.1.190:8000"
 # URL ="http://192.168.1.94:8000"
-
+URL ="http://192.168.27.66:8000"
+# URL = "http://138.231.152.52:8000"
 # Paramètres et variables
 
 class Parametres_temporels_class():

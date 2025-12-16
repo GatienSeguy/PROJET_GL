@@ -53,7 +53,8 @@ from .test_fonctions_pour_main import (
 import os
 import requests
 
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.27.66:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
+# DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://138.231.152.52:8001")
 
 app = FastAPI()
 
@@ -755,8 +756,6 @@ def proxy_suppression_dataset(payload:deleteDatasetRequest):
     response = requests.post(url, json=payload, timeout=1000)
     response.raise_for_status()
     return response.json()
-
-
 
 
 
