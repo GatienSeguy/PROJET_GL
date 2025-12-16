@@ -1,41 +1,62 @@
-import tkinter
-from tkinter import ttk
-import customtkinter
+import customtkinter as ctk
+import time
+import threading
 
-customtkinter.set_appearance_mode("Dark")
-customtkinter.set_default_color_theme("blue")
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
 
-root = customtkinter.CTk()
-root.geometry("250x300")
-root.title("Treeview x Customtkinter")
+class App(ctk.CTk):
+    def __init__(self):
+        super().__init__()
 
-frame_1 = customtkinter.CTkFrame(master=root)
-frame_1.pack(pady=20, padx=20, fill="both", expand=True)
+        self.title("Demo CTkProgressBar")
+        self.geometry("400x200")
 
-label = customtkinter.CTkLabel(master=frame_1,text="Treeview")
-label.grid(pady=10)
+        # --- Progress Bar ---
+        self.progress = ctk.CTkProgressBar(self, width=300)
+        self.progress.pack(pady=20)
 
-###Treeview Customisation (theme colors are selected)
-bg_color = root._apply_appearance_mode(customtkinter.ThemeManager.theme["CTkFrame"]["fg_color"])
-text_color = root._apply_appearance_mode(customtkinter.ThemeManager.theme["CTkLabel"]["text_color"])
-selected_color = root._apply_appearance_mode(customtkinter.ThemeManager.theme["CTkButton"]["fg_color"])
+        # Mode déterminé (entre 0 et 1)
+        self.progress.set(0)
 
-treestyle = ttk.Style()
-treestyle.theme_use('default')
-treestyle.configure("Treeview", background=bg_color, foreground=text_color, fieldbackground=bg_color, borderwidth=0)
-treestyle.map('Treeview', background=[('selected', bg_color)], foreground=[('selected', selected_color)])
-root.bind("<<TreeviewSelect>>", lambda event: root.focus_set())
+        # --- Buttons ---
+        btn_start = ctk.CTkButton(self, text="Lancer progression", command=self.start_progress)
+        btn_start.pack()
 
-##Treeview widget data
-treeview = ttk.Treeview(frame_1, height=6, show="tree")
-treeview.grid(padx=10)
-treeview.insert('', '0', 'i1', text ='Python')
-treeview.insert('', '1', 'i2', text ='Customtkinter')
-treeview.insert('', '2', 'i3', text ='Tkinter')
-treeview.insert('i2', 'end', 'Frame', text ='Frame')
-treeview.insert('i2', 'end', 'Label', text ='Label')
-treeview.insert('i3', 'end', 'Treeview', text ='Treeview')
-treeview.move('i2', 'i1', 'end')
-treeview.move('i3', 'i1', 'end')
+        btn_indeterminate = ctk.CTkButton(self, text="Indeterminate", command=self.start_indeterminate)
+        btn_indeterminate.pack(pady=5)
 
-root.mainloop()
+        btn_stop = ctk.CTkButton(self, text="Stop", command=self.stop_progress)
+        btn_stop.pack()
+
+        self.running = False
+
+    # --- Determinate progression ---
+    def start_progress(self):
+        if self.running:
+            return
+        self.running = True
+        self.progress.set(0)
+
+        def run():
+            for i in range(101):
+                if not self.running:
+                    break
+                self.progress.set(i / 100)
+                time.sleep(0.03)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    # --- Indeterminate mode ---
+    def start_indeterminate(self):
+        self.running = False
+        self.progress.configure(mode="indeterminate")
+        self.progress.start()  # animation
+
+    def stop_progress(self):
+        self.running = False
+        self.progress.stop()
+        self.progress.configure(mode="determinate")
+
+app = App()
+app.mainloop()

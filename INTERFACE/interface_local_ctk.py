@@ -610,8 +610,8 @@ class Cadre_Entrainement(ctk.CTkFrame):
         )
         self.titre.pack(pady=(0, 10))
 
-        self.progress_bar = ttk.Progressbar(self, length=800, mode='determinate')        
-        
+        #self.progress_bar = ttk.Progressbar(self, length=800, mode='determinate')        
+        self.progress_bar = ctk.CTkProgressBar(self, width=800, orientation="horizontal",mode="indeterminate")
         # Frame pour les informations
         # self.info_frame = ctk.CTkFrame(self)
         self.info_frame = ctk.CTkFrame(self)
@@ -702,14 +702,17 @@ class Cadre_Entrainement(ctk.CTkFrame):
             # self.ax.autoscale_view(True, True, True)
             self.canvas.draw()
       
-    def start_training(self):
+    def start_training(self):        
         """Initialise l'affichage pour un nouvel entraînement"""
+        self.first_epoch_received = False
         self.is_training = True
         self.epochs = []
         self.losses = []
         self.total_epochs = Parametres_entrainement.nb_epochs
         
-        self.progress_bar['value']=0
+        self.progress_bar.set(0)
+        self.progress_bar.configure(mode="indeterminate")
+        self.progress_bar.start() 
         self.progress_bar.pack(before=self.info_frame,pady=15)
 
         # Vider la file d'attente
@@ -754,6 +757,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
     
     def update_plot(self):
         self.Log_scale_possible=True
+        
         """Met à jour le graphique avec les nouvelles données"""
         if not self.is_training:
             return
@@ -766,6 +770,11 @@ class Cadre_Entrainement(ctk.CTkFrame):
                 self.epochs.append(epoch)
                 self.losses.append(loss)
                 updated = True
+
+                if not self.first_epoch_received:
+                    self.first_epoch_received = True
+                    self.progress_bar.stop()
+                    self.progress_bar.configure(mode="determinate")
                 
                 # Mettre à jour les labels
                 self.label_epoch.configure(text=f"Epoch: {epoch}")
@@ -778,7 +787,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
 
                 self.label_loss.configure(text=f"Loss: {loss:.6f}")
                 # Mettre à jour la barre de progression
-                self.progress_bar['value'] = (epoch / self.total_epochs) * 100
+                self.progress_bar.set((epoch / self.total_epochs))
             except queue.Empty:
                 break
         
@@ -825,7 +834,7 @@ class Cadre_Entrainement(ctk.CTkFrame):
                 self.label_epoch.configure(text=f"Epoch: {epoch}")
                 self.label_loss.configure(text=f"Loss: {loss:.6f}")
                 # Mettre à jour la barre de progression
-                self.progress_bar['value'] = (epoch / self.total_epochs) * 100
+                self.progress_bar.set(epoch / self.total_epochs)
             except queue.Empty:
                 break
         
