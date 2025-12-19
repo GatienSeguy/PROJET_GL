@@ -223,10 +223,7 @@ class Fenetre_Acceuil(ctk.CTk):
         self.cadre = ctk.CTkFrame(self, corner_radius=10)
         self.cadre.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         self.cadre.grid_columnconfigure(0, weight=1)
-
-        #Chargement des Datasets disponibles
-        threading.Thread(target=self.obtenir_datasets, daemon=True).start()
-
+        
         # Cadre des résultats
         # self.Cadre_results_global = ctk.CTkFrame(self, corner_radius=10)
         # self.Cadre_results_global.grid(row=0, column=1, sticky="nsew", padx=(0,20), pady=20)
@@ -329,7 +326,7 @@ class Fenetre_Acceuil(ctk.CTk):
         stop_btn.grid(row=0, column=1, padx=10, pady=(10,0),sticky="nsew")
         quit_btn.grid(row=1, column=0, columnspan=2, padx=10, pady=(20,10),sticky="nsew")
 
-
+        
 
 
         # self.update_idletasks()
@@ -339,6 +336,10 @@ class Fenetre_Acceuil(ctk.CTk):
         self.after(100, lambda: self.state("zoomed"))
         self.bind("<Escape>", lambda event: self.attributes('-fullscreen', False))
         self.bind("<F11>", lambda event: self.attributes('-fullscreen', not self.attributes('-fullscreen')))
+
+        #Chargement des Datasets disponibles
+        #threading.Thread(target=self.obtenir_datasets, daemon=True).start()
+        self.after(1000, lambda: threading.Thread(target=self.obtenir_datasets, daemon=True).start())
 
     def label_frame(self, root, title, font, width=200, height=200):
         # Crée un cadre avec un titre simulant un LabelFrame
@@ -446,7 +447,7 @@ class Fenetre_Acceuil(ctk.CTk):
         payload = {"message": "choix dataset"}
 
         try:
-            r = requests.post(url, json=payload, timeout=10000)
+            r = requests.post(url, json=payload, timeout=1000)
             r.raise_for_status()
             data = r.json()
             self.JSON_Datasets=data
