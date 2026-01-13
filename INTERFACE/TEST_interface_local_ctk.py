@@ -19,9 +19,9 @@ import customtkinter as ctk
 # URL = "http://172.20.10.2:8000"
 # URL = "http://172.20.10.2:8000"
 # URL = "http://138.231.149.81:8000"
-#URL = "http://192.168.1.190:8000"
+URL = "http://192.168.1.190:8000"
 # URL ="http://192.168.1.94:8000"
-URL ="http://192.168.27.66:8000"
+# URL ="http://192.168.27.66:8000"
 # URL = "http://138.231.152.52:8000"
 # Paramètres et variables
 
@@ -556,7 +556,7 @@ class Fenetre_Acceuil(ctk.CTk):
                             if line.startswith(b"data: "):
                                 try:
                                     msg = json.loads(line[6:].decode("utf-8"))
-                                    print("EVENT:", msg.get("type", msg))
+                                    print("EVENT:", msg)
                                     
                                     # ===== GESTION DES NOUVEAUX ÉVÉNEMENTS =====
                                     
@@ -585,10 +585,10 @@ class Fenetre_Acceuil(ctk.CTk):
                                         print(f"[PHASE] {current_phase} -> {status}")
                                     
                                     # ===== PHASE ENTRAÎNEMENT =====
-                                    elif msg.get("type") == "epoch" or ("epochs" in msg and "avg_loss" in msg):
+                                    elif msg.get("type") == "epoch":
                                         epoch = msg.get("epochs") or msg.get("epoch")
                                         avg_loss = msg.get("avg_loss")
-                                        epoch_s = msg.get("epoch_s", 0)
+                                        epoch_s = msg.get("epoch_s")
                                         
                                         if epoch is not None and avg_loss is not None:
                                             self.Cadre_results_Entrainement.add_data_point(epoch, avg_loss, epoch_s)
