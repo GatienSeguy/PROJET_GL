@@ -635,11 +635,25 @@ DATASETS = {}
 
 @app.post("/datasets/add_dataset")
 def add_dataset(packet: AddDatasetPacket):
-    if packet.payload_name in DATASETS:
-        raise HTTPException(status_code=409, detail="Dataset already exists")
-    DATASETS[packet.payload_name] = packet.payload_dataset_add.model_dump() if hasattr(packet.payload_dataset_add, "model_dump") else packet.payload_dataset_add.dict()
-    return {"ok": True, "datasets": list(DATASETS.keys())}
+    # 1) normalise le nom (évite ".json.json")
+    name = packet.payload_name
+    if name.lower().endswith(".json"):
+        name = name[:-5]
 
+    # 2) convertit vers ton TimeSeriesData "interne" (celle qui a List[datetime])
+    #    pour réutiliser add_new_dataset() qui fait model_dump(mode="json")
+    try:
+        data_dt = TimeSeriesData(
+            timestamps=[parse_ts(t) for t in packet.payload_dataset_add.timestamps],
+            values=packet.payload_dataset_add.values,
+        )
+        add_new_dataset(name=name, data=data_dt)   # écrit dans SERVEUR_DATA/datasets/<name>.json METTRE VERIF SAME NAME ????
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"ok": True, "stored": f"{name}.json"}
 
 
 
