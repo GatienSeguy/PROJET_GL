@@ -797,6 +797,7 @@ def add_dataset_proxy(packet: AddDatasetPacket):
     out_json = packet.model_dump()
 
     try:
+        print("on est rentré dans le try pour envoyer au serveur Data")
         resp = requests.post(url, json=out_json, timeout=60)
     except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {e}")
@@ -805,6 +806,7 @@ def add_dataset_proxy(packet: AddDatasetPacket):
     if not resp.ok:
         # tente de remonter un detail lisible
         try:
+            print("le serveur dataset répond erreur !!!")
             detail = resp.json()
         except Exception:
             detail = resp.text
