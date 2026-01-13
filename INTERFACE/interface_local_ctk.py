@@ -31,7 +31,7 @@ class DatasetPacket(BaseModel):
     payload_name: str
     payload_dataset: TimeSeriesData
 
-URL = "http://192.168.1.190:8002"
+URL = "http://192.168.1.190:8000"
 
 
 ctk.set_default_color_theme("INTERFACE/Themes/blue.json")
@@ -275,6 +275,8 @@ class Fenetre_Acceuil(ctk.CTk):
             self, self.Results_notebook.tab("Prediction")
         )
         self.Cadre_results_Prediction.pack(fill="both", expand=True)
+        
+        self.Results_notebook.set("Training")
         
         # Titre
         ctk.CTkLabel(
@@ -1037,6 +1039,7 @@ class Cadre_Testing(ctk.CTkFrame):
         if file_path:
             fig.savefig(file_path)
 
+
     def create_empty_prediction_plot(self):
         """Crée une figure vide et l'affiche dans le Frame."""
         
@@ -1089,86 +1092,6 @@ class Cadre_Testing(ctk.CTkFrame):
         )
         bouton_sauvegarde.pack(pady=(10, 5))
     
-    def update_prediction_plot(self, y_total, y_true, y_pred):
-        """
-        Ajoute une nouvelle paire de courbes (y, ŷ) sur la figure existante.
-        y_true et y_pred : 1D arrays de même taille.
-        """
-
-
-        if not hasattr(self, "ax"):
-            raise RuntimeError("La figure n'a pas été créée. Appelle create_empty_prediction_plot() d'abord.")
-
-        for line in self.ax.lines:
-            line.remove()
-        
-        y_total = np.array(y_total,dtype=float)
-        y_true = np.array(y_true, dtype=float)
-        y_pred = np.array(y_pred, dtype=float)
-
-        x = np.arange(len(y_true))
-        x = np.arange(len(y_total))
-
-        x_pred=x[-len(y_pred):]
-
-        # Courbe réelle
-        true_line, = self.ax.plot(
-            # x, y_true,
-            x, y_total,
-            color=Plot_style.test_prediction_reel,
-            linewidth=2,
-            marker='o',
-            markersize=4,
-            markerfacecolor=Plot_style.markerfacecolor,
-            markeredgewidth=1.5,
-            markeredgecolor=Plot_style.test_prediction_reel,
-            alpha=0.9
-        )
-
-        # Courbe prédite
-        pred_line, = self.ax.plot(
-            # x, y_pred,
-            x_pred, y_pred,
-            color=Plot_style.test_prediction_test,
-            linewidth=2,
-            marker='s',
-            markersize=4,
-            markerfacecolor=Plot_style.markerfacecolor,
-            markeredgewidth=1.5,
-            markeredgecolor=Plot_style.test_prediction_test,
-            linestyle="--",
-            alpha=0.9
-        )
-
-        ligne_separation=self.ax.axvline(x_pred[0], 
-                                        color=Plot_style.primary_color, 
-                                        linestyle='--')
-
-        self.ax.legend(handles=[true_line,pred_line,ligne_separation],
-                       labels=["Valeurs réelles","Valeurs Prédites",'Séparation entrainement / test'],
-                       fancybox=True,
-                       labelcolor=Plot_style.text_color,
-                       prop=Plot_style.plot_legend,
-                       facecolor=Plot_style.plot_background,
-                       loc='best')
-
-        # Stockage des lignes si futur effacement / rafraîchissement
-        self.true_lines.append(true_line)
-        self.pred_lines.append(pred_line)
-
-        # Mise à jour du titre
-        self.ax.set_title('Test de prédiction', fontdict=Plot_style.plot_title)
-
-        self.ax.relim()              # recalculer les limites à partir des nouvelles données
-        self.ax.autoscale_view()     # appliquer automatiquement les nouvelles limites
-
-
-        # Rafraîchissement
-        self.fig.tight_layout()
-        self.canvas.draw()
-
-
-
     def update_full_plot(self, data: dict):
         """
         Met à jour le graphique avec les données finales.
@@ -1290,9 +1213,9 @@ class Cadre_Testing(ctk.CTkFrame):
             # Légende
             self.ax.legend(
                 fancybox=True,
-                labelcolor=Colors.plot_axes_color,
-                prop={'family': 'sans-serif', 'size': 10},
-                facecolor=Colors.background_color,
+                labelcolor=Plot_style.text_color,
+                prop=Plot_style.plot_legend,
+                facecolor=Plot_style.plot_background,
                 loc='best',
                 framealpha=0.8
             )
@@ -1305,6 +1228,8 @@ class Cadre_Testing(ctk.CTkFrame):
             print(f"[Cadre_Testing] ERREUR dans update_full_plot: {e}")
             import traceback
             traceback.print_exc()
+        
+        #self.after(10000,app.Results_notebook.set("Testing"))
     
     def plot_strategies_comparison(self, data: dict):
         """
@@ -1390,23 +1315,23 @@ class Cadre_Testing(ctk.CTkFrame):
             self.ax.axvline(idx_test, color='#95A5A6', linestyle='--', linewidth=1.5, alpha=0.7)
             
             # Style
-            self.ax.set_facecolor(Colors.background_color)
+            self.ax.set_facecolor(Plot_style.plot_background)
             for spine in self.ax.spines.values():
-                spine.set_color(Colors.plot_axes_color)
-            self.ax.tick_params(axis="both", colors=Colors.plot_axes_color, labelsize=14)
-            self.ax.grid(True, which="major", color=Colors.plot_grid_color, linestyle=":", alpha=0.3)
+                spine.set_color(Plot_style.primary_color)
+            self.ax.tick_params(axis="both", colors=Plot_style.primary_color, labelsize=14)
+            self.ax.grid(True, which="major", color=Plot_style.primary_color, linestyle=":", alpha=0.3)
             
-            self.ax.set_xlabel('Index', fontsize=16, fontweight='bold', color=Colors.plot_text_color)
-            self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Colors.plot_text_color)
-            self.ax.set_title('Comparaison des Stratégies de Prédiction', fontdict=Fonts.plot_title)
+            self.ax.set_xlabel('Index', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+            self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+            self.ax.set_title('Comparaison des Stratégies de Prédiction', fontdict=Plot_style.plot_title)
             
             self.ax.legend(
                 fancybox=True,
-                labelcolor=Colors.plot_axes_color,
-                prop={'family': 'sans-serif', 'size': 9},
-                facecolor=Colors.background_color,
+                labelcolor=Plot_style.text_color,
+                prop=Plot_style.plot_legend,
+                facecolor=Plot_style.plot_background,
                 loc='upper left',
-                framealpha=0.9
+                framealpha=0.8
             )
             
             self.fig.tight_layout()
@@ -1480,26 +1405,6 @@ class Cadre_Testing(ctk.CTkFrame):
         # Afficher
         #plt.show()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class Cadre_Metrics(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
@@ -1512,6 +1417,10 @@ class Cadre_Metrics(ctk.CTkFrame):
         )
         self.titre.pack(pady=(0, 10))
 
+        # Frame pour les métriques
+        self.metrics_frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
+        self.metrics_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
     def afficher_Metrics(self,metrics):
         for widget in self.winfo_children():
             if widget != self.titre:
@@ -1519,6 +1428,144 @@ class Cadre_Metrics(ctk.CTkFrame):
         for i, (metric, val) in enumerate(metrics["overall_mean"].items()):
             label = ctk.CTkLabel(self, text=f"{metric}: {val:.8f}", font=Fonts.Metrics)
             label.pack(anchor="w", padx=15, pady=5)
+
+    def afficher_Metrics(self, metrics):
+        """
+        Affiche les métriques - compatible avec l'ancien et le nouveau format.
+        
+        Ancien format:
+            {"overall_mean": {"MSE": ..., "MAE": ..., ...}, "per_dim": {...}}
+        
+        Nouveau format:
+            {"validation": {"overall_mean": {...}}, "prediction": {"MSE": ..., ...}}
+        """
+        # Nettoyer l'affichage précédent
+        for widget in self.metrics_frame.winfo_children():
+            #if widget != self.titre:
+            widget.destroy()
+        
+        if not metrics:
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text="Aucune métrique disponible",
+                font=("Roboto", 14)
+            ).pack(pady=10)
+            return
+        
+        row = 0
+        
+        # ===== NOUVEAU FORMAT (validation + prediction) =====
+        if "validation" in metrics or "prediction" in metrics:
+            
+            # --- Métriques de Validation ---
+            if "validation" in metrics:
+                val_metrics = metrics["validation"]
+                
+                # Titre section
+                ctk.CTkLabel(
+                    self.metrics_frame,
+                    text="📗 Validation (Teacher Forcing)",
+                    font=("Roboto Medium", 18, "bold"),
+                    text_color="#27AE60"
+                ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
+                row += 1
+                
+                # Extraire les métriques
+                overall = val_metrics.get("overall_mean", val_metrics)
+                self._afficher_metrics_dict(overall, row)
+                row += len(overall) + 1
+            
+            # --- Métriques de Prédiction ---
+            if "prediction" in metrics:
+                pred_metrics = metrics["prediction"]
+                
+                # Titre section
+                ctk.CTkLabel(
+                    self.metrics_frame,
+                    text="📕 Prédiction (Autorégressive)",
+                    font=("Roboto Medium", 18, "bold"),
+                    text_color="#E74C3C"
+                ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(20, 5))
+                row += 1
+                
+                # pred_metrics peut être directement les métriques ou avoir "overall_mean"
+                if isinstance(pred_metrics, dict):
+                    if "overall_mean" in pred_metrics:
+                        overall = pred_metrics["overall_mean"]
+                    else:
+                        overall = pred_metrics
+                    self._afficher_metrics_dict(overall, row)
+        
+        # ===== ANCIEN FORMAT (overall_mean direct) =====
+        elif "overall_mean" in metrics:
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text="📊 Métriques Globales",
+                font=("Roboto Medium", 18, "bold"),
+                #text_color=Colors.text_color_primary
+            ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
+            row += 1
+            
+            self._afficher_metrics_dict(metrics["overall_mean"], row)
+        
+        # ===== FORMAT SIMPLE (dict direct) =====
+        else:
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text="📊 Métriques",
+                font=("Roboto Medium", 18, "bold"),
+            ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
+            row += 1
+            
+            self._afficher_metrics_dict(metrics, row)
+
+    def _afficher_metrics_dict(self, metrics_dict: dict, start_row: int):
+        """Affiche un dictionnaire de métriques sous forme de grille"""
+        
+        # Couleurs pour chaque métrique
+        metric_colors = {
+            "MSE": "#3498DB",
+            "MAE": "#9B59B6", 
+            "RMSE": "#E67E22",
+            "R2": "#1ABC9C"
+        }
+        
+        for i, (metric_name, value) in enumerate(metrics_dict.items()):
+            row = start_row + i
+            
+            # Nom de la métrique
+            color = metric_colors.get(metric_name, Plot_style.text_color)
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text=f"{metric_name}:",
+                text_color=color
+            ).grid(row=row, column=0, sticky="w", padx=(20, 10), pady=3)
+            
+            # Valeur
+            if value is None:
+                val_str = "N/A"
+            elif isinstance(value, float):
+                if abs(value) < 0.0001:
+                    val_str = f"{value:.2e}"
+                elif abs(value) > 1000:
+                    val_str = f"{value:.2f}"
+                else:
+                    val_str = f"{value:.6f}"
+            else:
+                val_str = str(value)
+            
+            ctk.CTkLabel(
+                self.metrics_frame,
+                text=val_str,
+                font=("Roboto", 16),
+                #text_color=Colors.text_color_primary
+            ).grid(row=row, column=1, sticky="e", padx=(10, 20), pady=3)
+
+
+
+
+
+
 
 class Cadre_Prediction(ctk.CTkFrame):
     def __init__(self, app, master=None):

@@ -548,7 +548,7 @@ class Fenetre_Acceuil(ctk.CTk):
                                     # Traiter les différents types de messages
                                     if msg.get("type") == "epoch":
                                         # Message d'epoch avec loss
-                                        epoch = msg.get("epoch")
+                                        epoch = msg.get("epochs")
                                         avg_loss = msg.get("avg_loss")
                                         epoch_s = msg.get("epoch_s")
                                         

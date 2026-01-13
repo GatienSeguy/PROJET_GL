@@ -1024,6 +1024,7 @@ class Cadre_Testing(ctk.CTkFrame):
         if file_path:
             fig.savefig(file_path, dpi=150, bbox_inches='tight')
 
+
     def create_empty_prediction_plot(self):
         """Crée une figure vide et l'affiche dans le Frame."""
         
@@ -1528,6 +1529,18 @@ class Cadre_Metrics(ctk.CTkFrame):
                 font=("Roboto", 16),
                 text_color=Colors.text_color_primary
             ).grid(row=row, column=1, sticky="e", padx=(10, 20), pady=3)
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Cadre_Prediction(ctk.CTkFrame):
     def __init__(self, app, master=None):
