@@ -1,7 +1,7 @@
 # ====================================
 # IMPORTs
 # ====================================
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException,APIRouter
 from fastapi.responses import StreamingResponse
 import json 
 import torch
@@ -24,6 +24,11 @@ from .classes import (
     Parametres_archi_reseau_LSTM,
     Tx_choix_dataset,
     PaquetComplet)
+
+#A mettre dans classes
+class AddDatasetPacket(BaseModel):
+    payload_name: str
+    payload_dataset_add: TimeSeriesData
 
 from .fonctions_pour_main import(
     filter_series_by_dates,
@@ -778,6 +783,35 @@ def proxy_fetch_dataset(payload: dict):
         return {"status": "error", "message": str(e)}
     
 
+
+
+@router.post("/add_dataset")
+def add_dataset_proxy(packet: AddDatasetPacket):
+    """
+    Reçoit le dataset depuis l'UI et le forward au serveur DATASET.
+    """
+    url = f"{DATA_SERVER_URL}/datasets/add_dataset"
+    
+    print("PAQUET D'AJOUTER DS IA",packet)
+    
+    # IMPORTANT: renvoyer exactement le même JSON (ou adapter si le serveur DATASET attend d'autres clés)
+    out_json = packet.model_dump()
+    
+    try:
+        resp = requests.post(url, json=out_json, timeout=60)
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {e}")
+
+    # Si serveur dataset répond erreur, on propage
+    if not resp.ok:
+        # tente de remonter un detail lisible
+        try:
+            detail = resp.json()
+        except Exception:
+            detail = resp.text
+        raise HTTPException(status_code=resp.status_code, detail=detail)
+
+    return resp.json()
 
 
 # ====================================

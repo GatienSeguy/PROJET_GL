@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkcalendar import Calendar
 from datetime import datetime
+from tkinter import filedialog, Label
 import requests, json
 from tkinter import ttk
 from tkinter import messagebox
@@ -17,8 +18,18 @@ import random
 import json
 import tkinter.font as tkfont
 import pandas as pd
+import os
+from pydantic import BaseModel, ValidationError
+from typing import List, Optional
 
 
+class TimeSeriesData(BaseModel):
+    timestamps: List[str]
+    values: List[Optional[float]]   
+
+class DatasetPacket(BaseModel):
+    payload_name: str
+    payload_dataset: TimeSeriesData
 
 URL = "http://192.168.1.190:8000"
 
@@ -1060,7 +1071,6 @@ class Cadre_Prediction(ctk.CTkFrame):
         )
         self.titre.pack(pady=(0, 10))
 
-
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(ctk.CTkToplevel):
     def __init__(self, master=None):
@@ -1614,7 +1624,7 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
 class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        
+        self.payload_add_dataset = None
         self.after(100, lambda: self.focus_force())
         self.title("Datasets")
         
@@ -1659,7 +1669,7 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             text="Ajouter un Dataset",
             font=("Roboto", 13),
             height=40,
-            command=self.test
+            command=self.Ajouter_Dataset
         ).grid(row=2, column=0,padx=10,pady=(50,20),sticky="ew")
 
         ctk.CTkButton(
@@ -1677,6 +1687,80 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             height=40,
             command=self.Select_Dataset
         ).grid(row=2, column=2,padx=10,pady=(50,20),sticky="ew")
+
+    def Ajouter_Dataset(self):
+        self.payload_add_dataset = None
+        self.payload_name = None
+        file_path = filedialog.askopenfilename(
+            title="Sélectionner un fichier JSON",
+            filetypes=[("Fichiers JSON", "*.json")]
+        )
+
+        if not file_path:
+            return
+
+        try:
+            # Lecture JSON
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.payload_name = os.path.basename(file_path)
+
+            # Validation Pydantic
+            payload_add_dataset = TimeSeriesData(**data)
+
+            # Stockage dans l'état de l'UI
+            self.payload_add_dataset = payload_add_dataset
+            payload_json = {
+                "payload_dataset_add": (
+                    self.payload_add_dataset.model_dump()
+                    if hasattr(self.payload_add_dataset, "model_dump")
+                    else self.payload_add_dataset.dict()
+                ),
+                "payload_name": self.payload_name
+            }
+            print("✅ Payload validé :")
+            # print(payload_add_dataset)
+
+        except json.JSONDecodeError as e:
+            messagebox.showwarning(
+                title="Erreur de lecture JSON",
+                message="❌ Le fichier sélectionné n'est pas un JSON valide"
+              )
+            print("Erreur JSON :", e)
+
+        except ValidationError as e:
+            messagebox.showwarning(
+                title="Erreur de validation",
+                message="❌ Structure du dataset invalide"
+            )
+            print("Erreur de validation Pydantic :")
+            print(e)
+        
+        #execption si le 'name' est deja dans la liste des datasets
+        if self.payload_name in app.JSON_Datasets:
+            messagebox.showwarning(
+                title="Erreur de validation",
+                message="❌ Un dataset avec ce nom existe déjà"
+            )
+            self.payload_add_dataset = None
+            return
+        
+        url = f"{URL}/datasets/add_dataset"  # IP SERVEUR_IA
+        
+        try:
+            r = requests.post(url, json=payload_json, timeout=1000)
+            r.raise_for_status()
+            data = r.json()
+            self.JSON_Datasets=data
+        
+        except requests.exceptions.RequestException as e:
+            messagebox.showwarning(
+                title="Erreur de connexion au serveur",
+                message="❌ Impossible de se connecter au serveur pour ajouter les datasets"
+            )
+            print("Erreur de connexion au serveur :", e)
+            self.JSON_Datasets={}
+
 
     def gestion_datasets(self):
         style = ttk.Style()
