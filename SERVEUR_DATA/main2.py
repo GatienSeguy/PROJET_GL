@@ -623,6 +623,26 @@ async def contexte_obtenir_solo(payload: ChoixContexteRequest):
     return json_contexte
 
 
+class TimeSeriesData(BaseModel):
+    timestamps: List[str]            # garde en str côté DATA (simple)
+    values: List[Optional[float]]
+
+class AddDatasetPacket(BaseModel):
+    payload_name: str
+    payload_dataset_add: TimeSeriesData
+
+DATASETS = {}
+
+@app.post("/datasets/add_dataset")
+def add_dataset(packet: AddDatasetPacket):
+    if packet.payload_name in DATASETS:
+        raise HTTPException(status_code=409, detail="Dataset already exists")
+    DATASETS[packet.payload_name] = packet.payload_dataset_add.model_dump() if hasattr(packet.payload_dataset_add, "model_dump") else packet.payload_dataset_add.dict()
+    return {"ok": True, "datasets": list(DATASETS.keys())}
+
+
+
+
 @app.get("/")
 def root():
     return {"message": "Serveur DATA actif !"}
