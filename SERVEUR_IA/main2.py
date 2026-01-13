@@ -23,12 +23,11 @@ from .classes import (
     Parametres_archi_reseau_CNN,
     Parametres_archi_reseau_LSTM,
     Tx_choix_dataset,
-    PaquetComplet)
+    PaquetComplet,
+    AddDatasetPacket)
 
 #A mettre dans classes
-class AddDatasetPacket(BaseModel):
-    payload_name: str
-    payload_dataset_add: TimeSeriesData
+
 
 from .fonctions_pour_main import(
     filter_series_by_dates,
@@ -796,7 +795,7 @@ def add_dataset_proxy(packet: AddDatasetPacket):
     
     # IMPORTANT: renvoyer exactement le même JSON (ou adapter si le serveur DATASET attend d'autres clés)
     out_json = packet.model_dump()
-    
+
     try:
         resp = requests.post(url, json=out_json, timeout=60)
     except requests.RequestException as e:
