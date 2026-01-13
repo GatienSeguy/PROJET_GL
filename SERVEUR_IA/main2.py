@@ -784,7 +784,7 @@ def proxy_fetch_dataset(payload: dict):
 
 
 
-@router.post("/add_dataset")
+@app.post("/add_dataset")
 def add_dataset_proxy(packet: AddDatasetPacket):
     """
     Reçoit le dataset depuis l'UI et le forward au serveur DATASET.
