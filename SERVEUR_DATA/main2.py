@@ -623,35 +623,41 @@ async def contexte_obtenir_solo(payload: ChoixContexteRequest):
     return json_contexte
 
 
+class TimeSeriesDataDT(BaseModel):
+    timestamps: List[datetime]            
+    values: List[Optional[float]]
 
+class TimeSeriesDataStr(BaseModel):
+    timestamps: List[str]            # garde en str côté DATA (simple)
+    values: List[Optional[float]]
 
 class AddDatasetPacket(BaseModel):
     payload_name: str
-    payload_dataset_add: TimeSeriesData
+    payload_dataset_add: TimeSeriesDataStr
 
 DATASETS = {}
 
 @app.post("/datasets/add_dataset")
 def add_dataset(packet: AddDatasetPacket):
-    # 1) normalise le nom (évite ".json.json")
     name = packet.payload_name
     if name.lower().endswith(".json"):
         name = name[:-5]
 
-    # 2) convertit vers ton TimeSeriesData "interne" (celle qui a List[datetime])
-    #    pour réutiliser add_new_dataset() qui fait model_dump(mode="json")
     try:
-        data_dt = TimeSeriesData(
+        data_dt = TimeSeriesDataDT(
             timestamps=[parse_ts(t) for t in packet.payload_dataset_add.timestamps],
             values=packet.payload_dataset_add.values,
         )
-        add_new_dataset(name=name, data=data_dt)   # écrit dans SERVEUR_DATA/datasets/<name>.json METTRE VERIF SAME NAME ????
+        add_new_dataset(name=name, data=data_dt)  # add_new_dataset fait model_dump(mode="json")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     return {"ok": True, "stored": f"{name}.json"}
+
+
+
 
 
 
