@@ -1538,7 +1538,8 @@ class Cadre_Metrics(ctk.CTkFrame):
             ctk.CTkLabel(
                 self.metrics_frame,
                 text=f"{metric_name}:",
-                text_color=color
+                text_color=color,
+                font=ctk.CTkFont(weight="bold")
             ).grid(row=row, column=0, sticky="w", padx=(20, 10), pady=3)
             
             # Valeur
