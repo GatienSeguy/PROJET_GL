@@ -623,9 +623,7 @@ async def contexte_obtenir_solo(payload: ChoixContexteRequest):
     return json_contexte
 
 
-class TimeSeriesData(BaseModel):
-    timestamps: List[str]            # garde en str côté DATA (simple)
-    values: List[Optional[float]]
+
 
 class AddDatasetPacket(BaseModel):
     payload_name: str

@@ -1713,7 +1713,7 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             self.payload_add_dataset = payload_add_dataset
             payload_json = {
                 "payload_dataset_add": (
-                    self.payload_add_dataset.model_dump()
+                    self.payload_add_dataset.model_dump(mode="json")
                     if hasattr(self.payload_add_dataset, "model_dump")
                     else self.payload_add_dataset.dict()
                 ),
