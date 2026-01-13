@@ -1465,7 +1465,7 @@ class Cadre_Metrics(ctk.CTkFrame):
                 ctk.CTkLabel(
                     self.metrics_frame,
                     text="📗 Validation (Teacher Forcing)",
-                    font=("Roboto Medium", 18, "bold"),
+                    font=Fonts.title_font,
                     text_color="#27AE60"
                 ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
                 row += 1
@@ -1483,7 +1483,7 @@ class Cadre_Metrics(ctk.CTkFrame):
                 ctk.CTkLabel(
                     self.metrics_frame,
                     text="📕 Prédiction (Autorégressive)",
-                    font=("Roboto Medium", 18, "bold"),
+                    font=Fonts.title_font,
                     text_color="#E74C3C"
                 ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(20, 5))
                 row += 1
@@ -1501,7 +1501,7 @@ class Cadre_Metrics(ctk.CTkFrame):
             ctk.CTkLabel(
                 self.metrics_frame,
                 text="📊 Métriques Globales",
-                font=("Roboto Medium", 18, "bold"),
+                font=Fonts.title_font,
                 #text_color=Colors.text_color_primary
             ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
             row += 1
@@ -1513,7 +1513,7 @@ class Cadre_Metrics(ctk.CTkFrame):
             ctk.CTkLabel(
                 self.metrics_frame,
                 text="📊 Métriques",
-                font=("Roboto Medium", 18, "bold"),
+                font=Fonts.title_font,
             ).grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
             row += 1
             
@@ -1539,7 +1539,7 @@ class Cadre_Metrics(ctk.CTkFrame):
                 self.metrics_frame,
                 text=f"{metric_name}:",
                 text_color=color,
-                font=ctk.CTkFont(weight="bold")
+                font=Fonts.Metrics
             ).grid(row=row, column=0, sticky="w", padx=(20, 10), pady=3)
             
             # Valeur
@@ -1558,7 +1558,7 @@ class Cadre_Metrics(ctk.CTkFrame):
             ctk.CTkLabel(
                 self.metrics_frame,
                 text=val_str,
-                font=("Roboto", 16),
+                font=Fonts.Metrics,
                 #text_color=Colors.text_color_primary
             ).grid(row=row, column=1, sticky="e", padx=(10, 20), pady=3)
 
