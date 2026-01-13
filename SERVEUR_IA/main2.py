@@ -786,25 +786,22 @@ def proxy_fetch_dataset(payload: dict):
 
 @app.post("/datasets/add_dataset")
 def add_dataset_proxy(packet: AddDatasetPacket):
-    """
-    Reçoit le dataset depuis l'UI et le forward au serveur DATASET.
-    """
     url = f"{DATA_SERVER_URL}/datasets/add_dataset"
-    
-    print("PAQUET D'AJOUTER DS IA",packet)
-    
-    # IMPORTANT: renvoyer exactement le même JSON (ou adapter si le serveur DATASET attend d'autres clés)
-    out_json = packet.model_dump()
+    print("PAQUET D'AJOUTER DS IA", packet)
+
+    try:
+        out_json = packet.model_dump() if hasattr(packet, "model_dump") else packet.dict()
+    except Exception as e:
+        # tu verras enfin l'erreur exacte dans le client aussi
+        raise HTTPException(status_code=500, detail=f"Serialization error in IA: {repr(e)}")
 
     try:
         print("on est rentré dans le try pour envoyer au serveur Data")
         resp = requests.post(url, json=out_json, timeout=60)
     except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {e}")
+        raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {repr(e)}")
 
-    # Si serveur dataset répond erreur, on propage
     if not resp.ok:
-        # tente de remonter un detail lisible
         try:
             print("le serveur dataset répond erreur !!!")
             detail = resp.json()
