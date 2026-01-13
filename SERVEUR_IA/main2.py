@@ -792,7 +792,7 @@ def add_dataset_proxy(packet: AddDatasetPacket):
     print("FORWARD URL =", url)
 
     try:
-        out_json = packet.model_dump() if hasattr(packet, "model_dump") else packet.dict()
+        out_json = packet.model_dump(mode="json")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Serialization error in IA: {repr(e)}")
 
