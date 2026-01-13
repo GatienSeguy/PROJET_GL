@@ -33,6 +33,7 @@ class DatasetPacket(BaseModel):
 
 URL = "http://192.168.1.190:8000"
 
+
 ctk.set_default_color_theme("INTERFACE/Themes/blue.json")
 ctk.set_appearance_mode("dark")
 
@@ -1748,6 +1749,7 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
         url = f"{URL}/datasets/add_dataset"  # IP SERVEUR_IA
         
         try:
+            print("popo")
             r = requests.post(url, json=payload_json, timeout=1000)
             r.raise_for_status()
             data = r.json()
