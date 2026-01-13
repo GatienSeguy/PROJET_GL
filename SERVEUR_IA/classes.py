@@ -18,7 +18,11 @@ class TimeSeriesData(BaseModel):
         if len(self.timestamps) != len(self.values):
             raise ValueError("timestamps et values doivent avoir la même longueur")
 
+class AddDatasetPacket(BaseModel):
+    payload_name: str
+    payload_dataset_add: TimeSeriesData
 
+    
 
 class Parametres_temporels(BaseModel):
     horizon: Optional[int] = Field(None, description="Nombre de pas temporels à prédire")

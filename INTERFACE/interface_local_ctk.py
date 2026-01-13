@@ -31,7 +31,8 @@ class DatasetPacket(BaseModel):
     payload_name: str
     payload_dataset: TimeSeriesData
 
-URL = "http://192.168.1.190:8000"
+URL = "http://192.168.1.190:8002"
+
 
 ctk.set_default_color_theme("INTERFACE/Themes/blue.json")
 ctk.set_appearance_mode("dark")
@@ -2172,7 +2173,7 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             self.payload_add_dataset = payload_add_dataset
             payload_json = {
                 "payload_dataset_add": (
-                    self.payload_add_dataset.model_dump()
+                    self.payload_add_dataset.model_dump(mode="json")
                     if hasattr(self.payload_add_dataset, "model_dump")
                     else self.payload_add_dataset.dict()
                 ),
@@ -2208,18 +2209,39 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
         url = f"{URL}/datasets/add_dataset"  # IP SERVEUR_IA
         
         try:
+            print("popo")
             r = requests.post(url, json=payload_json, timeout=1000)
+            print("HTTP status:", r.status_code)
+            if not r.ok:
+                print("Server response text:\n", r.text)
+
             r.raise_for_status()
             data = r.json()
-            self.JSON_Datasets=data
+            self.JSON_Datasets = data
         
+        except requests.exceptions.HTTPError as e:
+            # Ici tu as une réponse HTTP (500 etc)
+            print("papa")
+            print("HTTPError:", e)
+            if e.response is not None:
+                print("Status:", e.response.status_code)
+                print("Body:", e.response.text)
+
+            messagebox.showwarning(
+                title="Erreur serveur",
+                message=f"❌ Erreur serveur ({e.response.status_code if e.response else '??'})\n\n{e.response.text if e.response else str(e)}"
+            )
+            self.JSON_Datasets = {}
+
         except requests.exceptions.RequestException as e:
+            # Erreurs réseau (timeout, connexion, etc)
+            print("pipi")
             messagebox.showwarning(
                 title="Erreur de connexion au serveur",
                 message="❌ Impossible de se connecter au serveur pour ajouter les datasets"
             )
             print("Erreur de connexion au serveur :", e)
-            self.JSON_Datasets={}
+            self.JSON_Datasets = {}
 
 
     def gestion_datasets(self):
