@@ -31,7 +31,7 @@ class DatasetPacket(BaseModel):
     payload_name: str
     payload_dataset: TimeSeriesData
 
-URL = "http://192.168.1.190:8000"
+URL = "http://192.168.1.190:8002"
 
 
 ctk.set_default_color_theme("INTERFACE/Themes/blue.json")
