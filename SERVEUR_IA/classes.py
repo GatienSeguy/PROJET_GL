@@ -5,7 +5,11 @@ from datetime import datetime
 # ====================================
 # MODÈLES PYDANTIC - Classes
 # ====================================
+class AddDatasetPacket(BaseModel):
+    payload_name: str
+    payload_dataset_add: TimeSeriesData
 
+    
 class TimeSeriesData(BaseModel):
     """
     Une unique série temporelle : timestamps et valeurs alignés (même longueur).
