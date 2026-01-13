@@ -1756,6 +1756,7 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             self.JSON_Datasets=data
         
         except requests.exceptions.RequestException as e:
+            print("papa")
             messagebox.showwarning(
                 title="Erreur de connexion au serveur",
                 message="❌ Impossible de se connecter au serveur pour ajouter les datasets"
