@@ -287,6 +287,7 @@ def add_new_dataset(name: str, data: TimeSeriesData) -> None:
     Ajoute un nouveau dataset dans DATA_DIR avec le nom `name` et les données `data`.
     `data` est un TimeSeriesData (Pydantic).
     """
+    print("ENTRÉE")
     if not DATA_DIR.exists():
         raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
 
@@ -637,6 +638,9 @@ class AddDatasetPacket(BaseModel):
 
 DATASETS = {}
 
+
+
+
 @app.post("/datasets/add_dataset")
 def add_dataset(packet: AddDatasetPacket):
     name = packet.payload_name
@@ -649,6 +653,7 @@ def add_dataset(packet: AddDatasetPacket):
             values=packet.payload_dataset_add.values,
         )
         add_new_dataset(name=name, data=data_dt)  # add_new_dataset fait model_dump(mode="json")
+        print("SORTIE")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
