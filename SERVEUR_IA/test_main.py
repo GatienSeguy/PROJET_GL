@@ -748,6 +748,50 @@ def proxy_add_dataset(payload: dict):
     return response.json()
 
 
+@app.post("/datasets/add_dataset")
+def add_dataset_proxy(packet: AddDatasetPacket):
+    url = f"{DATA_SERVER_URL}/datasets/add_dataset"
+    print("PAQUET D'AJOUTER DS IA", packet)
+    print("FORWARD URL =", url)
+
+    try:
+        out_json = packet.model_dump(mode="json")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Serialization error in IA: {repr(e)}")
+
+    try:
+        print("➡️ Forwarding to DATA server...")
+        resp = requests.post(url, json=out_json, timeout=60)
+        print("⬅️ DATA server status:", resp.status_code)
+        print("⬅️ DATA server headers:", dict(resp.headers))
+        print("⬅️ DATA server body (first 1000 chars):", resp.text[:1000])
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {repr(e)}")
+
+    if not resp.ok:
+        # propage l'erreur DATA
+        try:
+            detail = resp.json()
+        except Exception:
+            detail = resp.text
+        raise HTTPException(status_code=resp.status_code, detail=detail)
+
+    # ✅ ICI: parse JSON safe (sinon 500 muet)
+    try:
+        return resp.json()
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "DATA server returned non-JSON response",
+                "exception": repr(e),
+                "status_code": resp.status_code,
+                "content_type": resp.headers.get("content-type"),
+                "body_preview": resp.text[:1000],
+            },
+        )
+
+
 
 @app.post("/datasets/data_suppression_proxy")
 def proxy_suppression_dataset(payload:deleteDatasetRequest):
