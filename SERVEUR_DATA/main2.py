@@ -497,6 +497,8 @@ async def data_addd(payload: newDatasetRequest):
     print("\nOn est bien\n")
     return "dataset ajouté avec succès"
 
+
+
 @app.post("/datasets/data_supression")
 async def data_suppression(payload: deleteDatasetRequest):
     print("DATA SERVER received delete_dataset for:", payload.name)
@@ -652,7 +654,7 @@ def add_dataset(packet: AddDatasetPacket):
             timestamps=[parse_ts(t) for t in packet.payload_dataset_add.timestamps],
             values=packet.payload_dataset_add.values,
         )
-        add_new_dataset(name=name, data=data_dt)  # add_new_dataset fait model_dump(mode="json")
+        add_new_dataset(name=name, data=data_dt)  
         print("SORTIE")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

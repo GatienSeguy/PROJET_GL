@@ -347,8 +347,6 @@ class Fenetre_Acceuil(ctk.CTk):
         quit_btn.grid(row=1, column=0, columnspan=2, padx=10, pady=(20,10),sticky="nsew")
 
         
-
-
         # self.update_idletasks()
         # self.geometry(f"520x{self.winfo_reqheight()}")
 
@@ -2133,6 +2131,9 @@ class Fenetre_Choix_metriques(ctk.CTkToplevel):
 class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
+
+        self.master_app = master
+        
         self.payload_add_dataset = None
         self.after(100, lambda: self.focus_force())
         self.title("Datasets")
@@ -2197,6 +2198,36 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             command=self.Select_Dataset
         ).grid(row=2, column=2,padx=10,pady=(50,20),sticky="ew")
 
+    def rafraichir_liste_datasets(self):
+        """Rafraîchit l'affichage du Treeview avec les données à jour"""
+        # Vider le Treeview
+        for item in self.Dataset_tree.get_children():
+            self.Dataset_tree.delete(item)
+        
+        # VÉRIFIER que JSON_Datasets existe et est un dict
+        if not hasattr(app, 'JSON_Datasets') or not isinstance(app.JSON_Datasets, dict):
+            print("JSON_Datasets n'est pas un dictionnaire:", app.JSON_Datasets)
+            return
+        
+        # DEBUG : Afficher ce qu'on reçoit
+        print("DEBUG JSON_Datasets:", app.JSON_Datasets)
+        
+        # Remplir avec les nouvelles données
+        for num, (key, entry) in enumerate(app.JSON_Datasets.items()):
+            # VÉRIFIER que entry est bien un dict dabs le doute
+            if not isinstance(entry, dict):
+                print(f"  Entry '{key}' n'est pas un dict, c'est: {type(entry)} = {entry}")
+                continue
+            
+            nom = entry.get('nom', key)
+            dates = entry.get('dates', ['?', '?'])
+            dates_str = "  -  ".join([str(d.split(" ")[0]) if isinstance(d, str) else str(d) for d in dates])
+            pas = entry.get('pas_temporel', '?')
+            taille = 0
+            
+            self.Dataset_tree.insert(parent='', index=num, values=(nom, dates_str, pas, taille))
+
+
     def Ajouter_Dataset(self):
         self.payload_add_dataset = None
         self.payload_name = None
@@ -2209,16 +2240,13 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             return
 
         try:
-            # Lecture JSON
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 self.payload_name = os.path.basename(file_path)
 
-            # Validation Pydantic
             payload_add_dataset = TimeSeriesData(**data)
-
-            # Stockage dans l'état de l'UI
             self.payload_add_dataset = payload_add_dataset
+            
             payload_json = {
                 "payload_dataset_add": (
                     self.payload_add_dataset.model_dump(mode="json")
@@ -2227,151 +2255,145 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
                 ),
                 "payload_name": self.payload_name
             }
-            print("✅ Payload validé :")
-            # print(payload_add_dataset)
+            print("✅ Payload validé")
 
         except json.JSONDecodeError as e:
             messagebox.showwarning(
                 title="Erreur de lecture JSON",
-                message="❌ Le fichier sélectionné n'est pas un JSON valide"
-              )
-            print("Erreur JSON :", e)
+                message="  Le fichier sélectionné n'est pas un JSON valide",
+                parent=self
+            )
+            return
 
         except ValidationError as e:
             messagebox.showwarning(
                 title="Erreur de validation",
-                message="❌ Structure du dataset invalide"
+                message="  Structure du dataset invalide",
+                parent=self
             )
-            print("Erreur de validation Pydantic :")
-            print(e)
+            print("Erreur de validation Pydantic:", e)
+            return
         
-        #execption si le 'name' est deja dans la liste des datasets
         if self.payload_name in app.JSON_Datasets:
             messagebox.showwarning(
                 title="Erreur de validation",
-                message="❌ Un dataset avec ce nom existe déjà"
+                message="  Un dataset avec ce nom existe déjà",
+                parent=self
             )
-            self.payload_add_dataset = None
             return
         
-        url = f"{URL}/datasets/add_dataset"  # IP SERVEUR_IA
+        url = f"{URL}/datasets/add_dataset"
         
         try:
-            print("popo")
+            print("Envoi au serveur...")
             r = requests.post(url, json=payload_json, timeout=1000)
-            print("HTTP status:", r.status_code)
-            if not r.ok:
-                print("Server response text:\n", r.text)
-
             r.raise_for_status()
-            data = r.json()
-            self.JSON_Datasets = data
+            response_data = r.json()
+            
+            print("Réponse serveur:", response_data)
+            
+            # ✅ Vérifier que l'ajout a réussi
+            if response_data.get('ok'):
+                # ✅ RECHARGER la liste complète des datasets depuis le serveur
+                print("Rechargement de la liste des datasets...")
+                app.obtenir_datasets()
+                
+                # ✅ Rafraîchir l'affichage
+                self.rafraichir_liste_datasets()
+                
+                messagebox.showinfo(
+                    title="Succès",
+                    message=f"✅ Dataset '{self.payload_name}' ajouté avec succès !",
+                    parent=self
+                )
+            else:
+                messagebox.showwarning(
+                    title="Erreur",
+                    message="  Le serveur n'a pas confirmé l'ajout",
+                    parent=self
+                )
         
-        except requests.exceptions.HTTPError as e:
-            # Ici tu as une réponse HTTP (500 etc)
-            print("papa")
-            print("HTTPError:", e)
-            if e.response is not None:
-                print("Status:", e.response.status_code)
-                print("Body:", e.response.text)
-
-            messagebox.showwarning(
-                title="Erreur serveur",
-                message=f"❌ Erreur serveur ({e.response.status_code if e.response else '??'})\n\n{e.response.text if e.response else str(e)}"
-            )
-            self.JSON_Datasets = {}
-
         except requests.exceptions.RequestException as e:
-            # Erreurs réseau (timeout, connexion, etc)
-            print("pipi")
             messagebox.showwarning(
-                title="Erreur de connexion au serveur",
-                message="❌ Impossible de se connecter au serveur pour ajouter les datasets"
+                title="Erreur",
+                message=f"  Erreur lors de l'ajout du dataset:\n{str(e)}",
+                parent=self
             )
-            print("Erreur de connexion au serveur :", e)
-            self.JSON_Datasets = {}
-
+            print("Erreur:", e)
 
     def gestion_datasets(self):
         style = ttk.Style()
-    
         style.theme_use("default")
-    
+        
         style.configure("Treeview",
-                            background="#2a2d2e",
-                            foreground="white",
-                            fieldbackground="#343638",
-                            bordercolor="#343638",
-                            borderwidth=0,
-                            rowheight=50,
-                            font=("Arial", 22))
+                        background="#2a2d2e",
+                        foreground="white",
+                        fieldbackground="#343638",
+                        bordercolor="#343638",
+                        borderwidth=0,
+                        rowheight=50,
+                        font=("Arial", 22))
         style.map('Treeview', background=[('selected', '#22559b')])
-    
+
         style.configure("Treeview.Heading",
-                            background="#565b5e",
-                            foreground="white",
-                            relief="flat",
-                            font=("Arial", 26, "bold"))
+                        background="#565b5e",
+                        foreground="white",
+                        relief="flat",
+                        font=("Arial", 26, "bold"))
         style.map("Treeview.Heading",
-                      background=[('active', '#3484F0')])
+                background=[('active', '#3484F0')])
 
-        
-        
-        def generate_datasets(n):
-            datasets = []
-            for i in range(1, n+1):
-                name = f"Dataset {i}"
-                start_year = random.randint(2015, 2022)
-                end_year = start_year + random.randint(0, 3)
-                dates = f"{start_year}-01-01 - {end_year}-12-31"
-                timestep = random.choice(["1h", "30min", "15min", "5min", "1d"])
-                size_gb = random.randint(1, 10) * 2  # taille doublée
-                size = f"{size_gb}GB"
-                datasets.append((name, dates, timestep, size))
-            return datasets
-        
-        columns=("Nom Dataset", "Dates Dataset", "Pas Temporel", "Taille Dataset")
-        datasets = generate_datasets(50)
-
-        self.frame_datasets=ctk.CTkFrame(self.params_frame)
+        self.frame_datasets = ctk.CTkFrame(self.params_frame)
         self.frame_datasets.configure(fg_color="#FFFFFF")
-        self.frame_datasets.grid(row=1,column=0,columnspan=3,padx=20,pady=(20,20),sticky="nsew")
+        self.frame_datasets.grid(row=1, column=0, columnspan=3, padx=20, pady=(20,20), sticky="nsew")
 
-
-        self.Dataset_tree=ttk.Treeview(self.frame_datasets, columns=columns, show="headings", selectmode="browse")
+        columns = ("Nom Dataset", "Dates Dataset", "Pas Temporel", "Taille Dataset")
+        
+        self.Dataset_tree = ttk.Treeview(self.frame_datasets, columns=columns, show="headings", selectmode="browse")
         self.Dataset_tree.heading("Nom Dataset", text="Nom Dataset")
         self.Dataset_tree.heading("Dates Dataset", text="Dates Dataset")
         self.Dataset_tree.heading("Pas Temporel", text="Pas Temporel")
         self.Dataset_tree.heading("Taille Dataset", text="Taille Dataset")
 
-        for num,entry in enumerate(app.JSON_Datasets.values()):
-            nom=entry['nom']
-            dates="  -  ".join([str(d.split(" ")[0]) for d in entry['dates']])
-            pas=entry['pas_temporel']
-            taille=0
-
-            self.Dataset_tree.insert(parent='', index=num, values=(nom,dates,pas,taille))
-
+        # ✅ UTILISER la même logique que rafraichir_liste_datasets
+        if hasattr(app, 'JSON_Datasets') and isinstance(app.JSON_Datasets, dict):
+            for num, (key, entry) in enumerate(app.JSON_Datasets.items()):
+                # ✅ VÉRIFIER que entry est bien un dict
+                if not isinstance(entry, dict):
+                    print(f"⚠️ Ignorer entry '{key}': {type(entry)}")
+                    continue
+                
+                nom = entry.get('nom', key)
+                dates = entry.get('dates', ['?', '?'])
+                dates_str = "  -  ".join([str(d.split(" ")[0]) if isinstance(d, str) else str(d) for d in dates])
+                pas = entry.get('pas_temporel', '?')
+                taille = 0
+                
+                self.Dataset_tree.insert(parent='', index=num, values=(nom, dates_str, pas, taille))
         
         def on_select(event):
-            item = self.Dataset_tree.selection()[0]
-            self.Selected_Dataset["name"]=self.Dataset_tree.item(item, "values")[0]
-            self.Selected_Dataset["dates"]=self.Dataset_tree.item(item, "values")[1]
-            self.Selected_Dataset["dates"]=app.JSON_Datasets[self.Selected_Dataset["name"]]["dates"]
-            self.Selected_Dataset["dates"]=pd.to_datetime(self.Selected_Dataset["dates"]).strftime('%Y-%m-%d').tolist()
-            self.Selected_Dataset["pas_temporel"]=app.JSON_Datasets[self.Selected_Dataset["name"]]["pas_temporel"]
+            if not self.Dataset_tree.selection():
+                return
             
+            item = self.Dataset_tree.selection()[0]
+            nom_dataset = self.Dataset_tree.item(item, "values")[0]
+            
+            # ✅ Vérifier que le dataset existe et est valide
+            if nom_dataset in app.JSON_Datasets and isinstance(app.JSON_Datasets[nom_dataset], dict):
+                self.Selected_Dataset["name"] = nom_dataset
+                self.Selected_Dataset["dates"] = app.JSON_Datasets[nom_dataset]["dates"]
+                self.Selected_Dataset["dates"] = pd.to_datetime(self.Selected_Dataset["dates"]).strftime('%Y-%m-%d').tolist()
+                self.Selected_Dataset["pas_temporel"] = app.JSON_Datasets[nom_dataset]["pas_temporel"]
+            else:
+                print(f"⚠️ Dataset '{nom_dataset}' invalide ou inexistant")
 
         self.Dataset_tree.bind("<<TreeviewSelect>>", on_select)
-
         
-
         scrollbar = ctk.CTkScrollbar(self.frame_datasets, command=self.Dataset_tree.yview)
-
         self.Dataset_tree.configure(yscroll=scrollbar.set)
         scrollbar.pack(side="right", fill="y")
         self.Dataset_tree.pack(fill="both", expand=True)
-
+    
     def Select_Dataset(self):
         if self.Selected_Dataset!={}:
             Parametres_temporels.nom_dataset=self.Selected_Dataset["name"]
