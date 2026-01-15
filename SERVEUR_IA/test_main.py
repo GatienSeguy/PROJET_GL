@@ -795,12 +795,20 @@ def add_dataset_proxy(packet: AddDatasetPacket):
 
 
 @app.post("/datasets/data_suppression_proxy")
-def proxy_suppression_dataset(payload:deleteDatasetRequest):
-    # print("Message reçu depuis UI :", payload.name)
+def proxy_suppression_dataset(payload: deleteDatasetRequest):
+    print("Message reçu depuis UI pour suppression:", payload.name)
     url = f"{DATA_SERVER_URL}/datasets/data_supression"
-    response = requests.post(url, json=payload, timeout=1000)
-    response.raise_for_status()
-    return response.json()
+    
+    # ✅ Sérialiser l'objet Pydantic en dict
+    payload_dict = payload.model_dump() if hasattr(payload, 'model_dump') else payload.dict()
+    
+    try:
+        response = requests.post(url, json=payload_dict, timeout=1000)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erreur lors de la suppression: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur serveur Data: {str(e)}")
 
 
 
