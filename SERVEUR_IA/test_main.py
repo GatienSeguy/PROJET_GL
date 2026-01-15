@@ -37,7 +37,8 @@ from .classes import (
     Tx_choix_dataset,
     PaquetComplet,
     newDatasetRequest,
-    deleteDatasetRequest
+    deleteDatasetRequest,
+    AddDatasetPacket
     )
 
 from .test_fonctions_pour_main import (
