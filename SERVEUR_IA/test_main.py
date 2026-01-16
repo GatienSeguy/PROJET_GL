@@ -109,6 +109,9 @@ class TrainingPipeline:
     """Pipeline d'entraînement avec 3 phases : train / validation / test prédictif"""
 
     def __init__(self, payload: PaquetComplet, payload_model: dict, time_series_data: Optional[TimeSeriesData] = None):
+        
+        self.stop_flag = False
+
         self.cfg = payload
         self.payload_model = payload_model
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
@@ -391,6 +394,8 @@ class TrainingPipeline:
 
     def run_training(self):
         """Phase 1 : Entraînement"""
+        global stop_training_flag
+
         model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
         arch_params = self.setup_architecture(model_type)
         loss_name = self.setup_loss()
@@ -404,6 +409,11 @@ class TrainingPipeline:
         
         try:
             while True:
+                if stop_training_flag:
+                    stop_training_flag = False
+                    yield {"type": "stopped", "message": "Entraînement arrêté"}
+                    break
+
                 msg = next(gen)
                 yield msg
         except StopIteration as e:
@@ -561,7 +571,8 @@ class TrainingPipeline:
     # ====================================
     def execute_full_pipeline(self):
         """Orchestre le pipeline complet : train → validation → test prédictif"""
-        
+        global stop_training_flag
+        stop_training_flag = False
         try:
             # Chargement des données
             self.load_data(payload_json=payload_json)
@@ -817,6 +828,16 @@ def training(payload: PaquetComplet, payload_model: dict):
     """Route d'entraînement complet avec le nouveau pipeline 3 phases"""
     pipeline = TrainingPipeline(payload, payload_model)
     return StreamingResponse(pipeline.execute_full_pipeline(), media_type="text/event-stream")
+
+stop_training_flag = False
+
+@app.post("/stop_training")
+def stop_training():
+    """Arrête l'entraînement en cours"""
+    global stop_training_flag
+    stop_training_flag = True
+    print("🛑 Arrêt de l'entraînement demandé")
+    return {"status": "ok", "message": "Arrêt demandé"}
 
 
 @app.get("/")
