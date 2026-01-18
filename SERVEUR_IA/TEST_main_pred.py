@@ -498,7 +498,7 @@ class TrainingPipeline:
     # ====================================
     def run_prediction_test(self, strategy: str = "one_step"):
         """
-        Phase 3 : Test prédictif avec choix de la stratégie.
+        Phase 3 : Test prédictif avec reshape correct pour LSTM/CNN.
         """
         if self.model_trained is None:
             yield {"type": "warn", "message": "Modèle non récupéré (test pred sauté)."}
@@ -513,40 +513,153 @@ class TrainingPipeline:
         
         window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
         y_true_values = self.series.values[idx_test_start:idx_test_start + n_test]
+        model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
         
-        strategy_map = {
-            "one_step": PredictionStrategy.ONE_STEP,
-            "recalibration": PredictionStrategy.RECALIBRATION,
-            "recursive": PredictionStrategy.RECURSIVE,
-            "direct": PredictionStrategy.DIRECT,
+        print(f"[PRED] model_type={model_type}, window_size={window_size}, n_test={n_test}")
+        
+        # Implémentation inline de la prédiction avec reshape correct
+        yield {
+            "type": "pred_start",
+            "n_steps": n_test,
+            "strategy": strategy,
+            "idx_start": idx_test_start,
+            "window_size": window_size,
+            "config": {"model_type": model_type}
         }
         
-        pred_strategy = strategy_map.get(strategy, PredictionStrategy.RECALIBRATION)
-        
-        config = PredictionConfig(
-            strategy=pred_strategy,
-            recalib_every=min(10, max(1, n_test // 20)) if n_test > 20 else 5,
-            max_horizon=min(50, n_test),
-            direct_horizon=10,
-            confidence_level=0.95
-        )
-        
-        print(f"[PRED] Stratégie: {pred_strategy.value.upper()}")
-        
-        for evt in predict_multistep(
-            model=self.model_trained,
-            values=self.series.values,
-            norm_stats=self.norm_params,
-            window_size=window_size,
-            n_steps=n_test,
-            device=self.device,
-            inverse_fn=self.inverse_fn,
-            config=config,
-            residual_std=self.residual_std,
-            y_true=y_true_values,
-            idx_start=idx_test_start,
-        ):
-            yield evt
+        try:
+            from scipy import stats
+            
+            model = self.model_trained
+            model.eval()
+            
+            # Normalisation params
+            norm_params = self.norm_params
+            method = norm_params.get("method", "standardization")
+            
+            # Préparer les données
+            values = self.series.values
+            series_array = np.array(values, dtype=np.float32)
+            
+            if method == "minmax":
+                min_val, max_val = norm_params["min"], norm_params["max"]
+                series_norm = (series_array - min_val) / (max_val - min_val + 1e-8)
+            else:
+                mean_val, std_val = norm_params["mean"], norm_params["std"]
+                series_norm = (series_array - mean_val) / (std_val + 1e-8)
+            
+            # Contexte initial (juste avant la zone de test)
+            context_start = idx_test_start - window_size
+            if context_start < 0:
+                context_start = 0
+            context = series_norm[context_start:idx_test_start].copy()
+            
+            # Si pas assez de contexte, padding
+            if len(context) < window_size:
+                pad = np.zeros(window_size - len(context))
+                context = np.concatenate([pad, context])
+            
+            predictions = []
+            pred_low = []
+            pred_high = []
+            
+            z_score = stats.norm.ppf(0.975)  # 95% CI
+            residual_std = self.residual_std if self.residual_std else 0.1
+            
+            with torch.no_grad():
+                for step in range(n_test):
+                    # Créer l'input avec le bon reshape
+                    x_input = torch.tensor(context[-window_size:], dtype=torch.float32).unsqueeze(0)
+                    
+                    # RESHAPE SELON LE TYPE DE MODÈLE
+                    if model_type == "lstm":
+                        x_input = x_input.unsqueeze(-1)  # (1, T) -> (1, T, 1)
+                    elif model_type == "cnn":
+                        x_input = x_input.unsqueeze(1)   # (1, T) -> (1, 1, T)
+                    # MLP: pas de reshape, reste (1, T)
+                    
+                    x_input = x_input.to(self.device)
+                    
+                    # Prédiction
+                    output = model(x_input)
+                    
+                    # Extraire la valeur prédite
+                    if output.ndim == 3:
+                        # LSTM retourne (B, T, out_dim), prendre le dernier timestep
+                        y_pred_norm = output[0, -1, 0].cpu().item()
+                    elif output.ndim == 2:
+                        y_pred_norm = output[0, 0].cpu().item()
+                    else:
+                        y_pred_norm = output.cpu().item()
+                    
+                    # Dénormaliser
+                    if method == "minmax":
+                        y_pred = y_pred_norm * (max_val - min_val) + min_val
+                    else:
+                        y_pred = y_pred_norm * std_val + mean_val
+                    
+                    # Intervalle de confiance (constant pour one-step avec recalib)
+                    uncertainty = residual_std * z_score
+                    low = float(y_pred - uncertainty)
+                    high = float(y_pred + uncertainty)
+                    
+                    predictions.append(float(y_pred))
+                    pred_low.append(low)
+                    pred_high.append(high)
+                    
+                    # Valeur réelle pour comparaison
+                    y_true = y_true_values[step] if step < len(y_true_values) else None
+                    
+                    yield {
+                        "type": "pred_point",
+                        "step": step + 1,
+                        "idx": idx_test_start + step,
+                        "yhat": float(y_pred),
+                        "y": y_true,
+                        "low": low,
+                        "high": high
+                    }
+                    
+                    # ONE-STEP avec recalibration : utiliser la VRAIE valeur pour le contexte
+                    # Cela évalue la vraie capacité du modèle à prédire 1 pas
+                    if y_true is not None:
+                        # Normaliser la vraie valeur
+                        if method == "minmax":
+                            next_val = (float(y_true) - min_val) / (max_val - min_val + 1e-8)
+                        else:
+                            next_val = (float(y_true) - mean_val) / (std_val + 1e-8)
+                    else:
+                        # Si pas de vraie valeur, utiliser la prédiction (mode récursif)
+                        next_val = y_pred_norm
+                    
+                    # Roulement du contexte : garder window_size éléments
+                    context = np.roll(context, -1)
+                    context[-1] = next_val
+            
+            # Calculer les métriques
+            y_true_arr = np.array([v for v in y_true_values if v is not None], dtype=np.float32)
+            y_pred_arr = np.array(predictions[:len(y_true_arr)], dtype=np.float32)
+            
+            if len(y_true_arr) > 0 and len(y_pred_arr) > 0:
+                mse = float(np.mean((y_true_arr - y_pred_arr) ** 2))
+                mae = float(np.mean(np.abs(y_true_arr - y_pred_arr)))
+            else:
+                mse, mae = 0.0, 0.0
+            
+            yield {
+                "type": "pred_end",
+                "predictions": predictions,
+                "pred_low": pred_low,
+                "pred_high": pred_high,
+                "y_true": list(y_true_values),
+                "metrics": {"MSE": mse, "MAE": mae},
+                "idx_start": idx_test_start
+            }
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            yield {"type": "error", "message": str(e)}
     
     # ====================================
     # COMPARAISON DE TOUTES LES STRATÉGIES
