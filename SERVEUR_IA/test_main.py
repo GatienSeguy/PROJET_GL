@@ -37,7 +37,8 @@ from .classes import (
     Tx_choix_dataset,
     PaquetComplet,
     newDatasetRequest,
-    deleteDatasetRequest
+    deleteDatasetRequest,
+    AddDatasetPacket
     )
 
 from .test_fonctions_pour_main import (
@@ -108,6 +109,9 @@ class TrainingPipeline:
     """Pipeline d'entraînement avec 3 phases : train / validation / test prédictif"""
 
     def __init__(self, payload: PaquetComplet, payload_model: dict, time_series_data: Optional[TimeSeriesData] = None):
+        
+        self.stop_flag = False
+
         self.cfg = payload
         self.payload_model = payload_model
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
@@ -390,6 +394,8 @@ class TrainingPipeline:
 
     def run_training(self):
         """Phase 1 : Entraînement"""
+        global stop_training_flag
+
         model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
         arch_params = self.setup_architecture(model_type)
         loss_name = self.setup_loss()
@@ -403,6 +409,11 @@ class TrainingPipeline:
         
         try:
             while True:
+                if stop_training_flag:
+                    stop_training_flag = False
+                    yield {"type": "stopped", "message": "Entraînement arrêté"}
+                    break
+
                 msg = next(gen)
                 yield msg
         except StopIteration as e:
@@ -560,7 +571,8 @@ class TrainingPipeline:
     # ====================================
     def execute_full_pipeline(self):
         """Orchestre le pipeline complet : train → validation → test prédictif"""
-        
+        global stop_training_flag
+        stop_training_flag = False
         try:
             # Chargement des données
             self.load_data(payload_json=payload_json)
@@ -748,14 +760,66 @@ def proxy_add_dataset(payload: dict):
     return response.json()
 
 
+@app.post("/datasets/add_dataset")
+def add_dataset_proxy(packet: AddDatasetPacket):
+    url = f"{DATA_SERVER_URL}/datasets/add_dataset"
+    print("PAQUET D'AJOUTER DS IA", packet)
+    print("FORWARD URL =", url)
+
+    try:
+        out_json = packet.model_dump(mode="json")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Serialization error in IA: {repr(e)}")
+
+    try:
+        print("➡️ Forwarding to DATA server...")
+        resp = requests.post(url, json=out_json, timeout=60)
+        print("⬅️ DATA server status:", resp.status_code)
+        print("⬅️ DATA server headers:", dict(resp.headers))
+        print("⬅️ DATA server body (first 1000 chars):", resp.text[:1000])
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {repr(e)}")
+
+    if not resp.ok:
+        # propage l'erreur DATA
+        try:
+            detail = resp.json()
+        except Exception:
+            detail = resp.text
+        raise HTTPException(status_code=resp.status_code, detail=detail)
+
+    # ✅ ICI: parse JSON safe (sinon 500 muet)
+    try:
+        return resp.json()
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "DATA server returned non-JSON response",
+                "exception": repr(e),
+                "status_code": resp.status_code,
+                "content_type": resp.headers.get("content-type"),
+                "body_preview": resp.text[:1000],
+            },
+        )
+
+
 
 @app.post("/datasets/data_suppression_proxy")
-def proxy_suppression_dataset(payload:deleteDatasetRequest):
-    # print("Message reçu depuis UI :", payload.name)
+def proxy_suppression_dataset(payload: deleteDatasetRequest):
+    print("Message reçu depuis UI pour suppression:", payload.name)
     url = f"{DATA_SERVER_URL}/datasets/data_supression"
-    response = requests.post(url, json=payload, timeout=1000)
-    response.raise_for_status()
-    return response.json()
+    
+    # ✅ Sérialiser l'objet Pydantic en dict
+    payload_dict = payload.model_dump() if hasattr(payload, 'model_dump') else payload.dict()
+    
+    try:
+        response = requests.post(url, json=payload_dict, timeout=1000)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erreur lors de la suppression: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur serveur Data: {str(e)}")
 
 
 
@@ -764,6 +828,16 @@ def training(payload: PaquetComplet, payload_model: dict):
     """Route d'entraînement complet avec le nouveau pipeline 3 phases"""
     pipeline = TrainingPipeline(payload, payload_model)
     return StreamingResponse(pipeline.execute_full_pipeline(), media_type="text/event-stream")
+
+stop_training_flag = False
+
+@app.post("/stop_training")
+def stop_training():
+    """Arrête l'entraînement en cours"""
+    global stop_training_flag
+    stop_training_flag = True
+    print("🛑 Arrêt de l'entraînement demandé")
+    return {"status": "ok", "message": "Arrêt demandé"}
 
 
 @app.get("/")

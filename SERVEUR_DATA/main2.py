@@ -287,6 +287,7 @@ def add_new_dataset(name: str, data: TimeSeriesData) -> None:
     Ajoute un nouveau dataset dans DATA_DIR avec le nom `name` et les données `data`.
     `data` est un TimeSeriesData (Pydantic).
     """
+    print("ENTRÉE")
     if not DATA_DIR.exists():
         raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
 
@@ -496,6 +497,8 @@ async def data_addd(payload: newDatasetRequest):
     print("\nOn est bien\n")
     return "dataset ajouté avec succès"
 
+
+
 @app.post("/datasets/data_supression")
 async def data_suppression(payload: deleteDatasetRequest):
     print("DATA SERVER received delete_dataset for:", payload.name)
@@ -621,6 +624,48 @@ async def contexte_obtenir_solo(payload: ChoixContexteRequest):
         raise HTTPException(status_code=500, detail=str(e))
         print("\nOn est bien\n")
     return json_contexte
+
+
+class TimeSeriesDataDT(BaseModel):
+    timestamps: List[datetime]            
+    values: List[Optional[float]]
+
+class TimeSeriesDataStr(BaseModel):
+    timestamps: List[str]            # garde en str côté DATA (simple)
+    values: List[Optional[float]]
+
+class AddDatasetPacket(BaseModel):
+    payload_name: str
+    payload_dataset_add: TimeSeriesDataStr
+
+DATASETS = {}
+
+
+
+
+@app.post("/datasets/add_dataset")
+def add_dataset(packet: AddDatasetPacket):
+    name = packet.payload_name
+    if name.lower().endswith(".json"):
+        name = name[:-5]
+
+    try:
+        data_dt = TimeSeriesDataDT(
+            timestamps=[parse_ts(t) for t in packet.payload_dataset_add.timestamps],
+            values=packet.payload_dataset_add.values,
+        )
+        add_new_dataset(name=name, data=data_dt)  
+        print("SORTIE")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"ok": True, "stored": f"{name}.json"}
+
+
+
+
 
 
 @app.get("/")

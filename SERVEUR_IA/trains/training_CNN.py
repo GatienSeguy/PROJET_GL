@@ -133,7 +133,7 @@ def train_CNN(
         epoch_duration = time.time() - epoch_start
 
         if epoch % 1 == 0:
-             yield {"epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
+             yield {"type": "epoch","epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
 
         print(f"[CNN {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 

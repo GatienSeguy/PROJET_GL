@@ -120,11 +120,11 @@ def train_MLP(
         epoch_duration = time.time() - epoch_start
         k = 1
         if epoch % k == 0:
-            yield {"epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
+            yield {"type": "epoch","epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
 
         print(f"[{epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
-    yield {"epochs": epoch, "avg_loss": float(last_avg)}
+    yield {"done": True, "final_loss": float(last_avg)}
 
     return model
 

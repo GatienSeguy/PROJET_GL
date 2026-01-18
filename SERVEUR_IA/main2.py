@@ -1,7 +1,7 @@
 # ====================================
 # IMPORTs
 # ====================================
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException,APIRouter
 from fastapi.responses import StreamingResponse
 import json 
 import torch
@@ -23,7 +23,11 @@ from .classes import (
     Parametres_archi_reseau_CNN,
     Parametres_archi_reseau_LSTM,
     Tx_choix_dataset,
-    PaquetComplet)
+    PaquetComplet,
+    AddDatasetPacket)
+
+#A mettre dans classes
+
 
 from .fonctions_pour_main import(
     filter_series_by_dates,
@@ -778,6 +782,51 @@ def proxy_fetch_dataset(payload: dict):
         return {"status": "error", "message": str(e)}
     
 
+
+
+
+@app.post("/datasets/add_dataset")
+def add_dataset_proxy(packet: AddDatasetPacket):
+    url = f"{DATA_SERVER_URL}/datasets/add_dataset"
+    print("PAQUET D'AJOUTER DS IA", packet)
+    print("FORWARD URL =", url)
+
+    try:
+        out_json = packet.model_dump(mode="json")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Serialization error in IA: {repr(e)}")
+
+    try:
+        print("➡️ Forwarding to DATA server...")
+        resp = requests.post(url, json=out_json, timeout=60)
+        print("⬅️ DATA server status:", resp.status_code)
+        print("⬅️ DATA server headers:", dict(resp.headers))
+        print("⬅️ DATA server body (first 1000 chars):", resp.text[:1000])
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {repr(e)}")
+
+    if not resp.ok:
+        # propage l'erreur DATA
+        try:
+            detail = resp.json()
+        except Exception:
+            detail = resp.text
+        raise HTTPException(status_code=resp.status_code, detail=detail)
+
+    # ✅ ICI: parse JSON safe (sinon 500 muet)
+    try:
+        return resp.json()
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "DATA server returned non-JSON response",
+                "exception": repr(e),
+                "status_code": resp.status_code,
+                "content_type": resp.headers.get("content-type"),
+                "body_preview": resp.text[:1000],
+            },
+        )
 
 
 # ====================================
