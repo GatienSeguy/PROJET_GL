@@ -1496,11 +1496,11 @@ def load_model(request: LoadModelRequest):
             from .models.model_MLP import MLP
             hidden_size = arch_params.get("hidden_size", 128)
             nb_couches = arch_params.get("nb_couches", 3)
-            activation = arch_params.get("activation", "relu")
+            activation = arch_params.get("activation", "relu").lower()
             
             model = MLP(
                 in_dim=window_size,
-                hidden_dim=hidden_size,
+                hidden_size=hidden_size,
                 out_dim=1,
                 num_blocks=nb_couches,
                 activation=activation
@@ -1510,13 +1510,16 @@ def load_model(request: LoadModelRequest):
             from .models.model_LSTM import LSTM
             hidden_size = arch_params.get("hidden_size", 64)
             nb_couches = arch_params.get("nb_couches", 2)
+            bidirectional = arch_params.get("bidirectional", False)
+            batch_first = arch_params.get("batch_first", True)
             
             model = LSTM(
                 in_dim=1,
                 hidden_dim=hidden_size,
                 out_dim=1,
-                num_layers=nb_couches,
-                batch_first=True
+                nb_couches=nb_couches,
+                bidirectional=bidirectional,
+                batch_first=batch_first
             )
             
         elif model_type == "cnn":
@@ -1524,13 +1527,19 @@ def load_model(request: LoadModelRequest):
             hidden_size = arch_params.get("hidden_size", 64)
             nb_couches = arch_params.get("nb_couches", 2)
             kernel_size = arch_params.get("kernel_size", 3)
+            activation = arch_params.get("activation", "relu").lower()
+            padding = arch_params.get("padding", 1)
+            stride = arch_params.get("stride", 1)
             
             model = CNN(
                 in_dim=1,
                 hidden_dim=hidden_size,
                 out_dim=1,
                 num_blocks=nb_couches,
-                kernel_size=kernel_size
+                activation=activation,
+                kernel_size=kernel_size,
+                padding=padding,
+                stride=stride
             )
         else:
             raise Exception(f"Type de modèle inconnu: {model_type}")

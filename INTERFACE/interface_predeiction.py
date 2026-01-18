@@ -400,7 +400,20 @@ class Fenetre_Acceuil(ctk.CTk):
             messagebox.showwarning("Info", "Aucun entraînement en cours ou déjà annulé.",parent=self)
 
     def test(self):
-        print("test")
+        """Ouvre la fenêtre de gestion des modèles sauvegardés"""
+        self.ouvrir_fenetre_charger_modele()
+    
+    def ouvrir_fenetre_charger_modele(self):
+        """Ouvre une fenêtre pour charger un modèle sauvegardé"""
+        if hasattr(self, 'fenetre_charger_modele') and self.fenetre_charger_modele is not None:
+            try:
+                if self.fenetre_charger_modele.winfo_exists():
+                    self.fenetre_charger_modele.lift()
+                    return
+            except:
+                pass
+        
+        self.fenetre_charger_modele = Fenetre_Charger_Modele(self)
     
     def Parametrer_modele(self):
         if self.Fenetre_Params_instance is None or not self.Fenetre_Params_instance.est_ouverte():
@@ -657,6 +670,8 @@ class Fenetre_Acceuil(ctk.CTk):
                                     # ===== FIN DU PIPELINE =====
                                     elif msg.get("type") == "fin_pipeline":
                                         print("[PIPELINE] Terminé!")
+                                        # Proposer de sauvegarder le modèle
+                                        self.after(500, self.proposer_sauvegarde_modele)
                                         break
                                     
                                     # ===== ERREURS =====
@@ -697,6 +712,30 @@ class Fenetre_Acceuil(ctk.CTk):
             # Lancer l'entraînement dans un thread séparé pour ne pas bloquer l'interface
             training_thread = threading.Thread(target=run_training, daemon=True)
             training_thread.start()
+    
+    def proposer_sauvegarde_modele(self):
+        """Propose à l'utilisateur de sauvegarder le modèle après l'entraînement"""
+        reponse = messagebox.askyesno(
+            "Sauvegarder le modèle",
+            "L'entraînement est terminé!\n\n"
+            "Voulez-vous sauvegarder ce modèle pour une utilisation ultérieure?",
+            parent=self
+        )
+        
+        if reponse:
+            self.ouvrir_fenetre_sauvegarder_modele()
+    
+    def ouvrir_fenetre_sauvegarder_modele(self):
+        """Ouvre la fenêtre de sauvegarde du modèle"""
+        if hasattr(self, 'fenetre_sauvegarder_modele') and self.fenetre_sauvegarder_modele is not None:
+            try:
+                if self.fenetre_sauvegarder_modele.winfo_exists():
+                    self.fenetre_sauvegarder_modele.lift()
+                    return
+            except:
+                pass
+        
+        self.fenetre_sauvegarder_modele = Fenetre_Sauvegarder_Modele(self)
 
 class Cadre_Representation(ctk.CTkFrame):
     def __init__(self, app, master=None):
@@ -2763,6 +2802,349 @@ def gray_to_hex(gray_code: str) -> str:
     return "#{0:02x}{0:02x}{0:02x}".format(level)
 
 Plot_style=Plot_style_class()
+
+
+# ====================================
+# FENÊTRE CHARGER MODÈLE
+# ====================================
+class Fenetre_Charger_Modele(ctk.CTkToplevel):
+    """Fenêtre pour charger un modèle sauvegardé"""
+    
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.title("📂 Charger un Modèle")
+        self.geometry("500x400")
+        self.resizable(True, True)
+        
+        # Liste des modèles
+        self.models_list = []
+        
+        self.setup_ui()
+        self.charger_liste_modeles()
+    
+    def setup_ui(self):
+        # Titre
+        titre = ctk.CTkLabel(
+            self, 
+            text="📂 Modèles Sauvegardés",
+            font=ctk.CTkFont(size=20, weight="bold")
+        )
+        titre.pack(pady=20)
+        
+        # Frame pour la liste
+        frame_liste = ctk.CTkFrame(self)
+        frame_liste.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        # Listbox avec scrollbar
+        self.listbox_frame = ctk.CTkScrollableFrame(frame_liste, height=200)
+        self.listbox_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Label de statut
+        self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
+        self.status_label.pack(pady=5)
+        
+        # Boutons
+        frame_buttons = ctk.CTkFrame(self, fg_color="transparent")
+        frame_buttons.pack(fill="x", padx=20, pady=10)
+        
+        btn_refresh = ctk.CTkButton(
+            frame_buttons, 
+            text="🔄 Rafraîchir",
+            command=self.charger_liste_modeles,
+            width=120
+        )
+        btn_refresh.pack(side="left", padx=5)
+        
+        btn_charger = ctk.CTkButton(
+            frame_buttons, 
+            text="📥 Charger",
+            command=self.charger_modele_selectionne,
+            width=120,
+            fg_color="#27AE60",
+            hover_color="#1E8449"
+        )
+        btn_charger.pack(side="left", padx=5)
+        
+        btn_supprimer = ctk.CTkButton(
+            frame_buttons, 
+            text="🗑️ Supprimer",
+            command=self.supprimer_modele_selectionne,
+            width=120,
+            fg_color="#E74C3C",
+            hover_color="#C0392B"
+        )
+        btn_supprimer.pack(side="left", padx=5)
+        
+        btn_fermer = ctk.CTkButton(
+            frame_buttons, 
+            text="❌ Fermer",
+            command=self.destroy,
+            width=120
+        )
+        btn_fermer.pack(side="right", padx=5)
+    
+    def charger_liste_modeles(self):
+        """Charge la liste des modèles depuis le serveur"""
+        self.status_label.configure(text="Chargement...")
+        
+        # Effacer la liste actuelle
+        for widget in self.listbox_frame.winfo_children():
+            widget.destroy()
+        
+        self.models_list = []
+        self.selected_model = None
+        self.radio_var = ctk.StringVar(value="")
+        
+        try:
+            response = requests.get(f"{URL}/model/list", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                models = data.get("models", [])
+                
+                if not models:
+                    label = ctk.CTkLabel(
+                        self.listbox_frame, 
+                        text="Aucun modèle sauvegardé",
+                        font=ctk.CTkFont(size=14)
+                    )
+                    label.pack(pady=20)
+                    self.status_label.configure(text="Aucun modèle trouvé")
+                else:
+                    for model in models:
+                        name = model.get("name", model.get("nom", "inconnu"))
+                        self.models_list.append(name)
+                        
+                        radio = ctk.CTkRadioButton(
+                            self.listbox_frame,
+                            text=f"🧠 {name}",
+                            variable=self.radio_var,
+                            value=name,
+                            font=ctk.CTkFont(size=14)
+                        )
+                        radio.pack(anchor="w", pady=5, padx=10)
+                    
+                    self.status_label.configure(text=f"{len(models)} modèle(s) trouvé(s)")
+            else:
+                self.status_label.configure(text=f"Erreur: {response.status_code}")
+                
+        except requests.exceptions.ConnectionError:
+            self.status_label.configure(text="❌ Serveur IA non accessible")
+            label = ctk.CTkLabel(
+                self.listbox_frame, 
+                text="Impossible de se connecter au serveur",
+                font=ctk.CTkFont(size=14),
+                text_color="#E74C3C"
+            )
+            label.pack(pady=20)
+        except Exception as e:
+            self.status_label.configure(text=f"Erreur: {str(e)[:30]}")
+    
+    def charger_modele_selectionne(self):
+        """Charge le modèle sélectionné"""
+        selected = self.radio_var.get()
+        if not selected:
+            messagebox.showwarning("Attention", "Veuillez sélectionner un modèle")
+            return
+        
+        self.status_label.configure(text=f"Chargement de '{selected}'...")
+        
+        def load_in_thread():
+            try:
+                response = requests.post(
+                    f"{URL}/model/load",
+                    json={"name": selected},
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    self.after(0, lambda: self._on_load_success(selected, data))
+                else:
+                    error = response.json().get("detail", response.text)
+                    self.after(0, lambda: self._on_load_error(error))
+                    
+            except Exception as e:
+                self.after(0, lambda: self._on_load_error(str(e)))
+        
+        threading.Thread(target=load_in_thread, daemon=True).start()
+    
+    def _on_load_success(self, name, data):
+        self.status_label.configure(text=f"✅ Modèle '{name}' chargé!")
+        model_type = data.get("model_type", "inconnu")
+        window_size = data.get("window_size", "?")
+        
+        messagebox.showinfo(
+            "Succès", 
+            f"Modèle '{name}' chargé avec succès!\n\n"
+            f"Type: {model_type.upper()}\n"
+            f"Fenêtre: {window_size} points\n\n"
+            f"Vous pouvez maintenant aller dans l'onglet 'Prediction' "
+            f"pour faire des prédictions."
+        )
+    
+    def _on_load_error(self, error):
+        self.status_label.configure(text=f"❌ Erreur")
+        messagebox.showerror("Erreur", f"Impossible de charger le modèle:\n{error}")
+    
+    def supprimer_modele_selectionne(self):
+        """Supprime le modèle sélectionné"""
+        selected = self.radio_var.get()
+        if not selected:
+            messagebox.showwarning("Attention", "Veuillez sélectionner un modèle")
+            return
+        
+        confirm = messagebox.askyesno(
+            "Confirmation", 
+            f"Êtes-vous sûr de vouloir supprimer le modèle '{selected}'?\n"
+            "Cette action est irréversible."
+        )
+        
+        if not confirm:
+            return
+        
+        try:
+            response = requests.delete(f"{URL}/model/delete/{selected}", timeout=10)
+            if response.status_code == 200:
+                messagebox.showinfo("Succès", f"Modèle '{selected}' supprimé")
+                self.charger_liste_modeles()
+            else:
+                error = response.json().get("detail", response.text)
+                messagebox.showerror("Erreur", f"Impossible de supprimer:\n{error}")
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur: {str(e)}")
+
+
+# ====================================
+# FENÊTRE SAUVEGARDER MODÈLE
+# ====================================
+class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
+    """Fenêtre pour sauvegarder le modèle entraîné"""
+    
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.title("💾 Sauvegarder le Modèle")
+        self.geometry("400x250")
+        self.resizable(False, False)
+        
+        self.setup_ui()
+    
+    def setup_ui(self):
+        # Titre
+        titre = ctk.CTkLabel(
+            self, 
+            text="💾 Sauvegarder le Modèle",
+            font=ctk.CTkFont(size=20, weight="bold")
+        )
+        titre.pack(pady=20)
+        
+        # Frame pour le nom
+        frame_nom = ctk.CTkFrame(self, fg_color="transparent")
+        frame_nom.pack(fill="x", padx=30, pady=10)
+        
+        label_nom = ctk.CTkLabel(
+            frame_nom, 
+            text="Nom du modèle:",
+            font=ctk.CTkFont(size=14)
+        )
+        label_nom.pack(anchor="w")
+        
+        self.entry_nom = ctk.CTkEntry(
+            frame_nom, 
+            placeholder_text="ex: mon_modele_eurusd",
+            width=300,
+            height=35
+        )
+        self.entry_nom.pack(fill="x", pady=5)
+        
+        # Suggestion de nom
+        suggestion = f"model_{datetime.now().strftime('%Y%m%d_%H%M')}"
+        self.entry_nom.insert(0, suggestion)
+        
+        # Label de statut
+        self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
+        self.status_label.pack(pady=10)
+        
+        # Boutons
+        frame_buttons = ctk.CTkFrame(self, fg_color="transparent")
+        frame_buttons.pack(fill="x", padx=30, pady=20)
+        
+        btn_sauvegarder = ctk.CTkButton(
+            frame_buttons, 
+            text="💾 Sauvegarder",
+            command=self.sauvegarder,
+            width=150,
+            height=40,
+            fg_color="#27AE60",
+            hover_color="#1E8449"
+        )
+        btn_sauvegarder.pack(side="left", padx=10)
+        
+        btn_annuler = ctk.CTkButton(
+            frame_buttons, 
+            text="❌ Annuler",
+            command=self.destroy,
+            width=150,
+            height=40
+        )
+        btn_annuler.pack(side="right", padx=10)
+    
+    def sauvegarder(self):
+        """Sauvegarde le modèle"""
+        nom = self.entry_nom.get().strip()
+        
+        if not nom:
+            messagebox.showwarning("Attention", "Veuillez entrer un nom pour le modèle")
+            return
+        
+        # Valider le nom (pas de caractères spéciaux)
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', nom):
+            messagebox.showwarning(
+                "Attention", 
+                "Le nom ne peut contenir que des lettres, chiffres, tirets et underscores"
+            )
+            return
+        
+        self.status_label.configure(text="Sauvegarde en cours...")
+        
+        def save_in_thread():
+            try:
+                response = requests.post(
+                    f"{URL}/model/save",
+                    json={"name": nom},
+                    timeout=60
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    self.after(0, lambda: self._on_save_success(nom, data))
+                else:
+                    error = response.json().get("detail", response.text)
+                    self.after(0, lambda: self._on_save_error(error))
+                    
+            except Exception as e:
+                self.after(0, lambda: self._on_save_error(str(e)))
+        
+        threading.Thread(target=save_in_thread, daemon=True).start()
+    
+    def _on_save_success(self, nom, data):
+        self.status_label.configure(text=f"✅ Sauvegardé!")
+        model_type = data.get("model_type", "inconnu")
+        
+        messagebox.showinfo(
+            "Succès", 
+            f"Modèle '{nom}' sauvegardé avec succès!\n\n"
+            f"Type: {model_type.upper()}\n\n"
+            f"Vous pouvez le recharger via 'Charger Modèle'."
+        )
+        self.destroy()
+    
+    def _on_save_error(self, error):
+        self.status_label.configure(text=f"❌ Erreur")
+        messagebox.showerror("Erreur", f"Impossible de sauvegarder:\n{error}")
+
 
 # Lancer la boucle principale
 if __name__ == "__main__":
