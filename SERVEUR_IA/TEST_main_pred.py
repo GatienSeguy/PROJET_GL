@@ -246,6 +246,9 @@ class TrainingPipeline:
     # 4) RESHAPE POUR LE MODÈLE
     # ====================================
     def reshape_data_for_model(self, model_type: str):
+        print(f"[DEBUG RESHAPE] model_type={model_type}")
+        print(f"[DEBUG RESHAPE] AVANT - X_train.shape={self.X_train.shape}")
+        
         if model_type == "lstm":
             if self.X_train.ndim == 2:
                 self.X_train = self.X_train.unsqueeze(-1)
@@ -261,6 +264,8 @@ class TrainingPipeline:
                 self.X_val = self.X_val.unsqueeze(1)
             if self.X_test.ndim == 2 and self.X_test.numel() > 0:
                 self.X_test = self.X_test.unsqueeze(1)
+        
+        print(f"[DEBUG RESHAPE] APRÈS - X_train.shape={self.X_train.shape}")
 
     # ====================================
     # 5-8) CONFIGURATION (inchangé)
@@ -306,6 +311,7 @@ class TrainingPipeline:
         return params
 
     def setup_lstm_architecture(self) -> Dict[str, Any]:
+        # batch_first=True est requis pour notre pipeline
         params = {"hidden_size": 128, "nb_couches": 2, "bidirectional": False, "batch_first": True}
         if self.cfg_model.hidden_size is not None:
             params["hidden_size"] = int(self.cfg_model.hidden_size)
@@ -313,8 +319,8 @@ class TrainingPipeline:
             params["nb_couches"] = int(self.cfg_model.nb_couches)
         if self.cfg_model.bidirectional is not None:
             params["bidirectional"] = bool(self.cfg_model.bidirectional)
-        if self.cfg_model.batch_first is not None:
-            params["batch_first"] = bool(self.cfg_model.batch_first)
+        # Toujours forcer batch_first=True pour la compatibilité du pipeline
+        params["batch_first"] = True
         return params
 
     def setup_architecture(self, model_type: str) -> Dict[str, Any]:
