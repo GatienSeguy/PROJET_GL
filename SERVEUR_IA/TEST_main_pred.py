@@ -1052,6 +1052,10 @@ def predict_future(request: PredictRequest):
             context = series_norm[-window_size:].copy()
             predictions, pred_low, pred_high = [], [], []
             
+            print(f"[PREDICT] Contexte initial (derniers {window_size} points normalisés):")
+            print(f"[PREDICT] context = {context}")
+            print(f"[PREDICT] Dernières valeurs réelles: {series_array[-5:]}")
+            
             model.eval()
             z_score = stats.norm.ppf((1 + request.confidence_level) / 2)
             
@@ -1060,18 +1064,41 @@ def predict_future(request: PredictRequest):
                     x_input = torch.tensor(context, dtype=torch.float32).unsqueeze(0)
                     
                     if model_type == "lstm":
-                        x_input = x_input.unsqueeze(-1)
+                        x_input = x_input.unsqueeze(-1)  # (1, T) -> (1, T, 1)
                     elif model_type == "cnn":
-                        x_input = x_input.unsqueeze(1)
+                        x_input = x_input.unsqueeze(1)   # (1, T) -> (1, 1, T)
                     
                     x_input = x_input.to(device)
-                    y_pred_norm = model(x_input).cpu().numpy().flatten()[0]
+                    output = model(x_input)
+                    
+                    # Extraire correctement la prédiction selon le type de modèle
+                    if model_type == "lstm":
+                        # LSTM retourne (B, T, out_dim), prendre le dernier timestep
+                        if output.ndim == 3:
+                            y_pred_norm = output[0, -1, 0].cpu().item()
+                        elif output.ndim == 2:
+                            y_pred_norm = output[0, 0].cpu().item()
+                        else:
+                            y_pred_norm = output.cpu().item()
+                    elif model_type == "cnn":
+                        # CNN retourne (B, out_dim, T'), prendre le dernier
+                        if output.ndim == 3:
+                            y_pred_norm = output[0, 0, -1].cpu().item()
+                        else:
+                            y_pred_norm = output.flatten()[0].cpu().item()
+                    else:
+                        # MLP retourne (B, out_dim)
+                        y_pred_norm = output.flatten()[0].cpu().item()
+                    
+                    print(f"[PREDICT] step={step}, context[-3:]={context[-3:]}, y_pred_norm={y_pred_norm:.4f}")
                     
                     # Dénormaliser pour la sortie
                     if method == "minmax":
                         y_pred = y_pred_norm * (max_val - min_val) + min_val
                     else:  # standardization
                         y_pred = y_pred_norm * std_val + mean_val
+                    
+                    print(f"[PREDICT] step={step}, y_pred_norm={y_pred_norm:.4f}, y_pred={y_pred:.4f}")
                     
                     # IC avec incertitude croissante
                     uncertainty = residual_std * z_score * np.sqrt(step + 1)
@@ -1084,7 +1111,6 @@ def predict_future(request: PredictRequest):
                     yield sse({"type": "pred_point", "step": step+1, "yhat": float(y_pred), "low": low, "high": high})
                     
                     # Autorégression : la prédiction normalisée devient le nouvel input
-                    # y_pred_norm est déjà dans l'espace normalisé (sortie brute du modèle)
                     context = np.roll(context, -1)
                     context[-1] = y_pred_norm
             
