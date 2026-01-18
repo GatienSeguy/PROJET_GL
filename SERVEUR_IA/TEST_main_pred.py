@@ -66,17 +66,17 @@ last_config_series = None
 payload_json = {"timestamps": [], "values": []}
 
 # ====================================
-# VARIABLES GLOBALES POUR LE MODÈLE ENTRAÎNÉ
+# VARIABLE GLOBALE POUR LE MODÈLE ENTRAÎNÉ
 # ====================================
 trained_model_state = {
-    "model": None,           # Le modèle PyTorch entraîné
-    "norm_params": None,     # Paramètres de normalisation
-    "inverse_fn": None,      # Fonction inverse pour dénormaliser
-    "window_size": None,     # Taille de la fenêtre d'entrée
-    "residual_std": None,    # Écart-type des résidus (pour IC)
-    "model_type": None,      # Type de modèle (mlp, lstm, cnn)
-    "device": "cpu",         # Device utilisé
-    "is_trained": False,     # Flag indiquant si un modèle est disponible
+    "model": None,
+    "norm_params": None,
+    "inverse_fn": None,
+    "window_size": None,
+    "residual_std": None,
+    "model_type": None,
+    "device": "cpu",
+    "is_trained": False,
 }
 
 
@@ -477,14 +477,6 @@ class TrainingPipeline:
     def run_prediction_test(self, strategy: str = "one_step"):
         """
         Phase 3 : Test prédictif avec choix de la stratégie.
-        
-        Stratégies disponibles:
-        - "one_step": Prédiction 1 pas + recalibration immédiate (RECOMMANDÉ)
-        - "recalibration": Prédiction récursive + recalibration tous les N pas
-        - "recursive": Prédiction autorégressive pure (diverge vite)
-        - "direct": Multi-horizon (nécessite modèle spécial)
-        
-        Basé sur Taieb & Hyndman (2014).
         """
         if self.model_trained is None:
             yield {"type": "warn", "message": "Modèle non récupéré (test pred sauté)."}
@@ -497,13 +489,9 @@ class TrainingPipeline:
             yield {"type": "warn", "message": "Pas de données pour test prédictif."}
             return
         
-        # Taille de la fenêtre
         window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
-        
-        # Vraies valeurs
         y_true_values = self.series.values[idx_test_start:idx_test_start + n_test]
         
-        # Configuration selon la stratégie
         strategy_map = {
             "one_step": PredictionStrategy.ONE_STEP,
             "recalibration": PredictionStrategy.RECALIBRATION,
@@ -542,11 +530,6 @@ class TrainingPipeline:
     # COMPARAISON DE TOUTES LES STRATÉGIES
     # ====================================
     def run_all_strategies_comparison(self):
-        """
-        Compare toutes les stratégies de prédiction.
-        
-        Retourne les métriques de chaque stratégie pour comparaison.
-        """
         if self.model_trained is None:
             yield {"type": "warn", "message": "Modèle non récupéré."}
             return
@@ -585,7 +568,7 @@ class TrainingPipeline:
     # ====================================
     def execute_full_pipeline(self):
         """Orchestre le pipeline complet : train → validation → test prédictif"""
-        global stop_training_flag
+        global stop_training_flag, trained_model_state
         stop_training_flag = False
         try:
             # Chargement des données
@@ -605,7 +588,7 @@ class TrainingPipeline:
             model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
             self.reshape_data_for_model(model_type)
             
-            # Information de split (NOUVEAU format)
+            # Information de split
             yield sse({
                 "type": "split_info",
                 "n_train": split_info["n_train"],
@@ -668,8 +651,7 @@ class TrainingPipeline:
             
             yield sse({"type": "phase", "phase": "prediction", "status": "end"})
             
-            # ========== SAUVEGARDER LE MODÈLE ENTRAÎNÉ ==========
-            global trained_model_state
+            # ========== SAUVEGARDER LE MODÈLE ==========
             window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
             trained_model_state = {
                 "model": self.model_trained,
@@ -677,13 +659,13 @@ class TrainingPipeline:
                 "inverse_fn": self.inverse_fn,
                 "window_size": window_size,
                 "residual_std": self.residual_std if self.residual_std else 0.1,
-                "model_type": self.cfg.Parametres_choix_reseau_neurones.modele.lower(),
+                "model_type": model_type,
                 "device": str(self.device),
                 "is_trained": True,
             }
-            print(f"✅ Modèle sauvegardé en mémoire (window_size={window_size}, type={trained_model_state['model_type']})")
+            print(f"✅ Modèle sauvegardé (type={model_type}, window={window_size})")
             
-            # ========== DONNÉES FINALES POUR L'AFFICHAGE ==========
+            # ========== DONNÉES FINALES ==========
             yield sse({
                 "type": "final_plot_data",
                 "series_complete": self.series.values,
@@ -763,13 +745,11 @@ def proxy_fetch_dataset(payload: dict):
         return {"status": "error", "message": str(e)}
 
 
-
 @app.post("/datasets/data_add_proxy")
 def proxy_add_dataset(payload: dict):
     url = f"{DATA_SERVER_URL}/datasets/data_add"
     data_to_send = jsonable_encoder(payload)
     print("=== ENVOYÉ AU SERVEUR DATA ===")
-    # print(data_to_send)
 
     try:
         response = requests.post(url, json=data_to_send, timeout=1000)
@@ -777,8 +757,6 @@ def proxy_add_dataset(payload: dict):
         raise HTTPException(status_code=500, detail=f"Erreur de connexion au serveur DATA: {e}")
 
     print("=== RÉPONSE SERVEUR DATA ===")
-    # print("Status:", response.status_code)
-    # print("Body  :", response.text)
 
     if response.status_code >= 400:
         raise HTTPException(
@@ -810,14 +788,12 @@ def add_dataset_proxy(packet: AddDatasetPacket):
         raise HTTPException(status_code=502, detail=f"Dataset server unreachable: {repr(e)}")
 
     if not resp.ok:
-        # propage l'erreur DATA
         try:
             detail = resp.json()
         except Exception:
             detail = resp.text
         raise HTTPException(status_code=resp.status_code, detail=detail)
 
-    # ✅ ICI: parse JSON safe (sinon 500 muet)
     try:
         return resp.json()
     except Exception as e:
@@ -833,13 +809,11 @@ def add_dataset_proxy(packet: AddDatasetPacket):
         )
 
 
-
 @app.post("/datasets/data_suppression_proxy")
 def proxy_suppression_dataset(payload: deleteDatasetRequest):
     print("Message reçu depuis UI pour suppression:", payload.name)
     url = f"{DATA_SERVER_URL}/datasets/data_supression"
     
-    # ✅ Sérialiser l'objet Pydantic en dict
     payload_dict = payload.model_dump() if hasattr(payload, 'model_dump') else payload.dict()
     
     try:
@@ -851,12 +825,12 @@ def proxy_suppression_dataset(payload: deleteDatasetRequest):
         raise HTTPException(status_code=500, detail=f"Erreur serveur Data: {str(e)}")
 
 
-
 @app.post("/train_full")
 def training(payload: PaquetComplet, payload_model: dict):
     """Route d'entraînement complet avec le nouveau pipeline 3 phases"""
     pipeline = TrainingPipeline(payload, payload_model)
     return StreamingResponse(pipeline.execute_full_pipeline(), media_type="text/event-stream")
+
 
 stop_training_flag = False
 
@@ -875,44 +849,29 @@ def root():
 
 
 # ====================================
-# ENDPOINT DE PRÉDICTION FUTURE
+# ENDPOINT PRÉDICTION FUTURE
 # ====================================
 from pydantic import BaseModel as PydanticBaseModel
 from scipy import stats
 
 class PredictRequest(PydanticBaseModel):
-    """Requête pour la prédiction future"""
-    horizon: int = 10  # Nombre de pas à prédire dans le futur
-    confidence_level: float = 0.95  # Niveau de confiance pour les intervalles
+    horizon: int = 10
+    confidence_level: float = 0.95
 
 
 @app.post("/predict")
 def predict_future(request: PredictRequest):
-    """
-    Prédit H pas dans le FUTUR en utilisant le modèle entraîné.
-    
-    - Utilise les données chargées (payload_json) comme historique
-    - Prédit au-delà de la fin des données (pas de comparaison possible)
-    - Retourne les prédictions avec intervalles de confiance
-    """
+    """Prédit H pas dans le FUTUR"""
     
     def prediction_generator():
         global trained_model_state, payload_json
         
-        # Vérifier qu'un modèle est disponible
-        if not trained_model_state["is_trained"] or trained_model_state["model"] is None:
-            yield sse({
-                "type": "error",
-                "message": "Aucun modèle entraîné disponible. Veuillez d'abord entraîner un modèle via l'onglet Training."
-            })
+        if not trained_model_state["is_trained"]:
+            yield sse({"type": "error", "message": "Aucun modèle entraîné. Entraînez d'abord via l'onglet Training."})
             return
         
-        # Vérifier que les données sont chargées
-        if not payload_json.get("values") or len(payload_json["values"]) == 0:
-            yield sse({
-                "type": "error", 
-                "message": "Aucune donnée chargée. Veuillez d'abord sélectionner un dataset."
-            })
+        if not payload_json.get("values"):
+            yield sse({"type": "error", "message": "Aucune donnée. Sélectionnez d'abord un dataset."})
             return
         
         try:
@@ -922,113 +881,68 @@ def predict_future(request: PredictRequest):
             window_size = trained_model_state["window_size"]
             residual_std = trained_model_state["residual_std"] or 0.1
             model_type = trained_model_state["model_type"]
-            device_str = trained_model_state["device"]
+            device = torch.device(trained_model_state["device"])
             
-            # Récupérer le device
-            device = torch.device(device_str if device_str != "cpu" else "cpu")
-            
-            # Utiliser les données du payload_json (chargées quand on sélectionne un dataset)
             series_values = payload_json["values"]
-            
             horizon = request.horizon
             
-            print(f"[PREDICT] Démarrage prédiction: horizon={horizon}, series_length={len(series_values)}, window_size={window_size}")
+            print(f"[PREDICT] horizon={horizon}, n_data={len(series_values)}, window={window_size}")
             
-            yield sse({
-                "type": "pred_start",
-                "message": f"Prédiction de {horizon} pas dans le futur",
-                "n_steps": horizon,
-                "series_length": len(series_values),
-                "window_size": window_size
-            })
+            yield sse({"type": "pred_start", "n_steps": horizon, "series_length": len(series_values)})
             
-            # Préparer les données
+            # Normalisation
             series_array = np.array(series_values, dtype=np.float32)
-            
-            # Normaliser selon la méthode utilisée à l'entraînement
             method = norm_params.get("method", "standardization")
             
             if method == "minmax":
-                min_val = norm_params["min"]
-                max_val = norm_params["max"]
+                min_val, max_val = norm_params["min"], norm_params["max"]
                 series_norm = (series_array - min_val) / (max_val - min_val + 1e-8)
-            elif method in ["zscore", "standardization"]:
-                mean_val = norm_params["mean"]
-                std_val = norm_params["std"]
-                series_norm = (series_array - mean_val) / (std_val + 1e-8)
             else:
-                # Fallback
-                mean_val = norm_params.get("mean", series_array.mean())
-                std_val = norm_params.get("std", series_array.std())
+                mean_val, std_val = norm_params["mean"], norm_params["std"]
                 series_norm = (series_array - mean_val) / (std_val + 1e-8)
             
-            # Contexte initial = dernières valeurs normalisées
             context = series_norm[-window_size:].copy()
-            
-            predictions = []
-            pred_low = []
-            pred_high = []
+            predictions, pred_low, pred_high = [], [], []
             
             model.eval()
-            
-            # Z-score pour l'intervalle de confiance
             z_score = stats.norm.ppf((1 + request.confidence_level) / 2)
             
             with torch.no_grad():
                 for step in range(horizon):
-                    # Préparer l'entrée selon le type de modèle
                     x_input = torch.tensor(context, dtype=torch.float32).unsqueeze(0)
                     
                     if model_type == "lstm":
-                        x_input = x_input.unsqueeze(-1)  # (1, window, 1)
+                        x_input = x_input.unsqueeze(-1)
                     elif model_type == "cnn":
-                        x_input = x_input.unsqueeze(1)   # (1, 1, window)
+                        x_input = x_input.unsqueeze(1)
                     
                     x_input = x_input.to(device)
-                    
-                    # Prédiction
-                    y_pred_norm = model(x_input)
-                    y_pred_norm_val = y_pred_norm.cpu().numpy().flatten()[0]
+                    y_pred_norm = model(x_input).cpu().numpy().flatten()[0]
                     
                     # Dénormaliser
                     if inverse_fn:
-                        y_pred = inverse_fn(y_pred_norm_val)
+                        y_pred = inverse_fn(y_pred_norm)
+                    elif method == "minmax":
+                        y_pred = y_pred_norm * (max_val - min_val) + min_val
                     else:
-                        # Dénormalisation manuelle
-                        if method == "minmax":
-                            y_pred = y_pred_norm_val * (max_val - min_val) + min_val
-                        else:
-                            y_pred = y_pred_norm_val * std_val + mean_val
+                        y_pred = y_pred_norm * std_val + mean_val
                     
-                    # Intervalles de confiance (s'élargissent avec le temps)
+                    # IC
                     uncertainty = residual_std * z_score * np.sqrt(step + 1)
-                    low = float(y_pred - uncertainty)
-                    high = float(y_pred + uncertainty)
+                    low, high = float(y_pred - uncertainty), float(y_pred + uncertainty)
                     
                     predictions.append(float(y_pred))
                     pred_low.append(low)
                     pred_high.append(high)
                     
-                    # Envoyer le point
-                    yield sse({
-                        "type": "pred_point",
-                        "step": step + 1,
-                        "yhat": float(y_pred),
-                        "low": low,
-                        "high": high,
-                        "idx": len(series_values) + step
-                    })
+                    yield sse({"type": "pred_point", "step": step+1, "yhat": float(y_pred), "low": low, "high": high})
                     
-                    # Mettre à jour le contexte (autorégression)
+                    # Autorégression
                     context = np.roll(context, -1)
-                    context[-1] = y_pred_norm_val
+                    context[-1] = y_pred_norm
             
-            print(f"[PREDICT] Terminé: {len(predictions)} prédictions générées")
-            
-            # Données finales
             yield sse({
                 "type": "pred_end",
-                "message": f"Prédiction terminée: {horizon} pas",
                 "predictions": predictions,
                 "pred_low": pred_low,
                 "pred_high": pred_high,
@@ -1036,39 +950,29 @@ def predict_future(request: PredictRequest):
                 "series_complete": series_values,
                 "horizon": horizon
             })
-            
             yield sse({"type": "fin_prediction", "done": 1})
             
         except Exception as e:
             import traceback
             print(f"[PREDICT] ERREUR: {e}")
             traceback.print_exc()
-            yield sse({
-                "type": "error",
-                "message": str(e),
-                "traceback": traceback.format_exc()
-            })
+            yield sse({"type": "error", "message": str(e)})
     
     return StreamingResponse(prediction_generator(), media_type="text/event-stream")
 
 
 @app.get("/model/status")
 def model_status():
-    """Retourne le statut du modèle entraîné et des données"""
+    """Statut du modèle et des données"""
     global trained_model_state, payload_json
-    
-    data_loaded = payload_json.get("values") and len(payload_json["values"]) > 0
-    
     return {
         "model": {
             "is_trained": trained_model_state["is_trained"],
             "model_type": trained_model_state["model_type"],
             "window_size": trained_model_state["window_size"],
-            "residual_std": trained_model_state["residual_std"],
-            "device": trained_model_state["device"]
         },
         "data": {
-            "is_loaded": data_loaded,
-            "n_points": len(payload_json["values"]) if data_loaded else 0
+            "is_loaded": bool(payload_json.get("values")),
+            "n_points": len(payload_json.get("values", []))
         }
     }

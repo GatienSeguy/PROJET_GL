@@ -1571,22 +1571,15 @@ class Cadre_Prediction(ctk.CTkFrame):
         super().__init__(master)
         self.app = app
         
-        # Variables pour les données
-        self.series_complete = []
-        self.predictions = []
-        self.pred_low = []
-        self.pred_high = []
-        self.idx_pred_start = 0
-        
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
-            text="🔮 Prédiction Multi-Horizon", 
+            text="🔮 Prédiction Future", 
             font=Fonts.Tabs_title
         )
         self.titre.pack(pady=(10, 5))
         
-        # Sous-titre avec explication
+        # Sous-titre
         self.sous_titre = ctk.CTkLabel(
             self,
             text="Utilisez le modèle entraîné pour prédire les valeurs futures",
@@ -1599,13 +1592,13 @@ class Cadre_Prediction(ctk.CTkFrame):
         self.control_frame = ctk.CTkFrame(self)
         self.control_frame.pack(fill="x", padx=20, pady=(0, 10))
         
-        # Paramètre horizon de prédiction
+        # Paramètre horizon
         horizon_frame = ctk.CTkFrame(self.control_frame)
         horizon_frame.pack(side="left", padx=10, pady=10)
         
         ctk.CTkLabel(
             horizon_frame,
-            text="Horizon de prédiction:",
+            text="Horizon:",
             font=("Roboto", 14, "bold")
         ).pack(side="left", padx=(5, 10))
         
@@ -1613,17 +1606,17 @@ class Cadre_Prediction(ctk.CTkFrame):
         self.horizon_entry = ctk.CTkEntry(
             horizon_frame,
             textvariable=self.horizon_var,
-            width=100,
+            width=80,
             font=("Roboto", 14)
         )
         self.horizon_entry.pack(side="left", padx=(0, 5))
         
         ctk.CTkLabel(
             horizon_frame,
-            text="pas de temps",
+            text="pas",
             font=("Roboto", 12),
             text_color="gray70"
-        ).pack(side="left", padx=(0, 5))
+        ).pack(side="left")
         
         # Bouton de prédiction
         self.predict_btn = ctk.CTkButton(
@@ -1641,88 +1634,69 @@ class Cadre_Prediction(ctk.CTkFrame):
         self.plot_frame = ctk.CTkFrame(self)
         self.plot_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
-        # Création du graphique matplotlib
+        # Graphique matplotlib
         self.fig = Figure(figsize=(12, 6), facecolor=Plot_style.plot_background)
         self.ax = self.fig.add_subplot(111)
-        
-        # Style du graphique
-        self.ax.set_facecolor(Plot_style.plot_background)
-        self.ax.tick_params(axis='both', labelsize=14, colors=Plot_style.text_color)
-        for spine in self.ax.spines.values():
-            spine.set_color(Plot_style.text_color)
-        
-        self.ax.grid(True, linestyle='--', alpha=0.3, color=Plot_style.text_color)
-        self.ax.set_xlabel('Index Temporel', fontsize=16, fontweight='bold', color=Plot_style.text_color)
-        self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Plot_style.text_color)
-        self.ax.set_title('Prédiction Multi-Horizon avec Intervalles de Confiance', 
-                         fontsize=18, fontweight='bold', color=Plot_style.text_color, pad=15)
+        self.setup_plot_style()
         
         # Canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
         
-        # Message d'information initial
+        # Message d'info
         self.info_label = ctk.CTkLabel(
             self.plot_frame,
-            text="⚠️ Entraînez d'abord un modèle pour activer la prédiction",
-            font=("Roboto", 14),
+            text="⚠️ Entraînez d'abord un modèle (onglet Training)",
+            font=("Roboto", 16),
             text_color="orange"
         )
         self.info_label.place(relx=0.5, rely=0.5, anchor="center")
         
         self.fig.tight_layout()
     
+    def setup_plot_style(self):
+        """Configure le style du graphique"""
+        self.ax.set_facecolor(Plot_style.plot_background)
+        self.ax.tick_params(axis='both', labelsize=14, colors=Plot_style.text_color)
+        for spine in self.ax.spines.values():
+            spine.set_color(Plot_style.text_color)
+        self.ax.grid(True, linestyle='--', alpha=0.3, color=Plot_style.text_color)
+        self.ax.set_xlabel('Index', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+        self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+        self.ax.set_title('Prédiction Future', fontsize=18, fontweight='bold', color=Plot_style.text_color)
+    
     def run_prediction(self):
-        """Lance la prédiction en utilisant le modèle entraîné"""
-        # Vérifier qu'un modèle a été entraîné
-        if not hasattr(self.app.Cadre_results_Entrainement, 'epochs') or len(self.app.Cadre_results_Entrainement.epochs) == 0:
-            messagebox.showwarning(
-                "Modèle non entraîné",
-                "Veuillez d'abord entraîner un modèle dans l'onglet Training.",
-                parent=self
-            )
-            return
+        """Lance la prédiction future via l'endpoint /predict"""
         
         # Récupérer l'horizon
         try:
             horizon = int(self.horizon_var.get())
             if horizon <= 0:
                 raise ValueError("L'horizon doit être positif")
-            Parametres_temporels.horizon = horizon
         except ValueError as e:
-            messagebox.showerror(
-                "Erreur de paramètre",
-                f"Horizon invalide: {str(e)}",
-                parent=self
-            )
+            messagebox.showerror("Erreur", f"Horizon invalide: {e}", parent=self)
             return
         
-        # Désactiver le bouton pendant la prédiction
-        self.predict_btn.configure(state="disabled", text="⏳ Prédiction en cours...")
-        self.info_label.configure(text="🔄 Génération des prédictions...", text_color="blue")
+        # Désactiver le bouton
+        self.predict_btn.configure(state="disabled", text="⏳ Prédiction...")
+        self.info_label.place(relx=0.5, rely=0.5, anchor="center")
+        self.info_label.configure(text="🔄 Génération des prédictions...", text_color="#3498db")
         
-        # Lancer la prédiction dans un thread
-        def run_prediction_thread():
+        def prediction_thread():
             try:
-                # Préparer les payloads
-                payload_global = self.app.Formatter_JSON_global()
-                payload_model = self.app.Formatter_JSON_specif()
-                payload_dataset = self.app.Formatter_JSON_dataset()
-                
-                # Variables pour collecter les données
                 series_complete = []
                 predictions = []
                 pred_low = []
                 pred_high = []
-                idx_pred_start = 0
+                idx_start = 0
                 
-                # Requête au serveur avec streaming
+                # Appel à l'endpoint /predict
                 with requests.post(
-                    f"{URL}/train_full",  # On utilise le pipeline complet pour l'instant
-                    json={"payload": payload_global, "payload_model": payload_model},
+                    f"{URL}/predict",
+                    json={"horizon": horizon, "confidence_level": 0.95},
                     stream=True,
-                    timeout=None
+                    timeout=60
                 ) as r:
                     r.raise_for_status()
                     
@@ -1735,184 +1709,110 @@ class Cadre_Prediction(ctk.CTkFrame):
                             continue
                         
                         try:
-                            json_str = line_str[6:]
-                            msg = json.loads(json_str)
+                            msg = json.loads(line_str[6:])
                             
-                            # Récupérer les informations de split
-                            if msg.get("type") == "split_info":
-                                idx_pred_start = msg.get("idx_test_start", 0)
+                            if msg.get("type") == "error":
+                                self.after(0, lambda m=msg: self._show_error(m.get("message", "Erreur")))
+                                return
                             
-                            # Récupérer les données finales
-                            elif msg.get("type") == "final_plot_data":
+                            elif msg.get("type") == "pred_point":
+                                predictions.append(msg.get("yhat"))
+                                pred_low.append(msg.get("low"))
+                                pred_high.append(msg.get("high"))
+                            
+                            elif msg.get("type") == "pred_end":
                                 series_complete = msg.get("series_complete", [])
-                                predictions = msg.get("pred_predictions", [])
-                                pred_low = msg.get("pred_low", [])
-                                pred_high = msg.get("pred_high", [])
+                                idx_start = msg.get("idx_start", len(series_complete))
                             
-                            # Fin du pipeline
-                            elif msg.get("type") == "fin_pipeline":
-                                print("[PREDICTION] Pipeline terminé!")
+                            elif msg.get("type") == "fin_prediction":
                                 break
                         
                         except json.JSONDecodeError:
                             continue
                 
-                # Afficher les résultats
+                # Afficher le graphique
                 if series_complete and predictions:
-                    self.update_plot(
-                        series_complete=series_complete,
-                        predictions=predictions,
-                        pred_low=pred_low,
-                        pred_high=pred_high,
-                        idx_pred_start=idx_pred_start,
-                        horizon=horizon
-                    )
-                    self.info_label.configure(text="✅ Prédiction réussie!", text_color="green")
+                    self.after(0, lambda: self.update_plot(
+                        series_complete, predictions, pred_low, pred_high, idx_start, horizon
+                    ))
+                    self.after(0, lambda: self.info_label.place_forget())
                 else:
-                    self.info_label.configure(
-                        text="⚠️ Aucune donnée de prédiction reçue",
-                        text_color="orange"
-                    )
+                    self.after(0, lambda: self._show_error("Aucune prédiction reçue"))
             
+            except requests.exceptions.ConnectionError:
+                self.after(0, lambda: self._show_error("Connexion au serveur impossible"))
             except Exception as e:
-                print(f"Erreur lors de la prédiction: {e}")
-                messagebox.showerror(
-                    "Erreur de prédiction",
-                    f"Une erreur est survenue:\n{str(e)}",
-                    parent=self
-                )
-                self.info_label.configure(
-                    text="❌ Erreur lors de la prédiction",
-                    text_color="red"
-                )
-            
+                self.after(0, lambda: self._show_error(str(e)))
             finally:
-                # Réactiver le bouton
-                self.predict_btn.configure(state="normal", text="🚀 Lancer la Prédiction")
+                self.after(0, lambda: self.predict_btn.configure(
+                    state="normal", text="🚀 Lancer la Prédiction"
+                ))
         
-        # Lancer dans un thread
-        threading.Thread(target=run_prediction_thread, daemon=True).start()
+        threading.Thread(target=prediction_thread, daemon=True).start()
     
-    def update_plot(self, series_complete, predictions, pred_low, pred_high, idx_pred_start, horizon):
-        """Met à jour le graphique avec les prédictions"""
+    def _show_error(self, message):
+        """Affiche une erreur"""
+        self.info_label.configure(text=f"❌ {message}", text_color="red")
+        self.info_label.place(relx=0.5, rely=0.5, anchor="center")
+    
+    def update_plot(self, series_complete, predictions, pred_low, pred_high, idx_start, horizon):
+        """Met à jour le graphique avec les prédictions futures"""
         try:
-            # Nettoyer le graphique
             self.ax.clear()
             
-            # Convertir en numpy arrays
             series = np.array(series_complete, dtype=float)
             preds = np.array(predictions, dtype=float)
+            n_history = len(series)
+            n_preds = len(preds)
             
-            # Indices
-            n_total = len(series)
-            idx_history = np.arange(idx_pred_start)
-            idx_pred = np.arange(idx_pred_start, idx_pred_start + len(preds))
+            # Afficher seulement une partie de l'historique
+            display_len = min(max(int(n_history * 0.15), 30), 150)
+            display_start = max(0, n_history - display_len)
             
-            # 1. Série historique (avant la prédiction)
-            if idx_pred_start > 0:
-                self.ax.plot(
-                    idx_history,
-                    series[:idx_pred_start],
-                    color='#2E86AB',
-                    linewidth=2.5,
-                    label='Données Historiques',
-                    alpha=0.9,
-                    zorder=3
-                )
-            
-            # 2. Vraies valeurs sur la période de prédiction (si disponibles)
-            if idx_pred_start + len(preds) <= n_total:
-                idx_true = np.arange(idx_pred_start, idx_pred_start + len(preds))
-                self.ax.plot(
-                    idx_true,
-                    series[idx_pred_start:idx_pred_start + len(preds)],
-                    color='#27AE60',
-                    linewidth=2.5,
-                    linestyle='--',
-                    label='Valeurs Réelles',
-                    alpha=0.8,
-                    zorder=2
-                )
-            
-            # 3. Prédictions
+            # Historique
+            idx_hist = np.arange(display_start, n_history)
             self.ax.plot(
-                idx_pred,
-                preds,
-                color='#E74C3C',
-                linewidth=2.5,
-                label=f'Prédictions (h={horizon})',
-                marker='o',
-                markersize=5,
-                markerfacecolor='white',
-                markeredgecolor='#E74C3C',
-                markeredgewidth=1.5,
-                alpha=0.9,
-                zorder=4
+                idx_hist, series[display_start:],
+                color='#2E86AB', linewidth=2.5,
+                label=f'Historique (n={n_history})', alpha=0.9
             )
             
-            # 4. Intervalles de confiance (si disponibles)
+            # Prédictions futures
+            idx_pred = np.arange(n_history, n_history + n_preds)
+            self.ax.plot(
+                idx_pred, preds,
+                color='#E74C3C', linewidth=2.5,
+                marker='o', markersize=5,
+                markerfacecolor='white', markeredgecolor='#E74C3C',
+                label=f'Prédictions (h={n_preds})', alpha=0.95
+            )
+            
+            # Intervalles de confiance
             if pred_low and pred_high:
-                pred_low_arr = np.array(pred_low, dtype=float)
-                pred_high_arr = np.array(pred_high, dtype=float)
-                
                 self.ax.fill_between(
                     idx_pred,
-                    pred_low_arr,
-                    pred_high_arr,
-                    color='#E74C3C',
-                    alpha=0.2,
-                    label='Intervalle de Confiance 95%',
-                    zorder=1
+                    np.array(pred_low), np.array(pred_high),
+                    color='#E74C3C', alpha=0.15, label='IC 95%'
                 )
             
-            # 5. Ligne verticale de séparation
-            self.ax.axvline(
-                idx_pred_start,
-                color='gray',
-                linestyle=':',
-                linewidth=2,
-                alpha=0.6,
-                label='Début Prédiction'
-            )
+            # Ligne de séparation
+            self.ax.axvline(n_history, color='#F39C12', linestyle='-', linewidth=2.5, label='Aujourd\'hui')
             
             # Style
-            self.ax.set_facecolor(Plot_style.plot_background)
-            for spine in self.ax.spines.values():
-                spine.set_color(Plot_style.text_color)
-            
-            self.ax.tick_params(axis='both', labelsize=14, colors=Plot_style.text_color)
-            self.ax.grid(True, linestyle='--', alpha=0.3, color=Plot_style.text_color)
-            
-            self.ax.set_xlabel('Index Temporel', fontsize=16, fontweight='bold', color=Plot_style.text_color)
-            self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Plot_style.text_color)
-            self.ax.set_title(
-                f'Prédiction Multi-Horizon (h={horizon} pas)',
-                fontsize=18,
-                fontweight='bold',
-                color=Plot_style.text_color,
-                pad=15
-            )
-            
-            # Légende
-            self.ax.legend(
-                loc='upper left',
-                fontsize=12,
-                framealpha=0.9,
-                facecolor=Plot_style.plot_background,
-                edgecolor=Plot_style.text_color,
-                labelcolor=Plot_style.text_color
-            )
+            self.setup_plot_style()
+            self.ax.set_title(f'🔮 Prédiction: {n_preds} pas dans le futur', 
+                            fontsize=18, fontweight='bold', color=Plot_style.text_color)
+            self.ax.legend(loc='upper left', fontsize=11, facecolor=Plot_style.plot_background,
+                          labelcolor=Plot_style.text_color)
+            self.ax.set_xlim(display_start - 5, n_history + n_preds + 5)
             
             self.fig.tight_layout()
             self.canvas.draw()
             
-            # Masquer le message d'info
-            self.info_label.place_forget()
-            
-            print(f"[Cadre_Prediction] Graphique mis à jour: {len(preds)} prédictions affichées")
+            print(f"[Prediction] Graphique mis à jour: {n_preds} prédictions")
         
         except Exception as e:
-            print(f"[Cadre_Prediction] Erreur lors de la mise à jour du graphique: {e}")
+            print(f"[Prediction] Erreur graphique: {e}")
             import traceback
             traceback.print_exc()
 
