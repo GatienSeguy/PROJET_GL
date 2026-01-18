@@ -188,8 +188,12 @@ class TrainingPipeline:
         if self.cfg and self.cfg.Parametres_temporels and self.cfg.Parametres_temporels.horizon:
             horizon = max(1, int(self.cfg.Parametres_temporels.horizon))
         
+        # Taille de fenêtre par défaut : 15 points de contexte
+        window_len = 15
+        
         X, y = build_supervised_tensors_with_step(
             self.series.values,
+            window_len=window_len,
             horizon=horizon
         )
         
@@ -653,16 +657,14 @@ class TrainingPipeline:
             
             # ========== SAUVEGARDER LE MODÈLE ==========
             window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
-            trained_model_state = {
-                "model": self.model_trained,
-                "norm_params": self.norm_params,
-                "inverse_fn": self.inverse_fn,
-                "window_size": window_size,
-                "residual_std": self.residual_std if self.residual_std else 0.1,
-                "model_type": model_type,
-                "device": str(self.device),
-                "is_trained": True,
-            }
+            trained_model_state["model"] = self.model_trained
+            trained_model_state["norm_params"] = self.norm_params
+            trained_model_state["inverse_fn"] = self.inverse_fn
+            trained_model_state["window_size"] = window_size
+            trained_model_state["residual_std"] = self.residual_std if self.residual_std else 0.1
+            trained_model_state["model_type"] = model_type
+            trained_model_state["device"] = str(self.device)
+            trained_model_state["is_trained"] = True
             print(f"✅ Modèle sauvegardé (type={model_type}, window={window_size})")
             
             # ========== DONNÉES FINALES ==========
@@ -919,15 +921,13 @@ def predict_future(request: PredictRequest):
                     x_input = x_input.to(device)
                     y_pred_norm = model(x_input).cpu().numpy().flatten()[0]
                     
-                    # Dénormaliser
-                    if inverse_fn:
-                        y_pred = inverse_fn(y_pred_norm)
-                    elif method == "minmax":
+                    # Dénormaliser pour la sortie
+                    if method == "minmax":
                         y_pred = y_pred_norm * (max_val - min_val) + min_val
-                    else:
+                    else:  # standardization
                         y_pred = y_pred_norm * std_val + mean_val
                     
-                    # IC
+                    # IC avec incertitude croissante
                     uncertainty = residual_std * z_score * np.sqrt(step + 1)
                     low, high = float(y_pred - uncertainty), float(y_pred + uncertainty)
                     
@@ -937,7 +937,8 @@ def predict_future(request: PredictRequest):
                     
                     yield sse({"type": "pred_point", "step": step+1, "yhat": float(y_pred), "low": low, "high": high})
                     
-                    # Autorégression
+                    # Autorégression : la prédiction normalisée devient le nouvel input
+                    # y_pred_norm est déjà dans l'espace normalisé (sortie brute du modèle)
                     context = np.roll(context, -1)
                     context[-1] = y_pred_norm
             

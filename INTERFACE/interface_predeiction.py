@@ -1765,16 +1765,12 @@ class Cadre_Prediction(ctk.CTkFrame):
             n_history = len(series)
             n_preds = len(preds)
             
-            # Afficher seulement une partie de l'historique
-            display_len = min(max(int(n_history * 0.15), 30), 150)
-            display_start = max(0, n_history - display_len)
-            
-            # Historique
-            idx_hist = np.arange(display_start, n_history)
+            # AFFICHER TOUTE LA SÉRIE HISTORIQUE (pas juste 15%)
+            idx_hist = np.arange(n_history)
             self.ax.plot(
-                idx_hist, series[display_start:],
-                color='#2E86AB', linewidth=2.5,
-                label=f'Historique (n={n_history})', alpha=0.9
+                idx_hist, series,
+                color='#2E86AB', linewidth=1.5,
+                label=f'Historique (n={n_history})', alpha=0.8
             )
             
             # Prédictions futures
@@ -1782,7 +1778,7 @@ class Cadre_Prediction(ctk.CTkFrame):
             self.ax.plot(
                 idx_pred, preds,
                 color='#E74C3C', linewidth=2.5,
-                marker='o', markersize=5,
+                marker='o', markersize=4,
                 markerfacecolor='white', markeredgecolor='#E74C3C',
                 label=f'Prédictions (h={n_preds})', alpha=0.95
             )
@@ -1795,7 +1791,7 @@ class Cadre_Prediction(ctk.CTkFrame):
                     color='#E74C3C', alpha=0.15, label='IC 95%'
                 )
             
-            # Ligne de séparation
+            # Ligne de séparation "Aujourd'hui"
             self.ax.axvline(n_history, color='#F39C12', linestyle='-', linewidth=2.5, label='Aujourd\'hui')
             
             # Style
@@ -1804,7 +1800,9 @@ class Cadre_Prediction(ctk.CTkFrame):
                             fontsize=18, fontweight='bold', color=Plot_style.text_color)
             self.ax.legend(loc='upper left', fontsize=11, facecolor=Plot_style.plot_background,
                           labelcolor=Plot_style.text_color)
-            self.ax.set_xlim(display_start - 5, n_history + n_preds + 5)
+            
+            # Afficher TOUTE la série avec marge pour les prédictions
+            self.ax.set_xlim(-5, n_history + n_preds + 5)
             
             self.fig.tight_layout()
             self.canvas.draw()
