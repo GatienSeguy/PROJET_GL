@@ -434,6 +434,7 @@ class TrainingPipeline:
 
         model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
         arch_params = self.setup_architecture(model_type)
+        self.arch_params = arch_params  # Sauvegarder pour utilisation ultérieure
         loss_name = self.setup_loss()
         optimizer_name, learning_rate, weight_decay = self.setup_optimizer()
         epochs, batch_size = self.setup_training()
@@ -884,7 +885,9 @@ class TrainingPipeline:
             trained_model_state["model_type"] = model_type
             trained_model_state["device"] = str(self.device)
             trained_model_state["is_trained"] = True
-            print(f"✅ Modèle sauvegardé (type={model_type}, window={window_size})")
+            trained_model_state["arch_params"] = self.arch_params  # NOUVEAU: sauvegarder l'architecture
+            trained_model_state["pipeline"] = self  # Référence au pipeline pour accès à cfg
+            print(f"✅ Modèle sauvegardé (type={model_type}, window={window_size}, arch={self.arch_params})")
             
             # ========== DONNÉES FINALES ==========
             yield sse({
@@ -1473,19 +1476,38 @@ def load_model(request: LoadModelRequest):
             norm_params = extra_context.get("norm_params", {"method": "standardization", "mean": 0.0, "std": 1.0})
             residual_std = extra_context.get("residual_std", 0.1)
             arch_params = extra_context.get("arch_params", arch_params)
+            print(f"[LOAD] Backup trouvé! arch_params depuis backup: {arch_params}")
         else:
+            print(f"[LOAD] ⚠️ Backup non trouvé à {backup_context_path}")
             # Estimer depuis le state_dict
             window_size = 15  # Valeur par défaut
             norm_params = {"method": "standardization", "mean": 0.0, "std": 1.0}
             residual_std = 0.1
             
-            # Essayer de déduire window_size depuis les poids
+            # Essayer de déduire les paramètres depuis les poids
             for key, value in state_dict.items():
-                if "weight" in key and len(value.shape) >= 2:
-                    # Pour MLP, la première couche a shape (hidden, input)
-                    if model_type == "mlp" and "0" in key:
-                        window_size = value.shape[1]
-                        break
+                print(f"[LOAD] state_dict key: {key}, shape: {value.shape}")
+                if "fc_in.weight" in key and model_type == "mlp":
+                    # Pour MLP: fc_in.weight a shape (hidden_size, in_dim)
+                    arch_params["hidden_size"] = value.shape[0]
+                    window_size = value.shape[1]
+                elif "lstm_in.weight_ih_l0" in key and model_type == "lstm":
+                    # Pour LSTM: weight_ih a shape (4*hidden_size, in_dim)
+                    arch_params["hidden_size"] = value.shape[0] // 4
+                elif "conv_in.weight" in key and model_type == "cnn":
+                    # Pour CNN: conv_in.weight a shape (hidden_size, in_dim, kernel_size)
+                    arch_params["hidden_size"] = value.shape[0]
+                    arch_params["kernel_size"] = value.shape[2]
+            
+            # Compter le nombre de couches
+            if model_type == "mlp":
+                backbone_layers = [k for k in state_dict.keys() if "backbone" in k and "weight" in k]
+                arch_params["nb_couches"] = len(backbone_layers) + 1  # +1 pour fc_in
+            elif model_type == "lstm":
+                backbone_layers = [k for k in state_dict.keys() if "backbone" in k and "weight_ih" in k]
+                arch_params["nb_couches"] = len(backbone_layers) + 1
+            
+            print(f"[LOAD] arch_params déduits depuis state_dict: {arch_params}")
         
         print(f"[LOAD] window_size={window_size}, norm_params={norm_params}")
         
