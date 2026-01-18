@@ -486,16 +486,19 @@ class TrainingPipeline:
         model.eval()
         with torch.no_grad():
             for i in range(n_points):
-                x_sample = self.X_val[i:i+1]  # (1, T)
+                x_sample = self.X_val[i:i+1]  # Déjà reshapé: (1, T) pour MLP, (1, 1, T) pour CNN, (1, T, 1) pour LSTM
                 y_true_norm = self.y_val[i].item()
                 
-                # Reshape selon le type de modèle
-                if model_type == "lstm":
-                    x_input = x_sample.unsqueeze(-1)  # (1, T, 1)
-                elif model_type == "cnn":
-                    x_input = x_sample.unsqueeze(1)   # (1, 1, T)
-                else:
-                    x_input = x_sample  # (1, T) pour MLP
+                # Debug pour comprendre la shape
+                if i == 0:
+                    print(f"[VAL DEBUG] model_type={model_type}, x_sample.shape={x_sample.shape}")
+                
+                # X_val est DÉJÀ reshapé par reshape_data_for_model()
+                # Donc on n'a pas besoin de faire un autre unsqueeze !
+                x_input = x_sample
+                
+                if i == 0:
+                    print(f"[VAL DEBUG] x_input.shape={x_input.shape}")
                 
                 x_input = x_input.to(device)
                 output = model(x_input)
