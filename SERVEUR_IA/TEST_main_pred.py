@@ -381,8 +381,14 @@ class TrainingPipeline:
                 device=self.device,
             )
         elif model_type == "cnn":
+            # FORCE le reshape pour CNN : (B, T) -> (B, 1, T)
+            X_cnn = self.X_train
+            if X_cnn.ndim == 2:
+                X_cnn = X_cnn.unsqueeze(1)
+            print(f"[CNN CALL] X_cnn.shape={X_cnn.shape}, y.shape={self.y_train.shape}")
+            
             return train_CNN(
-                self.X_train, self.y_train,
+                X_cnn, self.y_train,
                 hidden_size=arch_params["hidden_size"],
                 nb_couches=arch_params["nb_couches"],
                 kernel_size=arch_params["kernel_size"],
@@ -399,8 +405,14 @@ class TrainingPipeline:
                 device=self.device,
             )
         elif model_type == "lstm":
+            # FORCE le reshape pour LSTM : (B, T) -> (B, T, 1)
+            X_lstm = self.X_train
+            if X_lstm.ndim == 2:
+                X_lstm = X_lstm.unsqueeze(-1)
+            print(f"[LSTM CALL] X_lstm.shape={X_lstm.shape}, y.shape={self.y_train.shape}")
+            
             return train_LSTM(
-                self.X_train, self.y_train,
+                X_lstm, self.y_train,
                 hidden_size=arch_params["hidden_size"],
                 nb_couches=arch_params["nb_couches"],
                 bidirectional=arch_params["bidirectional"],
