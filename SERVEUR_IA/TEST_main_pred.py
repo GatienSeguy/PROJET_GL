@@ -592,14 +592,29 @@ class TrainingPipeline:
                     # Prédiction
                     output = model(x_input)
                     
-                    # Extraire la valeur prédite
-                    if output.ndim == 3:
+                    # Extraire la valeur prédite selon le type de modèle
+                    if model_type == "lstm":
                         # LSTM retourne (B, T, out_dim), prendre le dernier timestep
-                        y_pred_norm = output[0, -1, 0].cpu().item()
-                    elif output.ndim == 2:
-                        y_pred_norm = output[0, 0].cpu().item()
+                        if output.ndim == 3:
+                            y_pred_norm = output[0, -1, 0].cpu().item()
+                        elif output.ndim == 2:
+                            y_pred_norm = output[0, 0].cpu().item()
+                        else:
+                            y_pred_norm = output.cpu().item()
+                    elif model_type == "cnn":
+                        # CNN retourne (B, out_dim, T), prendre le dernier point temporel
+                        if output.ndim == 3:
+                            y_pred_norm = output[0, 0, -1].cpu().item()
+                        elif output.ndim == 2:
+                            y_pred_norm = output[0, -1].cpu().item()
+                        else:
+                            y_pred_norm = output.cpu().item()
                     else:
-                        y_pred_norm = output.cpu().item()
+                        # MLP retourne (B, out_dim)
+                        if output.ndim >= 2:
+                            y_pred_norm = output[0, 0].cpu().item()
+                        else:
+                            y_pred_norm = output.cpu().item()
                     
                     # Dénormaliser
                     if method == "minmax":
@@ -1081,16 +1096,20 @@ def predict_future(request: PredictRequest):
                         else:
                             y_pred_norm = output.cpu().item()
                     elif model_type == "cnn":
-                        # CNN retourne (B, out_dim, T'), prendre le dernier
+                        # CNN retourne (B, out_dim, T'), prendre le dernier timestep
                         if output.ndim == 3:
+                            # (B, C, T) -> prendre output[0, 0, -1] (dernier point temporel)
                             y_pred_norm = output[0, 0, -1].cpu().item()
+                        elif output.ndim == 2:
+                            # (B, T) -> prendre le dernier
+                            y_pred_norm = output[0, -1].cpu().item()
                         else:
-                            y_pred_norm = output.flatten()[0].cpu().item()
+                            y_pred_norm = output.cpu().item()
                     else:
                         # MLP retourne (B, out_dim)
                         y_pred_norm = output.flatten()[0].cpu().item()
                     
-                    print(f"[PREDICT] step={step}, context[-3:]={context[-3:]}, y_pred_norm={y_pred_norm:.4f}")
+                    print(f"[PREDICT] step={step}, output.shape={output.shape}, y_pred_norm={y_pred_norm:.4f}")
                     
                     # Dénormaliser pour la sortie
                     if method == "minmax":
