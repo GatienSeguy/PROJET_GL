@@ -752,6 +752,12 @@ class TrainingPipeline:
             idx_val_start_series = split_info["idx_val_start"] + window_size
             idx_test_start_series = split_info["idx_test_start"] + window_size
             
+            print(f"[SPLIT] n_total_series={len(self.series.values)}")
+            print(f"[SPLIT] window_size={window_size}")
+            print(f"[SPLIT] n_train={split_info['n_train']}, n_val={split_info['n_val']}, n_test={split_info['n_test']}")
+            print(f"[SPLIT] idx_val_start (fenêtres)={split_info['idx_val_start']}, idx_val_start (série)={idx_val_start_series}")
+            print(f"[SPLIT] idx_test_start (fenêtres)={split_info['idx_test_start']}, idx_test_start (série)={idx_test_start_series}")
+            
             # Information de split (avec indices dans la SÉRIE, pas dans les fenêtres)
             yield sse({
                 "type": "split_info",
