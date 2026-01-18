@@ -1226,3 +1226,380 @@ def model_status():
             "n_points": len(payload_json.get("values", []))
         }
     }
+
+
+# ====================================
+# SAUVEGARDE ET CHARGEMENT DE MODÈLES
+# ====================================
+import base64
+import io
+from pathlib import Path
+
+# DATA_SERVER_URL déjà défini en haut du fichier
+
+
+class SaveModelRequest(PydanticBaseModel):
+    name: str
+    
+class LoadModelRequest(PydanticBaseModel):
+    name: str
+
+
+@app.post("/model/save")
+def save_model(request: SaveModelRequest):
+    """
+    Sauvegarde le modèle entraîné et son contexte sur le serveur DATA.
+    - Modèle (.pth) encodé en base64 -> /models/model_add
+    - Contexte (paramètres, norm_params, etc.) -> /contexte/add_solo
+    """
+    global trained_model_state, payload_json
+    
+    if not trained_model_state["is_trained"]:
+        raise HTTPException(status_code=400, detail="Aucun modèle entraîné à sauvegarder")
+    
+    model = trained_model_state["model"]
+    model_type = trained_model_state["model_type"]
+    name = request.name
+    
+    try:
+        # 1. Sauvegarder le modèle (.pth) en base64
+        buffer = io.BytesIO()
+        torch.save(model.state_dict(), buffer)
+        buffer.seek(0)
+        model_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+        
+        # Envoyer au serveur DATA
+        response = requests.post(
+            f"{DATA_SERVER_URL}/models/model_add",
+            json={"name": name, "data": model_base64},
+            timeout=30
+        )
+        if response.status_code != 200:
+            raise Exception(f"Erreur sauvegarde modèle: {response.text}")
+        
+        print(f"[SAVE] Modèle '{name}' sauvegardé sur le serveur DATA")
+        
+        # 2. Préparer le contexte complet
+        # Récupérer la config depuis le pipeline (si disponible)
+        config_dict = {}
+        if hasattr(trained_model_state.get("pipeline"), "cfg") and trained_model_state["pipeline"].cfg:
+            cfg = trained_model_state["pipeline"].cfg
+            config_dict = {
+                "Parametres_temporels": cfg.Parametres_temporels.model_dump() if cfg.Parametres_temporels else None,
+                "Parametres_choix_loss_fct": cfg.Parametres_choix_loss_fct.model_dump() if cfg.Parametres_choix_loss_fct else None,
+                "Parametres_optimisateur": cfg.Parametres_optimisateur.model_dump() if cfg.Parametres_optimisateur else None,
+                "Parametres_entrainement": cfg.Parametres_entrainement.model_dump() if cfg.Parametres_entrainement else None,
+            }
+        
+        # Construire le payload pour /contexte/add_solo
+        payload = {
+            "Parametres_temporels": config_dict.get("Parametres_temporels", {"horizon": 1, "portion_decoupage": 0.8}),
+            "Parametres_choix_reseau_neurones": {"modele": model_type.upper()},
+            "Parametres_choix_loss_fct": config_dict.get("Parametres_choix_loss_fct", {"loss": "mse"}),
+            "Parametres_optimisateur": config_dict.get("Parametres_optimisateur", {"optimisateur": "adam", "learning_rate": 0.001}),
+            "Parametres_entrainement": config_dict.get("Parametres_entrainement", {"epochs": 100, "batch_size": 32}),
+            "Parametres_visualisation_suivi": {"afficher_courbe": True},
+        }
+        
+        # Architecture du modèle
+        arch_params = trained_model_state.get("arch_params", {})
+        payload_model = {"Parametres_archi_reseau": arch_params}
+        
+        # Dataset info
+        payload_dataset = {
+            "name": payload_json.get("name", "unknown"),
+            "n_points": len(payload_json.get("values", [])),
+        }
+        
+        # Nom du modèle
+        payload_name_model = {"name": name}
+        
+        # Contexte complet avec les infos supplémentaires pour le chargement
+        paquet_complet = {
+            "payload": payload,
+            "payload_model": payload_model,
+            "payload_dataset": payload_dataset,
+            "payload_name_model": payload_name_model,
+        }
+        
+        response = requests.post(
+            f"{DATA_SERVER_URL}/contexte/add_solo",
+            json=paquet_complet,
+            timeout=30
+        )
+        if response.status_code != 200:
+            raise Exception(f"Erreur sauvegarde contexte: {response.text}")
+        
+        print(f"[SAVE] Contexte '{name}' sauvegardé sur le serveur DATA")
+        
+        # 3. Sauvegarder les paramètres de normalisation et autres infos dans un fichier JSON séparé
+        # On utilise une route supplémentaire ou on l'inclut dans le contexte
+        extra_context = {
+            "norm_params": trained_model_state["norm_params"],
+            "window_size": trained_model_state["window_size"],
+            "residual_std": trained_model_state["residual_std"],
+            "model_type": model_type,
+            "arch_params": arch_params,
+            "dataset_name": payload_json.get("name", "unknown"),
+        }
+        
+        # Sauvegarder localement aussi (backup)
+        import json
+        from pathlib import Path
+        backup_dir = Path("./saved_models")
+        backup_dir.mkdir(exist_ok=True)
+        
+        with open(backup_dir / f"{name}_context.json", "w") as f:
+            json.dump(extra_context, f, indent=2)
+        
+        torch.save(model.state_dict(), backup_dir / f"{name}.pth")
+        
+        print(f"[SAVE] Backup local créé dans {backup_dir}")
+        
+        return {
+            "status": "ok",
+            "message": f"Modèle '{name}' sauvegardé avec succès",
+            "model_type": model_type,
+            "window_size": trained_model_state["window_size"],
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/model/list")
+def list_models():
+    """Liste tous les modèles disponibles sur le serveur DATA"""
+    try:
+        response = requests.post(
+            f"{DATA_SERVER_URL}/models/model_all",
+            json={"message": "choix_models"},
+            timeout=30
+        )
+        if response.status_code != 200:
+            raise Exception(f"Erreur: {response.text}")
+        
+        models = response.json()
+        
+        # Retourner juste les noms et métadonnées (pas le contenu base64)
+        result = []
+        for name, info in models.items():
+            result.append({
+                "name": name,
+                "nom": info.get("nom", name),
+            })
+        
+        return {"models": result}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/model/load")
+def load_model(request: LoadModelRequest):
+    """
+    Charge un modèle sauvegardé depuis le serveur DATA.
+    Restaure le modèle et son contexte pour faire des prédictions.
+    """
+    global trained_model_state
+    
+    name = request.name
+    
+    try:
+        # 1. Récupérer le contexte
+        response = requests.post(
+            f"{DATA_SERVER_URL}/contexte/obtenir_solo",
+            json={"name": name},
+            timeout=30
+        )
+        if response.status_code != 200:
+            raise Exception(f"Contexte non trouvé: {response.text}")
+        
+        contexte = response.json()
+        print(f"[LOAD] Contexte récupéré: {contexte.keys()}")
+        
+        # Déterminer le type de modèle
+        model_type_raw = contexte.get("Parametres_choix_reseau_neurones", "mlp")
+        if isinstance(model_type_raw, dict):
+            model_type = model_type_raw.get("modele", "MLP").lower()
+        else:
+            model_type = model_type_raw.lower()
+        
+        print(f"[LOAD] Type de modèle: {model_type}")
+        
+        # 2. Récupérer le modèle
+        response = requests.post(
+            f"{DATA_SERVER_URL}/models/model_all",
+            json={"message": "choix_models"},
+            timeout=30
+        )
+        if response.status_code != 200:
+            raise Exception(f"Erreur récupération modèles: {response.text}")
+        
+        models = response.json()
+        if name not in models:
+            raise Exception(f"Modèle '{name}' non trouvé")
+        
+        model_base64 = models[name].get("model_state_dict")
+        if not model_base64:
+            raise Exception(f"Données du modèle '{name}' invalides")
+        
+        # Décoder le modèle
+        model_bytes = base64.b64decode(model_base64)
+        buffer = io.BytesIO(model_bytes)
+        state_dict = torch.load(buffer, map_location="cpu", weights_only=True)
+        
+        # 3. Reconstruire l'architecture du modèle
+        # Récupérer les paramètres d'architecture depuis le contexte
+        if model_type == "cnn":
+            arch_key = "Parametres_archi_reseau_CNN"
+        elif model_type == "lstm":
+            arch_key = "Parametres_archi_reseau_LSTM"
+        else:
+            arch_key = "Parametres_archi_reseau_MLP"
+        
+        arch_params = contexte.get(arch_key, {})
+        print(f"[LOAD] Architecture: {arch_params}")
+        
+        # Récupérer window_size depuis le backup local ou estimer depuis state_dict
+        backup_context_path = Path(f"./saved_models/{name}_context.json")
+        if backup_context_path.exists():
+            import json
+            with open(backup_context_path, "r") as f:
+                extra_context = json.load(f)
+            window_size = extra_context.get("window_size", 15)
+            norm_params = extra_context.get("norm_params", {"method": "standardization", "mean": 0.0, "std": 1.0})
+            residual_std = extra_context.get("residual_std", 0.1)
+            arch_params = extra_context.get("arch_params", arch_params)
+        else:
+            # Estimer depuis le state_dict
+            window_size = 15  # Valeur par défaut
+            norm_params = {"method": "standardization", "mean": 0.0, "std": 1.0}
+            residual_std = 0.1
+            
+            # Essayer de déduire window_size depuis les poids
+            for key, value in state_dict.items():
+                if "weight" in key and len(value.shape) >= 2:
+                    # Pour MLP, la première couche a shape (hidden, input)
+                    if model_type == "mlp" and "0" in key:
+                        window_size = value.shape[1]
+                        break
+        
+        print(f"[LOAD] window_size={window_size}, norm_params={norm_params}")
+        
+        # Créer le modèle selon le type
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        if model_type == "mlp":
+            from .models.model_MLP import MLP
+            hidden_size = arch_params.get("hidden_size", 128)
+            nb_couches = arch_params.get("nb_couches", 3)
+            activation = arch_params.get("activation", "relu")
+            
+            model = MLP(
+                in_dim=window_size,
+                hidden_dim=hidden_size,
+                out_dim=1,
+                num_blocks=nb_couches,
+                activation=activation
+            )
+            
+        elif model_type == "lstm":
+            from .models.model_LSTM import LSTM
+            hidden_size = arch_params.get("hidden_size", 64)
+            nb_couches = arch_params.get("nb_couches", 2)
+            
+            model = LSTM(
+                in_dim=1,
+                hidden_dim=hidden_size,
+                out_dim=1,
+                num_layers=nb_couches,
+                batch_first=True
+            )
+            
+        elif model_type == "cnn":
+            from .models.model_CNN import CNN
+            hidden_size = arch_params.get("hidden_size", 64)
+            nb_couches = arch_params.get("nb_couches", 2)
+            kernel_size = arch_params.get("kernel_size", 3)
+            
+            model = CNN(
+                in_dim=1,
+                hidden_dim=hidden_size,
+                out_dim=1,
+                num_blocks=nb_couches,
+                kernel_size=kernel_size
+            )
+        else:
+            raise Exception(f"Type de modèle inconnu: {model_type}")
+        
+        # Charger les poids
+        model.load_state_dict(state_dict)
+        model.to(device)
+        model.eval()
+        
+        # 4. Mettre à jour trained_model_state
+        trained_model_state["model"] = model
+        trained_model_state["model_type"] = model_type
+        trained_model_state["is_trained"] = True
+        trained_model_state["norm_params"] = norm_params
+        trained_model_state["window_size"] = window_size
+        trained_model_state["residual_std"] = residual_std
+        trained_model_state["device"] = str(device)
+        trained_model_state["arch_params"] = arch_params
+        
+        # Créer la fonction inverse
+        def inverse_fn(data):
+            if norm_params.get("method") == "minmax":
+                return data * (norm_params["max"] - norm_params["min"]) + norm_params["min"]
+            else:
+                return data * norm_params["std"] + norm_params["mean"]
+        
+        trained_model_state["inverse_fn"] = inverse_fn
+        
+        print(f"[LOAD] Modèle '{name}' chargé avec succès!")
+        
+        return {
+            "status": "ok",
+            "message": f"Modèle '{name}' chargé avec succès",
+            "model_type": model_type,
+            "window_size": window_size,
+            "is_ready_for_prediction": True,
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/model/delete/{name}")
+def delete_model(name: str):
+    """Supprime un modèle du serveur DATA"""
+    try:
+        # Supprimer le modèle
+        response = requests.post(
+            f"{DATA_SERVER_URL}/models/model_delete",
+            json={"name": name},
+            timeout=30
+        )
+        if response.status_code != 200:
+            print(f"Warning: Erreur suppression modèle: {response.text}")
+        
+        # Supprimer le backup local si existant
+        from pathlib import Path
+        backup_dir = Path("./saved_models")
+        model_path = backup_dir / f"{name}.pth"
+        context_path = backup_dir / f"{name}_context.json"
+        
+        if model_path.exists():
+            model_path.unlink()
+        if context_path.exists():
+            context_path.unlink()
+        
+        return {"status": "ok", "message": f"Modèle '{name}' supprimé"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
