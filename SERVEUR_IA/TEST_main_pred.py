@@ -70,10 +70,9 @@ payload_json = {"timestamps": [], "values": []}
 # ====================================
 trained_model_state = {
     "model": None,           # Le modèle PyTorch entraîné
-    "norm_params": None,     # Paramètres de normalisation (min, max, etc.)
+    "norm_params": None,     # Paramètres de normalisation
     "inverse_fn": None,      # Fonction inverse pour dénormaliser
     "window_size": None,     # Taille de la fenêtre d'entrée
-    "series_values": None,   # Dernières valeurs de la série (pour contexte)
     "residual_std": None,    # Écart-type des résidus (pour IC)
     "model_type": None,      # Type de modèle (mlp, lstm, cnn)
     "device": "cpu",         # Device utilisé
@@ -677,13 +676,12 @@ class TrainingPipeline:
                 "norm_params": self.norm_params,
                 "inverse_fn": self.inverse_fn,
                 "window_size": window_size,
-                "series_values": list(self.series.values),
-                "residual_std": self.residual_std if hasattr(self, 'residual_std') else 0.1,
+                "residual_std": self.residual_std if self.residual_std else 0.1,
                 "model_type": self.cfg.Parametres_choix_reseau_neurones.modele.lower(),
-                "device": self.device,
+                "device": str(self.device),
                 "is_trained": True,
             }
-            print(f"✅ Modèle sauvegardé en mémoire (window_size={window_size})")
+            print(f"✅ Modèle sauvegardé en mémoire (window_size={window_size}, type={trained_model_state['model_type']})")
             
             # ========== DONNÉES FINALES POUR L'AFFICHAGE ==========
             yield sse({
@@ -880,11 +878,11 @@ def root():
 # ENDPOINT DE PRÉDICTION FUTURE
 # ====================================
 from pydantic import BaseModel as PydanticBaseModel
+from scipy import stats
 
 class PredictRequest(PydanticBaseModel):
     """Requête pour la prédiction future"""
     horizon: int = 10  # Nombre de pas à prédire dans le futur
-    strategy: str = "recursive"  # Stratégie: "recursive" pour prédiction pure future
     confidence_level: float = 0.95  # Niveau de confiance pour les intervalles
 
 
@@ -893,19 +891,27 @@ def predict_future(request: PredictRequest):
     """
     Prédit H pas dans le FUTUR en utilisant le modèle entraîné.
     
-    - Utilise TOUTES les données comme historique
+    - Utilise les données chargées (payload_json) comme historique
     - Prédit au-delà de la fin des données (pas de comparaison possible)
     - Retourne les prédictions avec intervalles de confiance
     """
     
     def prediction_generator():
-        global trained_model_state
+        global trained_model_state, payload_json
         
         # Vérifier qu'un modèle est disponible
-        if not trained_model_state["is_trained"]:
+        if not trained_model_state["is_trained"] or trained_model_state["model"] is None:
             yield sse({
                 "type": "error",
-                "message": "Aucun modèle entraîné disponible. Veuillez d'abord entraîner un modèle via /train_full"
+                "message": "Aucun modèle entraîné disponible. Veuillez d'abord entraîner un modèle via l'onglet Training."
+            })
+            return
+        
+        # Vérifier que les données sont chargées
+        if not payload_json.get("values") or len(payload_json["values"]) == 0:
+            yield sse({
+                "type": "error", 
+                "message": "Aucune donnée chargée. Veuillez d'abord sélectionner un dataset."
             })
             return
         
@@ -914,12 +920,19 @@ def predict_future(request: PredictRequest):
             norm_params = trained_model_state["norm_params"]
             inverse_fn = trained_model_state["inverse_fn"]
             window_size = trained_model_state["window_size"]
-            series_values = trained_model_state["series_values"]
             residual_std = trained_model_state["residual_std"] or 0.1
             model_type = trained_model_state["model_type"]
-            device = trained_model_state["device"]
+            device_str = trained_model_state["device"]
+            
+            # Récupérer le device
+            device = torch.device(device_str if device_str != "cpu" else "cpu")
+            
+            # Utiliser les données du payload_json (chargées quand on sélectionne un dataset)
+            series_values = payload_json["values"]
             
             horizon = request.horizon
+            
+            print(f"[PREDICT] Démarrage prédiction: horizon={horizon}, series_length={len(series_values)}, window_size={window_size}")
             
             yield sse({
                 "type": "pred_start",
@@ -929,26 +942,28 @@ def predict_future(request: PredictRequest):
                 "window_size": window_size
             })
             
-            # Préparer la fenêtre initiale (dernières valeurs de la série)
+            # Préparer les données
             series_array = np.array(series_values, dtype=np.float32)
             
-            # Normaliser la fenêtre
-            if norm_params.get("method") == "minmax":
+            # Normaliser selon la méthode utilisée à l'entraînement
+            method = norm_params.get("method", "standardization")
+            
+            if method == "minmax":
                 min_val = norm_params["min"]
                 max_val = norm_params["max"]
-                window_norm = (series_array - min_val) / (max_val - min_val + 1e-8)
-            elif norm_params.get("method") == "zscore":
+                series_norm = (series_array - min_val) / (max_val - min_val + 1e-8)
+            elif method in ["zscore", "standardization"]:
                 mean_val = norm_params["mean"]
                 std_val = norm_params["std"]
-                window_norm = (series_array - mean_val) / (std_val + 1e-8)
+                series_norm = (series_array - mean_val) / (std_val + 1e-8)
             else:
-                # Par défaut minmax
-                min_val = norm_params.get("min", series_array.min())
-                max_val = norm_params.get("max", series_array.max())
-                window_norm = (series_array - min_val) / (max_val - min_val + 1e-8)
+                # Fallback
+                mean_val = norm_params.get("mean", series_array.mean())
+                std_val = norm_params.get("std", series_array.std())
+                series_norm = (series_array - mean_val) / (std_val + 1e-8)
             
-            # Prendre les dernières valeurs comme contexte
-            context = window_norm[-window_size:].copy()
+            # Contexte initial = dernières valeurs normalisées
+            context = series_norm[-window_size:].copy()
             
             predictions = []
             pred_low = []
@@ -956,8 +971,7 @@ def predict_future(request: PredictRequest):
             
             model.eval()
             
-            # Calcul du z-score pour l'intervalle de confiance
-            from scipy import stats
+            # Z-score pour l'intervalle de confiance
             z_score = stats.norm.ppf((1 + request.confidence_level) / 2)
             
             with torch.no_grad():
@@ -981,15 +995,12 @@ def predict_future(request: PredictRequest):
                         y_pred = inverse_fn(y_pred_norm_val)
                     else:
                         # Dénormalisation manuelle
-                        if norm_params.get("method") == "minmax":
+                        if method == "minmax":
                             y_pred = y_pred_norm_val * (max_val - min_val) + min_val
-                        elif norm_params.get("method") == "zscore":
-                            y_pred = y_pred_norm_val * std_val + mean_val
                         else:
-                            y_pred = y_pred_norm_val * (max_val - min_val) + min_val
+                            y_pred = y_pred_norm_val * std_val + mean_val
                     
                     # Intervalles de confiance (s'élargissent avec le temps)
-                    # L'incertitude augmente avec sqrt(step+1)
                     uncertainty = residual_std * z_score * np.sqrt(step + 1)
                     low = float(y_pred - uncertainty)
                     high = float(y_pred + uncertainty)
@@ -1012,6 +1023,8 @@ def predict_future(request: PredictRequest):
                     context = np.roll(context, -1)
                     context[-1] = y_pred_norm_val
             
+            print(f"[PREDICT] Terminé: {len(predictions)} prédictions générées")
+            
             # Données finales
             yield sse({
                 "type": "pred_end",
@@ -1028,6 +1041,8 @@ def predict_future(request: PredictRequest):
             
         except Exception as e:
             import traceback
+            print(f"[PREDICT] ERREUR: {e}")
+            traceback.print_exc()
             yield sse({
                 "type": "error",
                 "message": str(e),
@@ -1039,20 +1054,21 @@ def predict_future(request: PredictRequest):
 
 @app.get("/model/status")
 def model_status():
-    """Retourne le statut du modèle entraîné"""
-    global trained_model_state
+    """Retourne le statut du modèle entraîné et des données"""
+    global trained_model_state, payload_json
     
-    if trained_model_state["is_trained"]:
-        return {
-            "is_trained": True,
+    data_loaded = payload_json.get("values") and len(payload_json["values"]) > 0
+    
+    return {
+        "model": {
+            "is_trained": trained_model_state["is_trained"],
             "model_type": trained_model_state["model_type"],
             "window_size": trained_model_state["window_size"],
-            "series_length": len(trained_model_state["series_values"]) if trained_model_state["series_values"] else 0,
             "residual_std": trained_model_state["residual_std"],
             "device": trained_model_state["device"]
+        },
+        "data": {
+            "is_loaded": data_loaded,
+            "n_points": len(payload_json["values"]) if data_loaded else 0
         }
-    else:
-        return {
-            "is_trained": False,
-            "message": "Aucun modèle entraîné. Utilisez /train_full d'abord."
-        }
+    }
