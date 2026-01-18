@@ -532,9 +532,14 @@ class TrainingPipeline:
         # Calculer l'écart-type des résidus
         self.residual_std = float(np.std(y_true_arr - y_pred_arr))
         
+        # Format attendu par l'interface
         yield {
             "type": "val_end",
-            "metrics": {"mse": mse, "mae": mae},
+            "metrics": {
+                "overall_mean": {"MSE": mse, "MAE": mae},
+                "mse": mse,
+                "mae": mae
+            },
             "all_true": all_true,
             "all_predictions": all_predictions,
             "residual_std": self.residual_std
