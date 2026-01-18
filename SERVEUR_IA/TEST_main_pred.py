@@ -18,8 +18,8 @@ from .trains.training_MLP import train_MLP
 from .trains.training_CNN import train_CNN
 from .trains.training_LSTM import train_LSTM
 
-# Test
-from .test.test_testing import test_model_validation, compute_residual_std_from_validation
+# Test - test_model_validation remplacé par implémentation inline
+# from .test.test_testing import test_model_validation, compute_residual_std_from_validation
 from .test.test_prediction_strategie import (
     predict_multistep,
     compare_all_strategies,
@@ -473,28 +473,72 @@ class TrainingPipeline:
         idx_val_start_windows = self.split_info["idx_val_start"]
         idx_val_start_series = idx_val_start_windows + window_size
         
-        val_y_true = []
-        val_y_pred = []
+        model = self.model_trained
+        model_type = trained_model_state.get("model_type", "mlp")
+        device = self.device
         
-        for evt in test_model_validation(
-            self.model_trained,
-            self.X_val,
-            self.y_val,
-            device=self.device,
-            batch_size=256,
-            inverse_fn=self.inverse_fn,
-            idx_start=idx_val_start_series  # Indice dans la série
-        ):
-            # Collecter les prédictions pour calculer residual_std
-            if evt["type"] == "val_end":
-                val_y_true = evt.get("all_true", [])
-                val_y_pred = evt.get("all_predictions", [])
+        n_points = self.X_val.shape[0]
+        yield {"type": "val_start", "n_points": n_points, "dims": 1, "idx_start": idx_val_start_series}
+        
+        all_predictions = []
+        all_true = []
+        
+        model.eval()
+        with torch.no_grad():
+            for i in range(n_points):
+                x_sample = self.X_val[i:i+1]  # (1, T)
+                y_true_norm = self.y_val[i].item()
                 
-                # Calculer l'écart-type des résidus
-                self.residual_std = compute_residual_std_from_validation(val_y_true, val_y_pred)
-                evt["residual_std"] = self.residual_std
-            
-            yield evt
+                # Reshape selon le type de modèle
+                if model_type == "lstm":
+                    x_input = x_sample.unsqueeze(-1)  # (1, T, 1)
+                elif model_type == "cnn":
+                    x_input = x_sample.unsqueeze(1)   # (1, 1, T)
+                else:
+                    x_input = x_sample  # (1, T) pour MLP
+                
+                x_input = x_input.to(device)
+                output = model(x_input)
+                
+                # Extraire la prédiction selon le type de modèle
+                if model_type == "lstm":
+                    if output.ndim == 3:
+                        y_pred_norm = output[0, -1, 0].cpu().item()
+                    else:
+                        y_pred_norm = output.flatten()[0].cpu().item()
+                elif model_type == "cnn":
+                    if output.ndim == 3:
+                        y_pred_norm = output[0, 0, -1].cpu().item()
+                    else:
+                        y_pred_norm = output.flatten()[-1].cpu().item()
+                else:
+                    y_pred_norm = output.flatten()[0].cpu().item()
+                
+                # Dénormaliser
+                y_pred = self.inverse_fn(torch.tensor([y_pred_norm])).item()
+                y_true = self.inverse_fn(torch.tensor([y_true_norm])).item()
+                
+                all_predictions.append(y_pred)
+                all_true.append(y_true)
+                
+                yield {"type": "val_pair", "idx": idx_val_start_series + i, "y": y_true, "yhat": y_pred}
+        
+        # Calculer les métriques
+        y_true_arr = np.array(all_true)
+        y_pred_arr = np.array(all_predictions)
+        mse = float(np.mean((y_true_arr - y_pred_arr) ** 2))
+        mae = float(np.mean(np.abs(y_true_arr - y_pred_arr)))
+        
+        # Calculer l'écart-type des résidus
+        self.residual_std = float(np.std(y_true_arr - y_pred_arr))
+        
+        yield {
+            "type": "val_end",
+            "metrics": {"mse": mse, "mae": mae},
+            "all_true": all_true,
+            "all_predictions": all_predictions,
+            "residual_std": self.residual_std
+        }
 
     # ====================================
     # PHASE 3 - TEST PRÉDICTIF (Toutes stratégies)
