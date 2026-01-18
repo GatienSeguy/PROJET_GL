@@ -468,7 +468,10 @@ class TrainingPipeline:
             yield {"type": "warn", "message": "Pas de données de validation."}
             return
         
-        idx_val_start = self.split_info["idx_val_start"]
+        # CORRECTION: convertir l'indice de fenêtre en indice de série
+        window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
+        idx_val_start_windows = self.split_info["idx_val_start"]
+        idx_val_start_series = idx_val_start_windows + window_size
         
         val_y_true = []
         val_y_pred = []
@@ -480,7 +483,7 @@ class TrainingPipeline:
             device=self.device,
             batch_size=256,
             inverse_fn=self.inverse_fn,
-            idx_start=idx_val_start
+            idx_start=idx_val_start_series  # Indice dans la série
         ):
             # Collecter les prédictions pour calculer residual_std
             if evt["type"] == "val_end":
@@ -504,25 +507,31 @@ class TrainingPipeline:
             yield {"type": "warn", "message": "Modèle non récupéré (test pred sauté)."}
             return
         
-        idx_test_start = self.split_info["idx_test_start"]
+        # CORRECTION: idx_test_start est l'indice dans les fenêtres X
+        # L'indice réel dans la série est idx_test_start + window_size
+        window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
+        idx_test_start_windows = self.split_info["idx_test_start"]
         n_test = self.split_info["n_test"]
+        
+        # Indice réel dans la série originale
+        idx_test_start_series = idx_test_start_windows + window_size
         
         if n_test == 0:
             yield {"type": "warn", "message": "Pas de données pour test prédictif."}
             return
         
-        window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
-        y_true_values = self.series.values[idx_test_start:idx_test_start + n_test]
+        y_true_values = self.series.values[idx_test_start_series:idx_test_start_series + n_test]
         model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
         
         print(f"[PRED] model_type={model_type}, window_size={window_size}, n_test={n_test}")
+        print(f"[PRED] idx_test_start_windows={idx_test_start_windows}, idx_test_start_series={idx_test_start_series}")
         
         # Implémentation inline de la prédiction avec reshape correct
         yield {
             "type": "pred_start",
             "n_steps": n_test,
             "strategy": strategy,
-            "idx_start": idx_test_start,
+            "idx_start": idx_test_start_series,  # Indice dans la série
             "window_size": window_size,
             "config": {"model_type": model_type}
         }
@@ -548,11 +557,11 @@ class TrainingPipeline:
                 mean_val, std_val = norm_params["mean"], norm_params["std"]
                 series_norm = (series_array - mean_val) / (std_val + 1e-8)
             
-            # Contexte initial (juste avant la zone de test)
-            context_start = idx_test_start - window_size
+            # Contexte initial (les window_size points AVANT la zone de test)
+            context_start = idx_test_start_series - window_size
             if context_start < 0:
                 context_start = 0
-            context = series_norm[context_start:idx_test_start].copy()
+            context = series_norm[context_start:idx_test_start_series].copy()
             
             # Si pas assez de contexte, padding
             if len(context) < window_size:
@@ -613,7 +622,7 @@ class TrainingPipeline:
                     yield {
                         "type": "pred_point",
                         "step": step + 1,
-                        "idx": idx_test_start + step,
+                        "idx": idx_test_start_series + step,
                         "yhat": float(y_pred),
                         "y": y_true,
                         "low": low,
@@ -653,7 +662,7 @@ class TrainingPipeline:
                 "pred_high": pred_high,
                 "y_true": list(y_true_values),
                 "metrics": {"MSE": mse, "MAE": mae},
-                "idx_start": idx_test_start
+                "idx_start": idx_test_start_series
             }
             
         except Exception as e:
@@ -723,14 +732,20 @@ class TrainingPipeline:
             model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
             self.reshape_data_for_model(model_type)
             
-            # Information de split
+            # Calculer les indices réels dans la série (pas dans les fenêtres)
+            window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
+            idx_val_start_series = split_info["idx_val_start"] + window_size
+            idx_test_start_series = split_info["idx_test_start"] + window_size
+            
+            # Information de split (avec indices dans la SÉRIE, pas dans les fenêtres)
             yield sse({
                 "type": "split_info",
                 "n_train": split_info["n_train"],
                 "n_val": split_info["n_val"],
                 "n_test": split_info["n_test"],
-                "idx_val_start": split_info["idx_val_start"],
-                "idx_test_start": split_info["idx_test_start"],
+                "idx_val_start": idx_val_start_series,
+                "idx_test_start": idx_test_start_series,
+                "window_size": window_size,
             })
             
             # Envoyer la série complète pour l'affichage
@@ -808,8 +823,8 @@ class TrainingPipeline:
                 "pred_low": pred_low,
                 "pred_high": pred_high,
                 "pred_true": pred_true,
-                "idx_val_start": split_info["idx_val_start"],
-                "idx_test_start": split_info["idx_test_start"],
+                "idx_val_start": idx_val_start_series,
+                "idx_test_start": idx_test_start_series,
                 "val_metrics": val_metrics,
                 "pred_metrics": pred_metrics,
             })
