@@ -1,0 +1,63 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam component {
+    BackgroundColor #F8F9FA
+    BorderColor #2C3E50
+}
+
+title Diagramme de Composants - Architecture MLApp
+
+package "Client" #E8F6F3 {
+  [Interface Tkinter/CTk] as UI
+  component "Matplotlib" as MPL
+  component "Threading" as THR
+  
+  UI --> MPL : visualisation
+  UI --> THR : async
+}
+
+package "Serveur IA" #EBF5FB {
+  [FastAPI App] as IA_API
+  component "TrainingPipeline" as TP
+  component "PyTorch Models" as PT
+  
+  package "Modules" {
+    [train_MLP]
+    [train_CNN]
+    [train_LSTM]
+    [test_validation]
+    [predict_multistep]
+  }
+  
+  IA_API --> TP
+  TP --> PT
+  TP --> [train_MLP]
+  TP --> [train_CNN]
+  TP --> [train_LSTM]
+  TP --> [test_validation]
+  TP --> [predict_multistep]
+}
+
+package "Serveur Data" #FDF2E9 {
+  [FastAPI App] as DATA_API
+  component "DatasetService" as DS
+  component "ModelService" as MS
+  component "ContexteService" as CS
+  
+  database "datasets/" as DB_DS
+  database "models/" as DB_MD
+  database "contextes/" as DB_CTX
+  
+  DATA_API --> DS
+  DATA_API --> MS
+  DATA_API --> CS
+  
+  DS --> DB_DS
+  MS --> DB_MD
+  CS --> DB_CTX
+}
+
+UI -down-> IA_API : HTTP/SSE\nport 8000
+IA_API -down-> DATA_API : HTTP\nport 8001
+
+@enduml

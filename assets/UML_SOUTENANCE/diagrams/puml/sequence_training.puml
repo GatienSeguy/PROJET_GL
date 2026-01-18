@@ -1,0 +1,70 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+
+title Diagramme de Séquence - Pipeline Entrainement Complet
+
+actor Utilisateur as U
+participant "UI\n(Tkinter)" as UI #E8F6F3
+participant "Serveur IA\n(FastAPI)" as IA #EBF5FB
+participant "Serveur Data\n(FastAPI)" as DATA #FDF2E9
+
+== Phase 0: Configuration ==
+U -> UI: Configure paramètres
+UI -> UI: Formatter_JSON_global()
+
+== Phase 1: Récupération Dataset ==
+U -> UI: Clic "Start"
+activate UI
+UI -> IA: POST /datasets/fetch_dataset
+activate IA
+IA -> DATA: POST /datasets/data_solo
+activate DATA
+DATA --> IA: {timestamps, values}
+deactivate DATA
+IA --> UI: {status: "success", data: {...}}
+deactivate IA
+
+== Phase 2: Entraînement (SSE) ==
+UI -> IA: POST /train_full
+activate IA
+
+IA -> IA: TrainingPipeline()
+IA -> IA: preprocess + normalize
+IA -> IA: split 80/10/10
+
+IA -->> UI: SSE: {"type": "split_info", ...}
+
+loop Pour chaque epoch
+  IA -> IA: Forward + Backward
+  IA -->> UI: SSE: {"type": "epoch", "avg_loss": 0.123}
+  UI -> UI: update_plot()
+end
+
+== Phase 3: Validation ==
+IA -->> UI: SSE: {"type": "phase", "phase": "validation"}
+
+loop Pour chaque point validation
+  IA -> IA: model(X_val[i])
+  IA -->> UI: SSE: {"type": "val_pair", "y": [...], "yhat": [...]}
+end
+
+IA -> IA: compute_residual_std()
+IA -->> UI: SSE: {"type": "val_end", "residual_std": 0.15}
+
+== Phase 4: Test Prédictif ==
+IA -->> UI: SSE: {"type": "phase", "phase": "prediction"}
+
+loop Pour chaque pas
+  IA -> IA: predict_multistep()
+  IA -> IA: Calcul intervalle confiance
+  IA -->> UI: SSE: {"type": "pred_point", ...}
+end
+
+IA -->> UI: SSE: {"type": "fin_pipeline", "done": 1}
+deactivate IA
+
+UI -> UI: Affiche graphiques
+deactivate UI
+
+@enduml

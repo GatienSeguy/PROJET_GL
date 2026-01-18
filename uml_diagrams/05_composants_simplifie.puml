@@ -1,0 +1,110 @@
+@startuml diagramme_composants_simplifie
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+
+title Schéma d'Architecture - MLApp (Vue Simplifiée)
+
+cloud "Opérateur" as user
+
+package "Interface Utilisateur" <<Electron App>> {
+    [React Frontend] as ui
+    [Zustand Store] as store
+    [Recharts] as plot
+    [API Services] as apis
+    
+    ui -down-> store : state
+    ui -down-> plot : render
+    ui -down-> apis : calls
+}
+
+package "Serveur IA" <<Backend FastAPI>> {
+    [FastAPI] as api
+    [Trainer] as train
+    [Neural Networks] as models
+    [Data Preprocessor] as prep
+    [SSE Streamer] as sse
+    [Data Proxy] as proxy
+    
+    api -down-> train : orchestre
+    train -down-> models : entraîne
+    train -down-> prep : utilise
+    api -down-> sse : stream
+    api -down-> proxy : communique
+}
+
+package "Serveur Data" <<Backend REST>> {
+    [REST API] as dataapi
+    [Dataset Service] as ds
+    [Model Service] as ms
+    [Storage] as storage
+    
+    dataapi -down-> ds : gère datasets
+    dataapi -down-> ms : gère modèles
+    ds -down-> storage : persiste
+    ms -down-> storage : persiste
+}
+
+database "Stockage" {
+    [Fichiers JSON] as json
+    [Modèles .pth] as pth
+    [Métadonnées] as meta
+    
+    storage -down-> json
+    storage -down-> pth
+    storage -down-> meta
+}
+
+' === Relations entre composants ===
+user -down-> ui : interactions
+
+apis -right-> api : HTTP/REST\n+ SSE
+note on link
+  Protocoles :
+  - POST /train_full (SSE)
+  - GET /models
+  - POST /predict
+end note
+
+proxy -right-> dataapi : HTTP/REST
+note on link
+  Protocoles :
+  - GET /datasets/{id}
+  - POST /models
+  - GET /models/{id}
+end note
+
+' === Notes importantes ===
+note right of ui
+  Technologies :
+  - React + TypeScript
+  - Electron (packaging)
+  - Recharts (visu)
+end note
+
+note right of api
+  Technologies :
+  - FastAPI
+  - PyTorch
+  - Pydantic (validation)
+  - SSE (streaming)
+end note
+
+note right of dataapi
+  Technologies :
+  - REST API
+  - Stockage fichiers
+  - JSON + binaire (.pth)
+end note
+
+note as N1
+  <b>Règle Architecturale Fondamentale :</b>
+  L'Interface Utilisateur ne communique
+  JAMAIS directement avec le Serveur Data.
+  
+  Toutes les communications passent
+  obligatoirement par le Serveur IA
+  qui fait office de proxy.
+end note
+
+@enduml

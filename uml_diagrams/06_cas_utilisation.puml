@@ -1,0 +1,130 @@
+@startuml diagramme_cas_utilisation
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam usecaseBackgroundColor LightYellow
+skinparam actorBackgroundColor LightBlue
+
+title Diagramme de Cas d'Utilisation - MLApp
+
+left to right direction
+
+actor "Opérateur Métier" as user
+actor "Serveur IA" as ia
+actor "Serveur Data" as data
+
+rectangle "MLApp - Application de Prédiction" {
+
+    package "Configuration du Modèle" {
+        usecase "Choisir Architecture\n(MLP/CNN/LSTM)" as UC5
+        usecase "Configurer\nHyperparamètres" as UC6
+        usecase "Définir Paramètres\nTemporels" as UC7
+        usecase "Sélectionner\nFonction de Perte" as UC8
+        usecase "Configurer\nOptimiseur" as UC9
+    }
+    
+    ' === Configuration ===
+    package "Configuration du Modèle" {
+        usecase "Choisir Architecture\n(MLP/CNN/LSTM)" as UC5
+        usecase "Configurer\nHyperparamètres" as UC6
+        usecase "Définir Paramètres\nTemporels" as UC7
+        usecase "Sélectionner\nFonction de Perte" as UC8
+        usecase "Configurer\nOptimiseur" as UC9
+    }
+    
+    ' === Entraînement ===
+    package "Entraînement & Monitoring" {
+        usecase "Lancer\nEntraînement" as UC10
+        usecase "Visualiser Loss\nen Temps Réel" as UC11
+        usecase "Suivre Progression" as UC12
+        usecase "Annuler\nEntraînement" as UC13
+    }
+    
+    ' === Évaluation ===
+    package "Évaluation & Test" {
+        usecase "Tester Modèle\nAutomatiquement" as UC14
+        usecase "Consulter Métriques\n(MSE, MAE, R²)" as UC15
+        usecase "Visualiser\nPrédictions vs Réel" as UC16
+    }
+    
+    ' === Prédiction ===
+    package "Prédiction Future" {
+        usecase "Définir Horizon\nde Prédiction" as UC17
+        usecase "Générer Prédictions\nFutures" as UC18
+        usecase "Exporter Résultats" as UC19
+    }
+    
+    ' === Sauvegarde ===
+    package "Gestion des Modèles" {
+        usecase "Sauvegarder Modèle\n+ Contexte" as UC20
+        usecase "Charger Modèle\nExistant" as UC21
+        usecase "Lister Modèles\nDisponibles" as UC22
+        usecase "Comparer Modèles" as UC23
+    }
+}
+
+' === Relations Utilisateur ===
+user --> UC1
+user --> UC2
+user --> UC3
+user --> UC4
+user --> UC5
+user --> UC6
+user --> UC7
+user --> UC8
+user --> UC9
+user --> UC10
+user --> UC11
+user --> UC12
+user --> UC13
+user --> UC14
+user --> UC15
+user --> UC16
+user --> UC17
+user --> UC18
+user --> UC19
+user --> UC20
+user --> UC21
+user --> UC22
+user --> UC23
+
+' === Dépendances ===
+UC10 ..> UC2 : <<include>>
+UC10 ..> UC5 : <<include>>
+UC10 ..> UC6 : <<include>>
+UC14 ..> UC10 : <<extend>>
+UC20 ..> UC14 : <<include>>
+UC18 ..> UC21 : <<include>>
+
+' === Relations avec Serveurs ===
+UC10 --> ia : traite
+UC14 --> ia : évalue
+UC18 --> ia : prédit
+
+UC1 --> data : stocke
+UC2 --> data : récupère
+UC20 --> data : sauvegarde
+UC21 --> data : charge
+UC22 --> data : liste
+
+' === Notes ===
+note right of UC10
+  Utilise Server-Sent Events (SSE)
+  pour le streaming en temps réel
+  des métriques d'entraînement
+end note
+
+note right of UC20
+  Sauvegarde complète :
+  - Poids du modèle (.pth)
+  - Architecture et hyperparamètres
+  - Paramètres de normalisation
+  - Métriques de test
+  - Historique d'entraînement
+end note
+
+note bottom of UC21
+  Permet la reproductibilité
+  complète des expériences
+end note
+
+@enduml

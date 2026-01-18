@@ -1,0 +1,76 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+
+title Diagramme de Classes - DTOs Pydantic (Serveur IA)
+
+package "Classes Pydantic" #EBF5FB {
+  class TimeSeriesData <<BaseModel>> {
+    + timestamps: List[datetime]
+    + values: List[Optional[float]]
+  }
+  
+  class PaquetComplet <<BaseModel>> {
+    + Parametres_temporels: Optional[Parametres_temporels]
+    + Parametres_choix_reseau_neurones: Optional[Parametres_choix_reseau_neurones]
+    + Parametres_choix_loss_fct: Optional[Parametres_choix_loss_fct]
+    + Parametres_optimisateur: Optional[Parametres_optimisateur]
+    + Parametres_entrainement: Optional[Parametres_entrainement]
+  }
+  
+  class Parametres_temporels <<BaseModel>> {
+    + horizon: Optional[int]
+    + portion_decoupage: Optional[float]
+  }
+  
+  class Parametres_choix_reseau_neurones <<BaseModel>> {
+    + modele: Optional[Literal["MLP", "LSTM", "GRU", "CNN"]]
+  }
+  
+  class Parametres_choix_loss_fct <<BaseModel>> {
+    + fonction_perte: Optional[Literal["MSE", "MAE", "Huber"]]
+    + params: Optional[dict]
+  }
+  
+  class Parametres_optimisateur <<BaseModel>> {
+    + optimisateur: Optional[Literal["Adam", "SGD", "RMSprop"]]
+    + learning_rate: Optional[float]
+    + scheduler: Optional[Literal["Plateau", "Cosine", "OneCycle"]]
+  }
+  
+  class Parametres_entrainement <<BaseModel>> {
+    + nb_epochs: Optional[int]
+    + batch_size: Optional[int]
+    + clip_gradient: Optional[float]
+  }
+  
+  class Parametres_archi_reseau_MLP <<BaseModel>> {
+    + nb_couches: Optional[int]
+    + hidden_size: Optional[int]
+    + dropout_rate: Optional[float]
+    + fonction_activation: Optional[str]
+  }
+  
+  class Parametres_archi_reseau_CNN <<BaseModel>> {
+    + nb_couches: Optional[int]
+    + hidden_size: Optional[int]
+    + kernel_size: Optional[int]
+    + stride: Optional[int]
+    + padding: Optional[int]
+  }
+  
+  class Parametres_archi_reseau_LSTM <<BaseModel>> {
+    + nb_couches: Optional[int]
+    + hidden_size: Optional[int]
+    + bidirectional: Optional[bool]
+    + batch_first: Optional[bool]
+  }
+}
+
+PaquetComplet *-- Parametres_temporels
+PaquetComplet *-- Parametres_choix_reseau_neurones
+PaquetComplet *-- Parametres_choix_loss_fct
+PaquetComplet *-- Parametres_optimisateur
+PaquetComplet *-- Parametres_entrainement
+
+@enduml

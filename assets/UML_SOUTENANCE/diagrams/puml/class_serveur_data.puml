@@ -1,0 +1,95 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #F8F9FA
+    BorderColor #2C3E50
+}
+
+title Diagramme de Classes - Serveur Data (FastAPI + JSON)
+
+package "API FastAPI" #E8F6F3 {
+  class FastAPIApp <<Controller>> {
+    + info_all(req: ChoixDatasetRequest): dict
+    + data_solo(payload: ChoixDatasetRequest2): dict
+    + add_dataset(packet: AddDatasetPacket): dict
+    + data_suppression(payload: deleteDatasetRequest): str
+    + model_all(req: ChoixModelerequest): dict
+    + model_add(payload: newModelRequest): str
+    + model_delete(payload: DeleteModelRequest): str
+    + contexte_add_solo(paquet: PaquetComplet2): dict
+    + contexte_obtenir_solo(payload: ChoixContexteRequest): dict
+    + root(): dict
+  }
+}
+
+package "Services de Gestion" #EBF5FB {
+  class DatasetService <<Service>> {
+    - DATA_DIR: Path
+    --
+    + construire_json_datasets(): Dict[str, Any]
+    + construire_un_dataset(name, date_debut, date_fin, pas): Dict
+    + add_new_dataset(name: str, data: TimeSeriesData): void
+    + remove_dataset(name: str): void
+    + extraire_infos_dataset(path_json: Path): Tuple
+    - parse_ts(ts_str: str): datetime
+  }
+
+  class ModelService <<Service>> {
+    - MODEL_DIR: Path
+    --
+    + construire_modeles(): Dict[str, Any]
+    + add_new_model(name: str, data: str): void
+    + remove_model(name: str): void
+  }
+
+  class ContexteService <<Service>> {
+    - CONTEXT_DIR: Path
+    --
+    + contexte_add_mlp(**kwargs): void
+    + contexte_add_cnn(**kwargs): void
+    + contexte_add_lstm(**kwargs): void
+    + transmettre_contexte(name: str): dict
+  }
+}
+
+package "DTOs Pydantic" #FDF2E9 {
+  class TimeSeriesData <<BaseModel>> {
+    + timestamps: List[datetime]
+    + values: List[Optional[float]]
+  }
+  
+  class ChoixDatasetRequest2 <<BaseModel>> {
+    + name: str
+    + dates: List[str]
+    + pas_temporel: int
+  }
+  
+  class AddDatasetPacket <<BaseModel>> {
+    + payload_name: str
+    + payload_dataset_add: TimeSeriesDataStr
+  }
+  
+  class PaquetComplet2 <<BaseModel>> {
+    + payload: dict
+    + payload_model: dict
+    + payload_dataset: dict
+    + payload_name_model: dict
+  }
+}
+
+package "Stockage Fichiers" #FDEDEC {
+  folder "datasets/" as DS
+  folder "models/" as MD
+  folder "contextes/" as CTX
+}
+
+FastAPIApp --> DatasetService
+FastAPIApp --> ModelService
+FastAPIApp --> ContexteService
+
+DatasetService --> DS : lit/écrit
+ModelService --> MD : lit/écrit
+ContexteService --> CTX : lit/écrit
+
+@enduml

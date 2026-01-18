@@ -1,0 +1,328 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{margin=2.5cm}
+\pagestyle{fancy}
+\fancyhead[L]{Projet GL -- Application de Prédiction}
+\fancyhead[R]{\today}
+
+\title{Cahier des charges -- Application de prédiction de ventes}
+\author{Équipe Projet GL}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+\subsection{Contexte du Projet}
+Dans un contexte économique où l'optimisation des ressources est cruciale, les entreprises cherchent à anticiper leurs volumes de ventes avec précision. Ce projet vise à développer une application de bureau (basée sur des technologies Web packagées) permettant aux opérateurs métier et aux data analysts de configurer, entraîner et évaluer des modèles de Deep Learning (réseaux de neurones) sur des séries temporelles.
+
+L'application doit abstraire la complexité du code Python sous-jacent (PyTorch/TensorFlow) via une interface graphique intuitive, offrant un retour visuel en temps réel lors de l'entraînement et des outils d'analyse post-entraînement.
+
+\subsection{Méthodologie de Conception}
+Le projet suit un cycle de développement itératif. L'architecture logicielle repose sur une séparation claire entre le Frontend (Interface Utilisateur) et le Backend (Calculs et Données).
+
+\subsubsection{Approche Orientée Objet}
+Bien que le Frontend utilise une approche fonctionnelle moderne (React Hooks), la modélisation des données et l'architecture globale suivent les principes de conception orientée objet pour assurer la modularité :
+\begin{itemize}
+    \item Encapsulation des états (Store global).
+    \item Ségrégation des interfaces (Composants UI distincts pour la configuration, la visualisation, le contrôle).
+    \item Abstraction des services API (DatasetAPI, TrainingAPI).
+\end{itemize}
+
+\section{Spécifications Fonctionnelles}
+
+\subsection{F-1 : Gestion des Données}
+Le système doit permettre la manipulation des jeux de données temporels qui serviront de base à l'apprentissage.
+
+\subsubsection{F-1.1 : Importation de Données}
+L'utilisateur doit pouvoir charger des données depuis une source externe.
+\begin{itemize}
+    \item Le système interroge l'API \texttt{datasetAPI} pour récupérer les métadonnées disponibles.
+    \item Gestion des erreurs si le format du fichier source est invalide.
+\end{itemize}
+
+\subsubsection{F-1.2 : Sélection de Dataset}
+L'interface doit présenter une liste des datasets disponibles (ex: \texttt{DatasetList}).
+\begin{itemize}
+    \item Affichage du nom du dataset.
+    \item Validation obligatoire : l'entraînement ne peut démarrer sans sélection active.
+\end{itemize}
+
+\subsubsection{F-1.3 : Filtrage Temporel}
+L'utilisateur doit pouvoir restreindre la plage de données utilisée.
+\begin{itemize}
+    \item Sélection de la date de début et de fin.
+    \item Définition du pas temporel (ex: journalier, hebdomadaire).
+    \item Découpage automatique ou manuel en ensembles d'entraînement, de validation et de test.
+\end{itemize}
+
+\subsection{F-2 : Configuration du Modèle}
+Le cœur de l'application réside dans la personnalisation de l'architecture du réseau de neurones.
+
+\subsubsection{F-2.1 : Choix du Type de Réseau}
+L'utilisateur sélectionne la famille de modèle via un composant \texttt{ModelSelector}.
+\begin{itemize}
+    \item Types supportés : MLP (Perceptron Multicouche), CNN (Réseau Convolutif), LSTM (Long Short-Term Memory).
+    \item Mise à jour dynamique des paramètres affichés selon le type choisi.
+\end{itemize}
+
+\subsubsection{F-2.2 : Configuration Architecture MLP}
+Si MLP est sélectionné :
+\begin{itemize}
+    \item Définition du nombre de couches cachées.
+    \item Définition de la taille des couches (\texttt{hidden\_size}).
+    \item Paramètre de \texttt{dropout} et fonction d'activation (ReLU, Tanh, Sigmoid).
+\end{itemize}
+
+\subsubsection{F-2.3 : Configuration Architecture CNN}
+Si CNN est sélectionné :
+\begin{itemize}
+    \item Paramètres spécifiques aux convolutions (taille du noyau, nombre de filtres).
+    \item Paramètres de pooling.
+\end{itemize}
+
+\subsubsection{F-2.4 : Configuration Architecture LSTM}
+Si LSTM est sélectionné :
+\begin{itemize}
+    \item Nombre de couches récurrentes (\texttt{num\_layers}).
+    \item Taille de l'état caché (\texttt{hidden\_size}).
+    \item Bidirectionnalité (optionnel).
+\end{itemize}
+
+\subsection{F-3 : Configuration de l'Entraînement}
+L'utilisateur doit pouvoir ajuster les hyperparamètres régissant l'algorithme d'apprentissage.
+
+\subsubsection{F-3.1 : Paramètres Temporels}
+Définition de l'horizon de prédiction (combien de pas de temps dans le futur) et de la fenêtre d'observation (lookback).
+
+\subsubsection{F-3.2 : Fonction de Perte}
+Sélection de la métrique à minimiser :
+\begin{itemize}
+    \item MSE (Mean Squared Error).
+    \item MAE (Mean Absolute Error).
+    \item Huber Loss (robuste aux outliers).
+\end{itemize}
+
+\subsubsection{F-3.3 : Optimiseur}
+Choix de l'algorithme d'optimisation (Adam, SGD, RMSprop, Adagrad, Adadelta) et configuration du Scheduler (Plateau, Cosine, OneCycle) pour l'ajustement dynamique du taux d'apprentissage.
+
+\subsubsection{F-3.4 : Paramètres d'Entraînement}
+Réglage des paramètres scalaires :
+\begin{itemize}
+    \item Nombre d'époques (\texttt{nb\_epochs}).
+    \item Taille du lot (\texttt{batch\_size}).
+    \item Taux d'apprentissage initial (\texttt{learning\_rate}).
+    \item \texttt{clip\_gradient} pour éviter l'explosion du gradient.
+\end{itemize}
+
+\subsection{F-4 : Entraînement et Monitoring}
+Le système doit fournir un contrôle total et une visibilité sur le processus d'entraînement.
+
+\subsubsection{F-4.1 : Lancement de l'Entraînement}
+Action déclenchée par un bouton unique. Le système doit vérifier la cohérence de la configuration avant d'envoyer la requête au backend via \texttt{trainingAPI.startTraining}.
+
+\subsubsection{F-4.2 : Visualisation en Temps Réel}
+L'interface doit afficher la courbe de perte (\texttt{TrainingChart}) mise à jour dynamiquement à chaque époque reçue via le flux d'événements (SSE).
+\begin{itemize}
+    \item Réception de l'événement \texttt{epoch} contenant \texttt{avg\_loss}.
+    \item Mise à jour du graphique sans rechargement de page.
+\end{itemize}
+
+\subsubsection{F-4.3 : Annulation de l'Entraînement}
+Possibilité d'interrompre le processus à tout moment via un bouton "Arrêter". Le système doit envoyer une requête d'annulation au backend et réinitialiser l'état de l'interface.
+
+\subsection{F-5 : Evaluation et Test}
+Une fois l'entraînement terminé, le modèle doit être évalué.
+
+\subsubsection{F-5.1 : Phase de Test Automatique}
+À la fin du pipeline (\texttt{fin\_pipeline}), le système affiche les résultats sur le jeu de test (\texttt{TestingChart}).
+\begin{itemize}
+    \item Superposition de la série réelle et des prédictions.
+    \item Affichage des intervalles de confiance (IC low/high).
+    \item Outils d'interaction : Zoom X/Y, Tooltip, Légende.
+\end{itemize}
+
+\subsubsection{F-5.2 : Métriques Calculées}
+Affichage des indicateurs de performance reçus du backend :
+\begin{itemize}
+    \item Métriques de validation et de prédiction.
+    \item Moyenne globale (\texttt{overall\_mean}).
+\end{itemize}
+
+\subsection{F-6 : Prédiction Future}
+\subsubsection{F-6.1 : Prédiction sur Horizon Défini}
+Le système doit permettre de générer des prédictions au-delà des données connues (forecast), basées sur l'horizon configuré.
+
+\subsection{F-7 : Sauvegarde et Chargement}
+\subsubsection{F-7.1 : Sauvegarde du Modèle et du Contexte}
+L'utilisateur doit pouvoir sauvegarder la configuration actuelle (hyperparamètres) et potentiellement le modèle entraîné pour une réutilisation ultérieure.
+
+\subsubsection{F-7.2 : Chargement d'un Modèle Existant}
+Capacité de recharger une configuration précédente pour reproduire un entraînement ou affiner un modèle.
+
+\section{Spécifications Non-Fonctionnelles}
+
+\subsection{Performance}
+\subsubsection{Utilisation des Ressources}
+L'application cliente (Electron) doit rester réactive même lors de la réception de flux de données rapides. Le rendu des graphiques (Recharts) doit être optimisé pour gérer des séries de plusieurs milliers de points sans latence perceptible.
+
+\subsection{Fiabilité}
+\subsubsection{Gestion des Erreurs}
+Le système doit gérer gracieusement les échecs de communication avec l'API (timeout, erreur 500). Des messages d'erreur clairs doivent être affichés à l'utilisateur (via des composants \texttt{Alert}).
+
+\subsection{Utilisabilité}
+\subsubsection{Expérience Utilisateur}
+L'interface doit être intuitive, avec un thème cohérent (support du mode sombre/clair via TailwindCSS). Les contrôles doivent fournir un feedback visuel immédiat (états loading, disabled).
+
+\subsection{Sécurité}
+\subsubsection{Protection des Données}
+Bien que projet scolaire, l'application ne doit pas exposer de données sensibles dans les logs ou via des canaux non sécurisés. Les communications API doivent être robustes.
+
+\section{Spécification Architecturale}
+
+\subsection{Architecture Globale}
+\subsubsection{Vue d'Ensemble}
+L'architecture suit un modèle Client-Serveur découplé.
+\begin{itemize}
+    \item \textbf{Client} : Application Desktop cross-platform (Windows/Mac/Linux).
+    \item \textbf{Serveur} : API RESTful et Streaming pour le calcul intensif.
+\end{itemize}
+
+\subsection{Composants Principaux}
+
+\subsubsection{Interface Utilisateur (Frontend)}
+Développée en \textbf{React} avec \textbf{TypeScript}, packagée via \textbf{Electron}.
+\begin{itemize}
+    \item \textbf{Gestion d'état} : Zustand (Store global pour la config et les données).
+    \item \textbf{Visualisation} : Recharts (Graphiques interactifs).
+    \item \textbf{Style} : TailwindCSS.
+\end{itemize}
+
+\subsubsection{Serveur IA (Backend)}
+Développé en \textbf{Python} (FastAPI).
+\begin{itemize}
+    \item Responsable de l'instanciation des modèles (PyTorch/TensorFlow).
+    \item Gère la boucle d'entraînement et le streaming des événements SSE.
+\end{itemize}
+
+\subsubsection{Serveur Data}
+Module responsable de la lecture, du nettoyage et de la mise à disposition des datasets (fichiers CSV/JSON) via l'API \texttt{datasetAPI}.
+
+\section{Spécification Détaillée}
+
+\subsection{Diagramme de Classe UI}
+Le diagramme suivant illustre la structure des composants React et du Store Zustand.
+
+\begin{verbatim}
+classDiagram
+  class UseStore {
+    +config: GlobalConfig
+    +modelConfig: ModelConfig
+    +isTraining: boolean
+    +trainingData: EpochLoss[]
+    +testingData: FinalPlotData
+    +metrics: MetricsResponse
+    +startTraining()
+    +stopTraining()
+    +addTrainingPoint()
+    +setTestingData()
+    +setMetrics()
+  }
+  class TrainingControl {
+    +handleStart()
+    +handleStop()
+  }
+  class TrainingChart {
+    +render(lossSeries)
+  }
+  class TestingChart {
+    +render(testingData)
+    +zoomXY()
+  }
+  class ModelSelector
+  class NetworkArchitecture
+  class TrainingParams
+  
+  UseStore o-- TrainingControl
+  UseStore o-- TrainingChart
+  UseStore o-- TestingChart
+  UseStore o-- ModelSelector
+\end{verbatim}
+
+\subsection{Diagramme de Classe Serveur IA}
+Représentation simplifiée des classes Python gérant les modèles.
+\begin{verbatim}
+classDiagram
+    class ModelFactory {
+        +create_model(type, config)
+    }
+    class Trainer {
+        +train(model, data, params)
+        +stream_events()
+    }
+    class NeuralNet {
+        <<Abstract>>
+        +forward()
+    }
+    class MLP
+    class CNN
+    class LSTM
+    
+    NeuralNet <|-- MLP
+    NeuralNet <|-- CNN
+    NeuralNet <|-- LSTM
+    ModelFactory ..> NeuralNet
+    Trainer --> NeuralNet
+\end{verbatim}
+
+\subsection{Diagrammes de Séquence - Entraînement Complet}
+Ce diagramme détaille les interactions entre l'utilisateur, l'UI, le Store et l'API lors d'une session d'entraînement.
+
+\begin{verbatim}
+sequenceDiagram
+  participant User
+  participant UI as Front React
+  participant Store as useStore
+  participant TrainAPI as trainingAPI
+  participant Backend as Python Server
+
+  User->>UI: Clic "Lancer"
+  UI->>Store: startTraining() (reset data)
+  UI->>TrainAPI: startTraining(config)
+  TrainAPI->>Backend: POST /train_full
+  
+  alt Erreur Dataset
+    Backend-->>TrainAPI: event: error
+    TrainAPI-->>UI: alert("Erreur chargement")
+  end
+
+  loop Streaming SSE
+    Backend-->>TrainAPI: event: epoch {loss}
+    TrainAPI-->>UI: callback onEvent(epoch)
+    UI->>Store: addTrainingPoint()
+    Store-->>UI: update TrainingChart
+  end
+  
+  Backend-->>TrainAPI: event: fin_pipeline
+  TrainAPI-->>UI: callback onComplete()
+  UI->>Store: setTestingData()
+  Store-->>UI: update TestingChart
+\end{verbatim}
+
+\end{document}

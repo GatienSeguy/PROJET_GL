@@ -1,0 +1,64 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam backgroundColor #FEFEFE
+
+title Diagramme de Cas d'Utilisation - MLApp
+
+actor Utilisateur as U
+
+rectangle "MLApp" {
+  package "Gestion Données" {
+    usecase "Importer Dataset" as UC1
+    usecase "Sélectionner Dataset" as UC2
+    usecase "Supprimer Dataset" as UC11
+    usecase "Filtrer par dates" as UC12
+  }
+  
+  package "Configuration" {
+    usecase "Configurer Modèle\n(MLP/CNN/LSTM)" as UC3
+    usecase "Configurer Entraînement" as UC4
+    usecase "Choisir Métriques" as UC13
+  }
+  
+  package "Entraînement" {
+    usecase "Lancer Entraînement" as UC5
+    usecase "Arrêter Entraînement" as UC6
+    usecase "Visualiser Loss\nen temps réel" as UC7
+  }
+  
+  package "Évaluation" {
+    usecase "Visualiser Métriques" as UC8
+    usecase "Effectuer Prédiction" as UC9
+    usecase "Choisir Stratégie\nde Prédiction" as UC14
+  }
+  
+  package "Persistance" {
+    usecase "Sauvegarder Modèle" as UC10
+    usecase "Charger Modèle" as UC15
+  }
+}
+
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC8
+U --> UC9
+U --> UC10
+U --> UC11
+U --> UC15
+
+UC5 ..> UC2 : <<include>>
+UC5 ..> UC3 : <<include>>
+UC5 ..> UC4 : <<include>>
+UC5 .> UC7 : <<include>>
+UC9 ..> UC5 : <<include>>
+UC9 .> UC14 : <<extend>>
+UC10 ..> UC5 : <<include>>
+UC2 .> UC12 : <<extend>>
+
+@enduml

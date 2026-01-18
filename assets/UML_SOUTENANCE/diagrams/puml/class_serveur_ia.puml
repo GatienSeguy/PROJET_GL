@@ -1,0 +1,119 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #F8F9FA
+    BorderColor #2C3E50
+}
+
+title Diagramme de Classes - Serveur IA (FastAPI + PyTorch)
+
+package "API FastAPI" #E8F6F3 {
+  class FastAPIApp <<Controller>> {
+    + train_full(payload, payload_model): StreamingResponse
+    + stop_training(): dict
+    + proxy_get_dataset_list(payload): dict
+    + proxy_fetch_dataset(payload): dict
+    + add_dataset_proxy(packet): dict
+    + proxy_suppression_dataset(payload): dict
+    + root(): dict
+  }
+}
+
+package "Pipeline Entrainement" #EBF5FB {
+  class TrainingPipeline {
+    - cfg: PaquetComplet
+    - payload_model: dict
+    - device: torch.device
+    - series: TimeSeriesData
+    - X, y: Tensor
+    - X_train, y_train: Tensor
+    - X_val, y_val: Tensor
+    - X_test, y_test: Tensor
+    - split_info: dict
+    - norm_params: dict
+    - inverse_fn: Callable
+    - model_trained: nn.Module
+    - residual_std: float
+    - stop_flag: bool
+    --
+    + load_data(payload_json): TimeSeriesData
+    + preprocess_data(): Tuple[Tensor, Tensor]
+    + normalize_data(): void
+    + split_data_three_way(): dict
+    + create_training_generator(): Generator
+    + run_training(): Generator
+    + run_validation(): Generator
+    + run_prediction_test(strategy): Generator
+    + execute_full_pipeline(): Generator
+  }
+
+  class DatasetManager {
+    - data_server_url: str
+    --
+    + get_available_datasets(): List[str]
+    + fetch_dataset(name, start, end): TimeSeriesData
+  }
+
+  class ModelManager {
+    - models_dir: str
+    --
+    + save_model(model, config, norm_params, metrics): str
+    + load_model(model_path): nn.Module
+    + list_models(): List[dict]
+  }
+}
+
+package "Modules Entrainement" #FDF2E9 {
+  class train_MLP <<Generator>> {
+    + __call__(X, y, hidden_size, nb_couches,
+      dropout_rate, activation, loss_name,
+      optimizer_name, learning_rate,
+      batch_size, epochs, device): Generator
+  }
+  
+  class train_CNN <<Generator>> {
+    + __call__(X, y, hidden_size, nb_couches,
+      kernel_size, stride, padding,
+      activation, loss_name, ...): Generator
+  }
+  
+  class train_LSTM <<Generator>> {
+    + __call__(X, y, hidden_size, nb_couches,
+      bidirectional, batch_first,
+      loss_name, ...): Generator
+  }
+}
+
+package "Modules de Test" #FDEDEC {
+  class test_model_validation <<Generator>> {
+    + __call__(model, X_val, y_val, device,
+      batch_size, inverse_fn, idx_start): Generator
+  }
+  
+  class predict_multistep <<Generator>> {
+    + __call__(model, values, norm_stats,
+      window_size, n_steps, device,
+      inverse_fn, config, residual_std,
+      y_true, idx_start): Generator
+  }
+  
+  enum PredictionStrategy {
+    ONE_STEP
+    RECALIBRATION
+    RECURSIVE
+    DIRECT
+  }
+}
+
+FastAPIApp --> TrainingPipeline : crée
+TrainingPipeline --> DatasetManager : utilise
+TrainingPipeline --> ModelManager : utilise
+TrainingPipeline ..> train_MLP : si MLP
+TrainingPipeline ..> train_CNN : si CNN
+TrainingPipeline ..> train_LSTM : si LSTM
+TrainingPipeline ..> test_model_validation : phase 2
+TrainingPipeline ..> predict_multistep : phase 3
+predict_multistep --> PredictionStrategy
+
+@enduml

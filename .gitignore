@@ -12,3 +12,5 @@ __pycache__/
 .DS_Store
 checkpoints/
 
+# Ignore the test interface project
+test_interface_javascript/

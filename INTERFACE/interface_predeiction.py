@@ -1569,14 +1569,352 @@ class Cadre_Metrics(ctk.CTkFrame):
 class Cadre_Prediction(ctk.CTkFrame):
     def __init__(self, app, master=None):
         super().__init__(master)
-
+        self.app = app
+        
+        # Variables pour les données
+        self.series_complete = []
+        self.predictions = []
+        self.pred_low = []
+        self.pred_high = []
+        self.idx_pred_start = 0
+        
         # Titre
         self.titre = ctk.CTkLabel(
             self, 
-            text="📊 Affichage de la prédiction", 
+            text="🔮 Prédiction Multi-Horizon", 
             font=Fonts.Tabs_title
         )
-        self.titre.pack(pady=(0, 10))
+        self.titre.pack(pady=(10, 5))
+        
+        # Sous-titre avec explication
+        self.sous_titre = ctk.CTkLabel(
+            self,
+            text="Utilisez le modèle entraîné pour prédire les valeurs futures",
+            font=("Roboto", 14),
+            text_color="gray70"
+        )
+        self.sous_titre.pack(pady=(0, 15))
+        
+        # Frame de contrôle
+        self.control_frame = ctk.CTkFrame(self)
+        self.control_frame.pack(fill="x", padx=20, pady=(0, 10))
+        
+        # Paramètre horizon de prédiction
+        horizon_frame = ctk.CTkFrame(self.control_frame)
+        horizon_frame.pack(side="left", padx=10, pady=10)
+        
+        ctk.CTkLabel(
+            horizon_frame,
+            text="Horizon de prédiction:",
+            font=("Roboto", 14, "bold")
+        ).pack(side="left", padx=(5, 10))
+        
+        self.horizon_var = ctk.StringVar(value=str(Parametres_temporels.horizon))
+        self.horizon_entry = ctk.CTkEntry(
+            horizon_frame,
+            textvariable=self.horizon_var,
+            width=100,
+            font=("Roboto", 14)
+        )
+        self.horizon_entry.pack(side="left", padx=(0, 5))
+        
+        ctk.CTkLabel(
+            horizon_frame,
+            text="pas de temps",
+            font=("Roboto", 12),
+            text_color="gray70"
+        ).pack(side="left", padx=(0, 5))
+        
+        # Bouton de prédiction
+        self.predict_btn = ctk.CTkButton(
+            self.control_frame,
+            text="🚀 Lancer la Prédiction",
+            command=self.run_prediction,
+            height=40,
+            font=("Roboto", 16, "bold"),
+            fg_color="#3498db",
+            hover_color="#2980b9"
+        )
+        self.predict_btn.pack(side="left", padx=20, pady=10)
+        
+        # Frame pour le graphique
+        self.plot_frame = ctk.CTkFrame(self)
+        self.plot_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        
+        # Création du graphique matplotlib
+        self.fig = Figure(figsize=(12, 6), facecolor=Plot_style.plot_background)
+        self.ax = self.fig.add_subplot(111)
+        
+        # Style du graphique
+        self.ax.set_facecolor(Plot_style.plot_background)
+        self.ax.tick_params(axis='both', labelsize=14, colors=Plot_style.text_color)
+        for spine in self.ax.spines.values():
+            spine.set_color(Plot_style.text_color)
+        
+        self.ax.grid(True, linestyle='--', alpha=0.3, color=Plot_style.text_color)
+        self.ax.set_xlabel('Index Temporel', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+        self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+        self.ax.set_title('Prédiction Multi-Horizon avec Intervalles de Confiance', 
+                         fontsize=18, fontweight='bold', color=Plot_style.text_color, pad=15)
+        
+        # Canvas
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+        
+        # Message d'information initial
+        self.info_label = ctk.CTkLabel(
+            self.plot_frame,
+            text="⚠️ Entraînez d'abord un modèle pour activer la prédiction",
+            font=("Roboto", 14),
+            text_color="orange"
+        )
+        self.info_label.place(relx=0.5, rely=0.5, anchor="center")
+        
+        self.fig.tight_layout()
+    
+    def run_prediction(self):
+        """Lance la prédiction en utilisant le modèle entraîné"""
+        # Vérifier qu'un modèle a été entraîné
+        if not hasattr(self.app.Cadre_results_Entrainement, 'epochs') or len(self.app.Cadre_results_Entrainement.epochs) == 0:
+            messagebox.showwarning(
+                "Modèle non entraîné",
+                "Veuillez d'abord entraîner un modèle dans l'onglet Training.",
+                parent=self
+            )
+            return
+        
+        # Récupérer l'horizon
+        try:
+            horizon = int(self.horizon_var.get())
+            if horizon <= 0:
+                raise ValueError("L'horizon doit être positif")
+            Parametres_temporels.horizon = horizon
+        except ValueError as e:
+            messagebox.showerror(
+                "Erreur de paramètre",
+                f"Horizon invalide: {str(e)}",
+                parent=self
+            )
+            return
+        
+        # Désactiver le bouton pendant la prédiction
+        self.predict_btn.configure(state="disabled", text="⏳ Prédiction en cours...")
+        self.info_label.configure(text="🔄 Génération des prédictions...", text_color="blue")
+        
+        # Lancer la prédiction dans un thread
+        def run_prediction_thread():
+            try:
+                # Préparer les payloads
+                payload_global = self.app.Formatter_JSON_global()
+                payload_model = self.app.Formatter_JSON_specif()
+                payload_dataset = self.app.Formatter_JSON_dataset()
+                
+                # Variables pour collecter les données
+                series_complete = []
+                predictions = []
+                pred_low = []
+                pred_high = []
+                idx_pred_start = 0
+                
+                # Requête au serveur avec streaming
+                with requests.post(
+                    f"{URL}/train_full",  # On utilise le pipeline complet pour l'instant
+                    json={"payload": payload_global, "payload_model": payload_model},
+                    stream=True,
+                    timeout=None
+                ) as r:
+                    r.raise_for_status()
+                    
+                    for line in r.iter_lines():
+                        if not line:
+                            continue
+                        
+                        line_str = line.decode("utf-8")
+                        if not line_str.startswith("data: "):
+                            continue
+                        
+                        try:
+                            json_str = line_str[6:]
+                            msg = json.loads(json_str)
+                            
+                            # Récupérer les informations de split
+                            if msg.get("type") == "split_info":
+                                idx_pred_start = msg.get("idx_test_start", 0)
+                            
+                            # Récupérer les données finales
+                            elif msg.get("type") == "final_plot_data":
+                                series_complete = msg.get("series_complete", [])
+                                predictions = msg.get("pred_predictions", [])
+                                pred_low = msg.get("pred_low", [])
+                                pred_high = msg.get("pred_high", [])
+                            
+                            # Fin du pipeline
+                            elif msg.get("type") == "fin_pipeline":
+                                print("[PREDICTION] Pipeline terminé!")
+                                break
+                        
+                        except json.JSONDecodeError:
+                            continue
+                
+                # Afficher les résultats
+                if series_complete and predictions:
+                    self.update_plot(
+                        series_complete=series_complete,
+                        predictions=predictions,
+                        pred_low=pred_low,
+                        pred_high=pred_high,
+                        idx_pred_start=idx_pred_start,
+                        horizon=horizon
+                    )
+                    self.info_label.configure(text="✅ Prédiction réussie!", text_color="green")
+                else:
+                    self.info_label.configure(
+                        text="⚠️ Aucune donnée de prédiction reçue",
+                        text_color="orange"
+                    )
+            
+            except Exception as e:
+                print(f"Erreur lors de la prédiction: {e}")
+                messagebox.showerror(
+                    "Erreur de prédiction",
+                    f"Une erreur est survenue:\n{str(e)}",
+                    parent=self
+                )
+                self.info_label.configure(
+                    text="❌ Erreur lors de la prédiction",
+                    text_color="red"
+                )
+            
+            finally:
+                # Réactiver le bouton
+                self.predict_btn.configure(state="normal", text="🚀 Lancer la Prédiction")
+        
+        # Lancer dans un thread
+        threading.Thread(target=run_prediction_thread, daemon=True).start()
+    
+    def update_plot(self, series_complete, predictions, pred_low, pred_high, idx_pred_start, horizon):
+        """Met à jour le graphique avec les prédictions"""
+        try:
+            # Nettoyer le graphique
+            self.ax.clear()
+            
+            # Convertir en numpy arrays
+            series = np.array(series_complete, dtype=float)
+            preds = np.array(predictions, dtype=float)
+            
+            # Indices
+            n_total = len(series)
+            idx_history = np.arange(idx_pred_start)
+            idx_pred = np.arange(idx_pred_start, idx_pred_start + len(preds))
+            
+            # 1. Série historique (avant la prédiction)
+            if idx_pred_start > 0:
+                self.ax.plot(
+                    idx_history,
+                    series[:idx_pred_start],
+                    color='#2E86AB',
+                    linewidth=2.5,
+                    label='Données Historiques',
+                    alpha=0.9,
+                    zorder=3
+                )
+            
+            # 2. Vraies valeurs sur la période de prédiction (si disponibles)
+            if idx_pred_start + len(preds) <= n_total:
+                idx_true = np.arange(idx_pred_start, idx_pred_start + len(preds))
+                self.ax.plot(
+                    idx_true,
+                    series[idx_pred_start:idx_pred_start + len(preds)],
+                    color='#27AE60',
+                    linewidth=2.5,
+                    linestyle='--',
+                    label='Valeurs Réelles',
+                    alpha=0.8,
+                    zorder=2
+                )
+            
+            # 3. Prédictions
+            self.ax.plot(
+                idx_pred,
+                preds,
+                color='#E74C3C',
+                linewidth=2.5,
+                label=f'Prédictions (h={horizon})',
+                marker='o',
+                markersize=5,
+                markerfacecolor='white',
+                markeredgecolor='#E74C3C',
+                markeredgewidth=1.5,
+                alpha=0.9,
+                zorder=4
+            )
+            
+            # 4. Intervalles de confiance (si disponibles)
+            if pred_low and pred_high:
+                pred_low_arr = np.array(pred_low, dtype=float)
+                pred_high_arr = np.array(pred_high, dtype=float)
+                
+                self.ax.fill_between(
+                    idx_pred,
+                    pred_low_arr,
+                    pred_high_arr,
+                    color='#E74C3C',
+                    alpha=0.2,
+                    label='Intervalle de Confiance 95%',
+                    zorder=1
+                )
+            
+            # 5. Ligne verticale de séparation
+            self.ax.axvline(
+                idx_pred_start,
+                color='gray',
+                linestyle=':',
+                linewidth=2,
+                alpha=0.6,
+                label='Début Prédiction'
+            )
+            
+            # Style
+            self.ax.set_facecolor(Plot_style.plot_background)
+            for spine in self.ax.spines.values():
+                spine.set_color(Plot_style.text_color)
+            
+            self.ax.tick_params(axis='both', labelsize=14, colors=Plot_style.text_color)
+            self.ax.grid(True, linestyle='--', alpha=0.3, color=Plot_style.text_color)
+            
+            self.ax.set_xlabel('Index Temporel', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+            self.ax.set_ylabel('Valeur', fontsize=16, fontweight='bold', color=Plot_style.text_color)
+            self.ax.set_title(
+                f'Prédiction Multi-Horizon (h={horizon} pas)',
+                fontsize=18,
+                fontweight='bold',
+                color=Plot_style.text_color,
+                pad=15
+            )
+            
+            # Légende
+            self.ax.legend(
+                loc='upper left',
+                fontsize=12,
+                framealpha=0.9,
+                facecolor=Plot_style.plot_background,
+                edgecolor=Plot_style.text_color,
+                labelcolor=Plot_style.text_color
+            )
+            
+            self.fig.tight_layout()
+            self.canvas.draw()
+            
+            # Masquer le message d'info
+            self.info_label.place_forget()
+            
+            print(f"[Cadre_Prediction] Graphique mis à jour: {len(preds)} prédictions affichées")
+        
+        except Exception as e:
+            print(f"[Cadre_Prediction] Erreur lors de la mise à jour du graphique: {e}")
+            import traceback
+            traceback.print_exc()
 
 # Créer la fenêtre de paramétrage du modèle
 class Fenetre_Params(ctk.CTkToplevel):

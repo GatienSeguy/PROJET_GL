@@ -1,0 +1,123 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #F8F9FA
+    BorderColor #2C3E50
+    ArrowColor #2C3E50
+}
+
+title Diagramme de Classes - Interface Utilisateur (Tkinter/CTk)
+
+package "Interface Principale" #E8F6F3 {
+  class Fenetre_Acceuil <<CTk>> {
+    - JSON_Datasets: dict
+    - stop_training: bool
+    - Payload: dict
+    - Results_notebook: CTkTabview
+    - cadre: CTkFrame
+    --
+    + __init__()
+    + obtenir_datasets(): int
+    + EnvoyerConfig(): void
+    + annuler_entrainement(): void
+    + Formatter_JSON_global(): dict
+    + Formatter_JSON_dataset(): dict
+    + Formatter_JSON_specif(): dict
+    + Parametrer_modele(): void
+    + Parametrer_horizon(): void
+    + Gestion_Datasets(): void
+  }
+}
+
+package "Onglets Résultats" #EBF5FB {
+  class Cadre_Entrainement <<CTkFrame>> {
+    - is_training: bool
+    - epochs_data: List[int]
+    - loss_data: List[float]
+    - figure: Figure
+    - canvas: FigureCanvasTkAgg
+    - ax: Axes
+    --
+    + start_training(): void
+    + add_data_point(epoch, loss, epoch_s): void
+    + update_plot(): void
+    + reset(): void
+  }
+
+  class Cadre_Testing <<CTkFrame>> {
+    - y_true_data: List[float]
+    - y_pred_data: List[float]
+    - figure: Figure
+    - canvas: FigureCanvasTkAgg
+    --
+    + add_prediction(y, yhat): void
+    + display_metrics(metrics: dict): void
+    + update_plot(): void
+    + reset(): void
+  }
+
+  class Cadre_Metrics <<CTkFrame>> {
+    - mse_label: CTkLabel
+    - mae_label: CTkLabel
+    - rmse_label: CTkLabel
+    - r2_label: CTkLabel
+    --
+    + display_metrics(mse, mae, rmse, r2): void
+    + clear(): void
+  }
+
+  class Cadre_Prediction <<CTkFrame>> {
+    - predictions: List[float]
+    - low_bounds: List[float]
+    - high_bounds: List[float]
+    - figure: Figure
+    --
+    + add_prediction_point(yhat, low, high): void
+    + display_final(data: dict): void
+    + update_plot(): void
+  }
+}
+
+package "Fenêtres de Configuration" #FDF2E9 {
+  class Gestion_Datasets <<CTkToplevel>> {
+    - Dataset_tree: Treeview
+    - Selected_Dataset: dict
+    - payload_add_dataset: TimeSeriesData
+    --
+    + rafraichir_liste_datasets(): void
+    + charger_fichier_json(): void
+    + supprimer_dataset(): void
+    + Select_Dataset(): void
+  }
+
+  class Fenetre_Params <<CTkToplevel>> {
+    - model_type: StringVar
+    - params_frame: CTkFrame
+    --
+    + create_mlp_params(): void
+    + create_cnn_params(): void
+    + create_lstm_params(): void
+    + save_params(): void
+    + on_model_change(): void
+  }
+
+  class Fenetre_Params_horizon <<CTkToplevel>> {
+    - horizon_entry: CTkEntry
+    - portion_entry: CTkEntry
+    - calendars: List[Calendar]
+    --
+    + validate_dates(): bool
+    + save_params(): void
+  }
+}
+
+Fenetre_Acceuil "1" *-- "1" Cadre_Entrainement
+Fenetre_Acceuil "1" *-- "1" Cadre_Testing
+Fenetre_Acceuil "1" *-- "1" Cadre_Metrics
+Fenetre_Acceuil "1" *-- "1" Cadre_Prediction
+Fenetre_Acceuil ..> Gestion_Datasets : ouvre
+Fenetre_Acceuil ..> Fenetre_Params : ouvre
+Fenetre_Acceuil ..> Fenetre_Params_horizon : ouvre
+
+@enduml
