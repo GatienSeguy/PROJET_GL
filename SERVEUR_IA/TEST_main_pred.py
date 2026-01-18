@@ -65,6 +65,21 @@ last_config_series = None
 
 payload_json = {"timestamps": [], "values": []}
 
+# ====================================
+# VARIABLES GLOBALES POUR LE MODÈLE ENTRAÎNÉ
+# ====================================
+trained_model_state = {
+    "model": None,           # Le modèle PyTorch entraîné
+    "norm_params": None,     # Paramètres de normalisation (min, max, etc.)
+    "inverse_fn": None,      # Fonction inverse pour dénormaliser
+    "window_size": None,     # Taille de la fenêtre d'entrée
+    "series_values": None,   # Dernières valeurs de la série (pour contexte)
+    "residual_std": None,    # Écart-type des résidus (pour IC)
+    "model_type": None,      # Type de modèle (mlp, lstm, cnn)
+    "device": "cpu",         # Device utilisé
+    "is_trained": False,     # Flag indiquant si un modèle est disponible
+}
+
 
 # ====================================
 # CLASSE GESTION DATASETS
@@ -654,6 +669,22 @@ class TrainingPipeline:
             
             yield sse({"type": "phase", "phase": "prediction", "status": "end"})
             
+            # ========== SAUVEGARDER LE MODÈLE ENTRAÎNÉ ==========
+            global trained_model_state
+            window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
+            trained_model_state = {
+                "model": self.model_trained,
+                "norm_params": self.norm_params,
+                "inverse_fn": self.inverse_fn,
+                "window_size": window_size,
+                "series_values": list(self.series.values),
+                "residual_std": self.residual_std if hasattr(self, 'residual_std') else 0.1,
+                "model_type": self.cfg.Parametres_choix_reseau_neurones.modele.lower(),
+                "device": self.device,
+                "is_trained": True,
+            }
+            print(f"✅ Modèle sauvegardé en mémoire (window_size={window_size})")
+            
             # ========== DONNÉES FINALES POUR L'AFFICHAGE ==========
             yield sse({
                 "type": "final_plot_data",
@@ -821,6 +852,8 @@ def proxy_suppression_dataset(payload: deleteDatasetRequest):
         print(f"Erreur lors de la suppression: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur serveur Data: {str(e)}")
 
+
+
 @app.post("/train_full")
 def training(payload: PaquetComplet, payload_model: dict):
     """Route d'entraînement complet avec le nouveau pipeline 3 phases"""
@@ -838,335 +871,161 @@ def stop_training():
     return {"status": "ok", "message": "Arrêt demandé"}
 
 
-
-
-
 @app.get("/")
 def root():
     return {"message": "Serveur IA actif !"}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-############## PREDICTION ####
-
-from pydantic import BaseModel
-from typing import Optional
-
 # ====================================
-# NOUVEAUX MODÈLES PYDANTIC
+# ENDPOINT DE PRÉDICTION FUTURE
 # ====================================
+from pydantic import BaseModel as PydanticBaseModel
 
-class PredictionRequest(BaseModel):
-    """Requête pour la prédiction standalone"""
-    dataset_config: dict  # Configuration du dataset (name, dates, etc.)
-    model_config: dict    # Configuration du modèle (architecture, etc.)
-    horizon: int          # Nombre de pas à prédire
-    strategy: str = "one_step"  # Stratégie de prédiction
-    model_path: Optional[str] = None  # Chemin vers le modèle sauvegardé (si None, utilise le dernier entraîné)
-    use_confidence_intervals: bool = True  # Calculer les intervalles de confiance
+class PredictRequest(PydanticBaseModel):
+    """Requête pour la prédiction future"""
+    horizon: int = 10  # Nombre de pas à prédire dans le futur
+    strategy: str = "recursive"  # Stratégie: "recursive" pour prédiction pure future
+    confidence_level: float = 0.95  # Niveau de confiance pour les intervalles
 
 
-class ModelSaveConfig(BaseModel):
-    """Configuration pour la sauvegarde de modèle"""
-    model_name: str  # Nom du modèle
-    save_dir: str = "./saved_models"  # Répertoire de sauvegarde
-    include_normalization: bool = True  # Sauvegarder les paramètres de normalisation
-    include_metadata: bool = True  # Sauvegarder les métadonnées (métriques, config, etc.)
-
-
-# ====================================
-# CLASSE DE GESTION DES MODÈLES
-# ====================================
-
-class ModelManager:
-    """Gère la sauvegarde et le chargement des modèles"""
+@app.post("/predict")
+def predict_future(request: PredictRequest):
+    """
+    Prédit H pas dans le FUTUR en utilisant le modèle entraîné.
     
-    def __init__(self, base_dir: str = "./saved_models"):
-        self.base_dir = base_dir
-        os.makedirs(base_dir, exist_ok=True)
+    - Utilise TOUTES les données comme historique
+    - Prédit au-delà de la fin des données (pas de comparaison possible)
+    - Retourne les prédictions avec intervalles de confiance
+    """
     
-    def save_model(self, 
-                   model: torch.nn.Module,
-                   config: dict,
-                   norm_params: dict,
-                   metrics: dict,
-                   model_name: str) -> str:
-        """
-        Sauvegarde un modèle avec ses métadonnées.
+    def prediction_generator():
+        global trained_model_state
         
-        Returns:
-            str: Chemin vers le répertoire du modèle sauvegardé
-        """
-        from datetime import datetime
+        # Vérifier qu'un modèle est disponible
+        if not trained_model_state["is_trained"]:
+            yield sse({
+                "type": "error",
+                "message": "Aucun modèle entraîné disponible. Veuillez d'abord entraîner un modèle via /train_full"
+            })
+            return
         
-        # Créer un répertoire avec timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        model_dir = os.path.join(self.base_dir, f"{model_name}_{timestamp}")
-        os.makedirs(model_dir, exist_ok=True)
-        
-        # 1. Sauvegarder le modèle PyTorch
-        model_path = os.path.join(model_dir, "model.pth")
-        torch.save({
-            'model_state_dict': model.state_dict(),
-            'model_class': model.__class__.__name__,
-            'input_shape': getattr(model, 'input_shape', None),
-        }, model_path)
-        
-        # 2. Sauvegarder la configuration
-        config_path = os.path.join(model_dir, "config.json")
-        with open(config_path, 'w') as f:
-            json.dump(config, f, indent=2)
-        
-        # 3. Sauvegarder les paramètres de normalisation
-        norm_path = os.path.join(model_dir, "normalization.json")
-        with open(norm_path, 'w') as f:
-            json.dump(norm_params, f, indent=2)
-        
-        # 4. Sauvegarder les métadonnées
-        metadata = {
-            'saved_at': timestamp,
-            'metrics': metrics,
-            'model_name': model_name,
-            'pytorch_version': torch.__version__,
-        }
-        metadata_path = os.path.join(model_dir, "metadata.json")
-        with open(metadata_path, 'w') as f:
-            json.dump(metadata, f, indent=2)
-        
-        print(f"✅ Modèle sauvegardé dans: {model_dir}")
-        return model_dir
-    
-    def load_model(self, model_dir: str, device: str = "cpu"):
-        """
-        Charge un modèle sauvegardé.
-        
-        Returns:
-            tuple: (model, config, norm_params, metadata)
-        """
-        # 1. Charger la configuration
-        config_path = os.path.join(model_dir, "config.json")
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        
-        # 2. Charger les paramètres de normalisation
-        norm_path = os.path.join(model_dir, "normalization.json")
-        with open(norm_path, 'r') as f:
-            norm_params = json.load(f)
-        
-        # 3. Charger les métadonnées
-        metadata_path = os.path.join(model_dir, "metadata.json")
-        with open(metadata_path, 'r') as f:
-            metadata = json.load(f)
-        
-        # 4. Reconstruire et charger le modèle
-        model_path = os.path.join(model_dir, "model.pth")
-        checkpoint = torch.load(model_path, map_location=device)
-        
-        # Recréer l'architecture (nécessite de connaître le type de modèle)
-        model_class = checkpoint['model_class']
-        
-        # TODO: Instancier le bon modèle selon model_class
-        # Pour l'instant, on suppose que le modèle est fourni ou qu'on peut le recréer
-        
-        print(f"✅ Modèle chargé depuis: {model_dir}")
-        return checkpoint, config, norm_params, metadata
-    
-    def list_models(self) -> list:
-        """Liste tous les modèles sauvegardés"""
-        models = []
-        for dirname in os.listdir(self.base_dir):
-            model_dir = os.path.join(self.base_dir, dirname)
-            if os.path.isdir(model_dir):
-                metadata_path = os.path.join(model_dir, "metadata.json")
-                if os.path.exists(metadata_path):
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-                    models.append({
-                        'path': model_dir,
-                        'name': metadata.get('model_name', dirname),
-                        'saved_at': metadata.get('saved_at', 'unknown'),
-                        'metrics': metadata.get('metrics', {}),
-                    })
-        return sorted(models, key=lambda x: x['saved_at'], reverse=True)
-
-
-# ====================================
-# CLASSE DE PIPELINE DE PRÉDICTION
-# ====================================
-
-class PredictionPipeline:
-    """Pipeline pour la prédiction standalone"""
-    
-    def __init__(self, request: PredictionRequest):
-        self.request = request
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model_manager = ModelManager()
-        
-        self.series = None
-        self.model = None
-        self.norm_params = None
-        self.config = None
-    
-    def load_dataset(self):
-        """Charge le dataset depuis le serveur Data"""
-        dataset_config = self.request.dataset_config
-        
-        dataset_manager = DatasetManager()
-        time_series = dataset_manager.fetch_dataset(
-            dataset_name=dataset_config['name'],
-            date_start=dataset_config['dates'][0],
-            date_end=dataset_config['dates'][1]
-        )
-        
-        self.series = time_series
-        yield sse({"type": "info", "message": f"Dataset chargé: {len(time_series.values)} points"})
-    
-    def load_or_create_model(self):
-        """Charge un modèle existant ou utilise le dernier entraîné"""
-        if self.request.model_path:
-            # Charger depuis le disque
-            checkpoint, config, norm_params, metadata = self.model_manager.load_model(
-                self.request.model_path,
-                device=self.device
-            )
+        try:
+            model = trained_model_state["model"]
+            norm_params = trained_model_state["norm_params"]
+            inverse_fn = trained_model_state["inverse_fn"]
+            window_size = trained_model_state["window_size"]
+            series_values = trained_model_state["series_values"]
+            residual_std = trained_model_state["residual_std"] or 0.1
+            model_type = trained_model_state["model_type"]
+            device = trained_model_state["device"]
             
-            # Recréer le modèle (à implémenter selon l'architecture)
-            # self.model = create_model_from_config(config)
-            # self.model.load_state_dict(checkpoint['model_state_dict'])
-            
-            self.config = config
-            self.norm_params = norm_params
+            horizon = request.horizon
             
             yield sse({
-                "type": "info",
-                "message": f"Modèle chargé: {metadata.get('model_name', 'unknown')}",
-                "metrics": metadata.get('metrics', {})
+                "type": "pred_start",
+                "message": f"Prédiction de {horizon} pas dans le futur",
+                "n_steps": horizon,
+                "series_length": len(series_values),
+                "window_size": window_size
             })
-        else:
-            # Utiliser le dernier modèle entraîné (stocké en mémoire)
-            # Cette partie nécessite de gérer un état global ou un cache
-            yield sse({"type": "warn", "message": "Fonctionnalité de chargement en mémoire non implémentée"})
-            yield sse({"type": "error", "message": "Veuillez spécifier un model_path ou entraîner un nouveau modèle"})
-            return
-    
-    def prepare_prediction_data(self):
-        """Prépare les données pour la prédiction"""
-        # Normaliser la série
-        series_norm, norm_stats = normalize_data(
-            self.series.values,
-            method="minmax"  # ou depuis config
-        )
-        
-        self.norm_params = norm_stats
-        self.series_normalized = series_norm
-        
-        yield sse({"type": "info", "message": "Données normalisées"})
-    
-    def run_prediction(self):
-        """Execute la prédiction"""
-        horizon = self.request.horizon
-        strategy = self.request.strategy
-        
-        # Configuration de la stratégie
-        strategy_map = {
-            "one_step": PredictionStrategy.ONE_STEP,
-            "recalibration": PredictionStrategy.RECALIBRATION,
-            "recursive": PredictionStrategy.RECURSIVE,
-            "direct": PredictionStrategy.DIRECT,
-        }
-        
-        pred_strategy = strategy_map.get(strategy, PredictionStrategy.ONE_STEP)
-        
-        config = PredictionConfig(
-            strategy=pred_strategy,
-            recalib_every=10,
-            max_horizon=horizon,
-            confidence_level=0.95 if self.request.use_confidence_intervals else None
-        )
-        
-        yield sse({
-            "type": "pred_start",
-            "n_steps": horizon,
-            "strategy": strategy
-        })
-        
-        # Taille de la fenêtre (depuis config ou modèle)
-        window_size = self.config.get('window_size', 50)
-        
-        # Fonction inverse
-        inverse_fn = create_inverse_function(self.norm_params)
-        
-        # Générer les prédictions
-        predictions = []
-        pred_low = []
-        pred_high = []
-        
-        for evt in predict_multistep(
-            model=self.model,
-            values=self.series.values,
-            norm_stats=self.norm_params,
-            window_size=window_size,
-            n_steps=horizon,
-            device=self.device,
-            inverse_fn=inverse_fn,
-            config=config,
-            residual_std=None,  # À calculer ou charger
-            y_true=None,  # Pas de vraies valeurs en prédiction pure
-            idx_start=len(self.series.values),  # Prédire après la fin
-        ):
-            if evt["type"] == "pred_point":
-                predictions.append(evt["yhat"])
-                pred_low.append(evt.get("low"))
-                pred_high.append(evt.get("high"))
             
-            yield evt
-        
-        # Données finales
-        yield sse({
-            "type": "final_predictions",
-            "predictions": predictions,
-            "pred_low": pred_low,
-            "pred_high": pred_high,
-            "horizon": horizon,
-            "strategy": strategy
-        })
-    
-    def execute(self):
-        """Orchestre le pipeline de prédiction"""
-        try:
-            # 1. Charger le dataset
-            for evt in self.load_dataset():
-                yield evt
+            # Préparer la fenêtre initiale (dernières valeurs de la série)
+            series_array = np.array(series_values, dtype=np.float32)
             
-            # 2. Charger le modèle
-            for evt in self.load_or_create_model():
-                yield evt
+            # Normaliser la fenêtre
+            if norm_params.get("method") == "minmax":
+                min_val = norm_params["min"]
+                max_val = norm_params["max"]
+                window_norm = (series_array - min_val) / (max_val - min_val + 1e-8)
+            elif norm_params.get("method") == "zscore":
+                mean_val = norm_params["mean"]
+                std_val = norm_params["std"]
+                window_norm = (series_array - mean_val) / (std_val + 1e-8)
+            else:
+                # Par défaut minmax
+                min_val = norm_params.get("min", series_array.min())
+                max_val = norm_params.get("max", series_array.max())
+                window_norm = (series_array - min_val) / (max_val - min_val + 1e-8)
             
-            # 3. Préparer les données
-            for evt in self.prepare_prediction_data():
-                yield evt
+            # Prendre les dernières valeurs comme contexte
+            context = window_norm[-window_size:].copy()
             
-            # 4. Exécuter la prédiction
-            for evt in self.run_prediction():
-                yield evt
+            predictions = []
+            pred_low = []
+            pred_high = []
             
-            # Fin
-            yield sse({"type": "fin_prediction"})
-        
+            model.eval()
+            
+            # Calcul du z-score pour l'intervalle de confiance
+            from scipy import stats
+            z_score = stats.norm.ppf((1 + request.confidence_level) / 2)
+            
+            with torch.no_grad():
+                for step in range(horizon):
+                    # Préparer l'entrée selon le type de modèle
+                    x_input = torch.tensor(context, dtype=torch.float32).unsqueeze(0)
+                    
+                    if model_type == "lstm":
+                        x_input = x_input.unsqueeze(-1)  # (1, window, 1)
+                    elif model_type == "cnn":
+                        x_input = x_input.unsqueeze(1)   # (1, 1, window)
+                    
+                    x_input = x_input.to(device)
+                    
+                    # Prédiction
+                    y_pred_norm = model(x_input)
+                    y_pred_norm_val = y_pred_norm.cpu().numpy().flatten()[0]
+                    
+                    # Dénormaliser
+                    if inverse_fn:
+                        y_pred = inverse_fn(y_pred_norm_val)
+                    else:
+                        # Dénormalisation manuelle
+                        if norm_params.get("method") == "minmax":
+                            y_pred = y_pred_norm_val * (max_val - min_val) + min_val
+                        elif norm_params.get("method") == "zscore":
+                            y_pred = y_pred_norm_val * std_val + mean_val
+                        else:
+                            y_pred = y_pred_norm_val * (max_val - min_val) + min_val
+                    
+                    # Intervalles de confiance (s'élargissent avec le temps)
+                    # L'incertitude augmente avec sqrt(step+1)
+                    uncertainty = residual_std * z_score * np.sqrt(step + 1)
+                    low = float(y_pred - uncertainty)
+                    high = float(y_pred + uncertainty)
+                    
+                    predictions.append(float(y_pred))
+                    pred_low.append(low)
+                    pred_high.append(high)
+                    
+                    # Envoyer le point
+                    yield sse({
+                        "type": "pred_point",
+                        "step": step + 1,
+                        "yhat": float(y_pred),
+                        "low": low,
+                        "high": high,
+                        "idx": len(series_values) + step
+                    })
+                    
+                    # Mettre à jour le contexte (autorégression)
+                    context = np.roll(context, -1)
+                    context[-1] = y_pred_norm_val
+            
+            # Données finales
+            yield sse({
+                "type": "pred_end",
+                "message": f"Prédiction terminée: {horizon} pas",
+                "predictions": predictions,
+                "pred_low": pred_low,
+                "pred_high": pred_high,
+                "idx_start": len(series_values),
+                "series_complete": series_values,
+                "horizon": horizon
+            })
+            
+            yield sse({"type": "fin_prediction", "done": 1})
+            
         except Exception as e:
             import traceback
             yield sse({
@@ -1174,273 +1033,26 @@ class PredictionPipeline:
                 "message": str(e),
                 "traceback": traceback.format_exc()
             })
-
-
-# ====================================
-# ENDPOINTS À AJOUTER DANS test_main.py
-# ====================================
-
-# ENDPOINT 1: Prédiction standalone
-@app.post("/predict")
-def predict_standalone(request: PredictionRequest):
-    """
-    Endpoint de prédiction standalone.
     
-    Utilise un modèle sauvegardé pour générer des prédictions
-    sans réentraîner.
-    """
-    pipeline = PredictionPipeline(request)
-    return StreamingResponse(pipeline.execute(), media_type="text/event-stream")
+    return StreamingResponse(prediction_generator(), media_type="text/event-stream")
 
 
-# ENDPOINT 2: Liste des modèles sauvegardés
-@app.get("/models/list")
-def list_saved_models():
-    """Liste tous les modèles sauvegardés"""
-    model_manager = ModelManager()
-    models = model_manager.list_models()
-    return {"models": models, "count": len(models)}
-
-
-# ENDPOINT 3: Informations sur un modèle
-@app.get("/models/info/{model_name}")
-def get_model_info(model_name: str):
-    """Récupère les informations d'un modèle sauvegardé"""
-    model_manager = ModelManager()
-    models = model_manager.list_models()
+@app.get("/model/status")
+def model_status():
+    """Retourne le statut du modèle entraîné"""
+    global trained_model_state
     
-    for model in models:
-        if model_name in model['path']:
-            # Charger les métadonnées complètes
-            metadata_path = os.path.join(model['path'], "metadata.json")
-            config_path = os.path.join(model['path'], "config.json")
-            
-            with open(metadata_path, 'r') as f:
-                metadata = json.load(f)
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            
-            return {
-                "metadata": metadata,
-                "config": config,
-                "path": model['path']
-            }
-    
-    raise HTTPException(status_code=404, detail="Modèle non trouvé")
-
-
-# ENDPOINT 4: Suppression d'un modèle
-@app.delete("/models/delete/{model_name}")
-def delete_model(model_name: str):
-    """Supprime un modèle sauvegardé"""
-    import shutil
-    
-    model_manager = ModelManager()
-    models = model_manager.list_models()
-    
-    for model in models:
-        if model_name in model['path']:
-            shutil.rmtree(model['path'])
-            return {"status": "ok", "message": f"Modèle {model_name} supprimé"}
-    
-    raise HTTPException(status_code=404, detail="Modèle non trouvé")
-
-
-# ====================================
-# MODIFICATIONS À APPORTER À TrainingPipeline
-# ====================================
-
-"""
-Dans la classe TrainingPipeline, ajouter la méthode suivante:
-"""
-
-def save_trained_model(self, model_name: str = "model"):
-    """
-    Sauvegarde le modèle entraîné avec ses métadonnées.
-    À appeler à la fin de execute_full_pipeline()
-    """
-    if self.model_trained is None:
-        print("⚠️ Aucun modèle à sauvegarder")
-        return None
-    
-    model_manager = ModelManager()
-    
-    # Préparer la configuration
-    config = {
-        "Parametres_temporels": self.cfg.Parametres_temporels.__dict__,
-        "Parametres_choix_reseau_neurones": self.cfg.Parametres_choix_reseau_neurones.__dict__,
-        "Parametres_archi_reseau": self.cfg.Parametres_archi_reseau.__dict__,
-        "Parametres_choix_loss_fct": self.cfg.Parametres_choix_loss_fct.__dict__,
-        "Parametres_optimisateur": self.cfg.Parametres_optimisateur.__dict__,
-        "Parametres_entrainement": self.cfg.Parametres_entrainement.__dict__,
-    }
-    
-    # Préparer les métriques (à récupérer depuis la validation/test)
-    metrics = {
-        "final_train_loss": self.train_losses[-1] if hasattr(self, 'train_losses') and self.train_losses else None,
-        # Ajouter d'autres métriques ici
-    }
-    
-    # Sauvegarder
-    model_dir = model_manager.save_model(
-        model=self.model_trained,
-        config=config,
-        norm_params=self.norm_params,
-        metrics=metrics,
-        model_name=model_name
-    )
-    
-    return model_dir
-
-
-"""
-Puis dans execute_full_pipeline(), à la fin (après yield final_plot_data):
-"""
-
-# Sauvegarder le modèle automatiquement
-model_dir = self.save_trained_model(
-    model_name=f"{self.cfg.Parametres_choix_reseau_neurones.modele}_auto"
-)
-yield sse({
-    "type": "model_saved",
-    "path": model_dir,
-    "message": "Modèle sauvegardé automatiquement"
-})
-
-
-# ====================================
-# EXEMPLE D'UTILISATION
-# ====================================
-
-"""
-1. Entraîner et sauvegarder un modèle:
-   
-   POST /train_full
-   {
-     "payload": {...},
-     "payload_model": {...}
-   }
-   
-   → Le modèle est automatiquement sauvegardé
-
-2. Lister les modèles disponibles:
-   
-   GET /models/list
-   
-   → Retourne la liste des modèles avec leurs métriques
-
-3. Faire une prédiction avec un modèle sauvegardé:
-   
-   POST /predict
-   {
-     "dataset_config": {
-       "name": "my_dataset",
-       "dates": ["2024-01-01", "2024-12-31"]
-     },
-     "model_config": {...},
-     "horizon": 50,
-     "strategy": "one_step",
-     "model_path": "./saved_models/MLP_auto_20250118_143022",
-     "use_confidence_intervals": true
-   }
-   
-   → Génère les prédictions et retourne les résultats via SSE
-
-4. Obtenir les infos d'un modèle:
-   
-   GET /models/info/MLP_auto_20250118_143022
-   
-   → Retourne les métadonnées, config, métriques
-
-5. Supprimer un modèle:
-   
-   DELETE /models/delete/MLP_auto_20250118_143022
-"""
-
-# ====================================
-# INTERFACE UTILISATEUR
-# ====================================
-
-"""
-Dans interface_local_ctk.py, ajouter dans Cadre_Prediction:
-
-1. Bouton "Charger un modèle"
-2. Liste déroulante des modèles disponibles
-3. Affichage des informations du modèle sélectionné
-4. Bouton "Prédire avec ce modèle"
-
-Exemple:
-"""
-
-def add_model_selector(self):
-    """Ajoute un sélecteur de modèle dans l'interface"""
-    
-    # Frame pour le sélecteur
-    model_frame = ctk.CTkFrame(self.control_frame)
-    model_frame.pack(side="left", padx=10, pady=10)
-    
-    # Bouton pour rafraîchir la liste
-    refresh_btn = ctk.CTkButton(
-        model_frame,
-        text="🔄",
-        command=self.refresh_models,
-        width=40
-    )
-    refresh_btn.pack(side="left", padx=5)
-    
-    # Menu déroulant des modèles
-    self.model_var = ctk.StringVar(value="Sélectionner un modèle")
-    self.model_menu = ctk.CTkOptionMenu(
-        model_frame,
-        variable=self.model_var,
-        values=["Chargement..."],
-        width=250,
-        command=self.on_model_selected
-    )
-    self.model_menu.pack(side="left", padx=5)
-    
-    # Label avec info du modèle
-    self.model_info_label = ctk.CTkLabel(
-        self.control_frame,
-        text="",
-        font=("Roboto", 12)
-    )
-    self.model_info_label.pack(side="left", padx=10)
-    
-    # Charger la liste initiale
-    self.refresh_models()
-
-def refresh_models(self):
-    """Rafraîchit la liste des modèles depuis le serveur"""
-    try:
-        r = requests.get(f"{URL}/models/list", timeout=5)
-        r.raise_for_status()
-        data = r.json()
-        
-        models = data.get("models", [])
-        if models:
-            model_names = [m['name'] for m in models]
-            self.model_menu.configure(values=model_names)
-            self.available_models = {m['name']: m for m in models}
-        else:
-            self.model_menu.configure(values=["Aucun modèle disponible"])
-    
-    except Exception as e:
-        print(f"Erreur lors du chargement des modèles: {e}")
-        self.model_menu.configure(values=["Erreur de connexion"])
-
-def on_model_selected(self, model_name):
-    """Appelé quand un modèle est sélectionné"""
-    if model_name in self.available_models:
-        model = self.available_models[model_name]
-        
-        # Afficher les infos
-        info = f"📅 {model['saved_at']} | "
-        metrics = model.get('metrics', {})
-        if 'final_train_loss' in metrics:
-            info += f"Loss: {metrics['final_train_loss']:.6f}"
-        
-        self.model_info_label.configure(text=info)
-        
-        # Stocker le chemin
-        self.selected_model_path = model['path']
+    if trained_model_state["is_trained"]:
+        return {
+            "is_trained": True,
+            "model_type": trained_model_state["model_type"],
+            "window_size": trained_model_state["window_size"],
+            "series_length": len(trained_model_state["series_values"]) if trained_model_state["series_values"] else 0,
+            "residual_std": trained_model_state["residual_std"],
+            "device": trained_model_state["device"]
+        }
+    else:
+        return {
+            "is_trained": False,
+            "message": "Aucun modèle entraîné. Utilisez /train_full d'abord."
+        }

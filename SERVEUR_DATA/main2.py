@@ -373,6 +373,7 @@ def add_new_model(name: str, data: str) -> None:
         f.write(model_bytes)
 
     print(f"Modèle '{name}' ajouté avec succès dans {path_new_model}")
+
 def remove_model(name: str) -> None:
     """
     Supprime le modèle `name` de MODEL_DIR.
