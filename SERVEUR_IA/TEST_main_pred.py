@@ -191,9 +191,26 @@ class TrainingPipeline:
         # Taille de fenêtre depuis les paramètres ou valeur par défaut
         window_len = 15  # valeur par défaut
         if self.cfg and self.cfg.Parametres_temporels:
+            # Debug: afficher tout le contenu de Parametres_temporels
+            print(f"[PREPROCESS DEBUG] Parametres_temporels = {self.cfg.Parametres_temporels}")
+            
+            # Essayer plusieurs méthodes pour récupérer window_size
             window_size_param = getattr(self.cfg.Parametres_temporels, 'window_size', None)
+            
+            # Si c'est un dict (via model_dump), essayer aussi
+            if window_size_param is None:
+                try:
+                    params_dict = self.cfg.Parametres_temporels.model_dump()
+                    window_size_param = params_dict.get('window_size')
+                    print(f"[PREPROCESS DEBUG] window_size from model_dump = {window_size_param}")
+                except:
+                    pass
+            
             if window_size_param is not None and window_size_param > 0:
                 window_len = int(window_size_param)
+                print(f"[PREPROCESS] Using window_size from config: {window_len}")
+            else:
+                print(f"[PREPROCESS] window_size_param={window_size_param}, using default: {window_len}")
         
         print(f"[PREPROCESS] window_size={window_len}, horizon={horizon}")
         
