@@ -19,6 +19,7 @@ import json
 import tkinter.font as tkfont
 import pandas as pd
 import os
+from pathlib import Path
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional
 
@@ -33,8 +34,10 @@ class DatasetPacket(BaseModel):
 
 URL = "http://192.168.1.190:8000"
 
+BASE_DIR = Path(__file__).resolve().parent
+THEME_PATH = BASE_DIR / "Themes" / "blue.json"
 
-ctk.set_default_color_theme("INTERFACE/Themes/blue.json")
+ctk.set_default_color_theme(THEME_PATH)
 ctk.set_appearance_mode("dark")
 
 
