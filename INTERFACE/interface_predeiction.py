@@ -2837,20 +2837,20 @@ Plot_style=Plot_style_class()
 
 
 # ====================================
-# FENÊTRE CHARGER MODÈLE
+# FENETRE CHARGER MODELE
 # ====================================
 class Fenetre_Charger_Modele(ctk.CTkToplevel):
-    """Fenêtre pour charger un modèle sauvegardé"""
+    """Fenetre pour charger un modele sauvegarde - Style tableau"""
     
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.title("📂 Charger un Modèle")
-        self.geometry("500x400")
+        self.title("Charger un Modele")
+        self.geometry("900x500")
         self.resizable(True, True)
         
-        # Liste des modèles
-        self.models_list = []
+        self.models_data = {}
+        self.selected_model = None
         
         self.setup_ui()
         self.charger_liste_modeles()
@@ -2859,40 +2859,94 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         # Titre
         titre = ctk.CTkLabel(
             self, 
-            text="📂 Modèles Sauvegardés",
-            font=ctk.CTkFont(size=20, weight="bold")
+            text="Modeles Sauvegardes",
+            font=ctk.CTkFont(size=24, weight="bold")
         )
         titre.pack(pady=20)
         
-        # Frame pour la liste
-        frame_liste = ctk.CTkFrame(self)
-        frame_liste.pack(fill="both", expand=True, padx=20, pady=10)
+        # Configuration du style Treeview
+        style = ttk.Style()
+        style.theme_use("default")
         
-        # Listbox avec scrollbar
-        self.listbox_frame = ctk.CTkScrollableFrame(frame_liste, height=200)
-        self.listbox_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        style.configure("Models.Treeview",
+                        background="#2a2d2e",
+                        foreground="white",
+                        fieldbackground="#343638",
+                        bordercolor="#343638",
+                        borderwidth=0,
+                        rowheight=40,
+                        font=("Arial", 14))
+        style.map('Models.Treeview', background=[('selected', '#22559b')])
+        
+        style.configure("Models.Treeview.Heading",
+                        background="#565b5e",
+                        foreground="white",
+                        relief="flat",
+                        font=("Arial", 14, "bold"))
+        style.map("Models.Treeview.Heading",
+                background=[('active', '#3484F0')])
+        
+        # Frame pour le tableau
+        frame_table = ctk.CTkFrame(self)
+        frame_table.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        # Colonnes du tableau
+        columns = ("Nom", "Type", "Dataset", "Window", "Date")
+        
+        self.model_tree = ttk.Treeview(
+            frame_table, 
+            columns=columns, 
+            show="headings", 
+            selectmode="browse",
+            style="Models.Treeview"
+        )
+        
+        # Configuration des colonnes
+        self.model_tree.heading("Nom", text="Nom du Modele")
+        self.model_tree.heading("Type", text="Type")
+        self.model_tree.heading("Dataset", text="Dataset")
+        self.model_tree.heading("Window", text="Fenetre")
+        self.model_tree.heading("Date", text="Date Creation")
+        
+        self.model_tree.column("Nom", width=200, anchor="w")
+        self.model_tree.column("Type", width=100, anchor="center")
+        self.model_tree.column("Dataset", width=150, anchor="center")
+        self.model_tree.column("Window", width=80, anchor="center")
+        self.model_tree.column("Date", width=150, anchor="center")
+        
+        # Scrollbar
+        scrollbar = ctk.CTkScrollbar(frame_table, command=self.model_tree.yview)
+        self.model_tree.configure(yscrollcommand=scrollbar.set)
+        
+        scrollbar.pack(side="right", fill="y")
+        self.model_tree.pack(fill="both", expand=True)
+        
+        # Bind selection
+        self.model_tree.bind("<<TreeviewSelect>>", self.on_select)
         
         # Label de statut
         self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
         self.status_label.pack(pady=5)
         
-        # Boutons
+        # Frame pour les boutons
         frame_buttons = ctk.CTkFrame(self, fg_color="transparent")
-        frame_buttons.pack(fill="x", padx=20, pady=10)
+        frame_buttons.pack(fill="x", padx=20, pady=15)
         
         btn_refresh = ctk.CTkButton(
             frame_buttons, 
-            text="🔄 Rafraîchir",
+            text="Rafraichir",
             command=self.charger_liste_modeles,
-            width=120
+            width=120,
+            height=35
         )
         btn_refresh.pack(side="left", padx=5)
         
         btn_charger = ctk.CTkButton(
             frame_buttons, 
-            text="📥 Charger",
+            text="Charger",
             command=self.charger_modele_selectionne,
             width=120,
+            height=35,
             fg_color="#27AE60",
             hover_color="#1E8449"
         )
@@ -2900,9 +2954,10 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         
         btn_supprimer = ctk.CTkButton(
             frame_buttons, 
-            text="🗑️ Supprimer",
+            text="Supprimer",
             command=self.supprimer_modele_selectionne,
             width=120,
+            height=35,
             fg_color="#E74C3C",
             hover_color="#C0392B"
         )
@@ -2910,88 +2965,104 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         
         btn_fermer = ctk.CTkButton(
             frame_buttons, 
-            text="❌ Fermer",
+            text="Fermer",
             command=self.destroy,
-            width=120
+            width=120,
+            height=35
         )
         btn_fermer.pack(side="right", padx=5)
     
+    def on_select(self, event):
+        """Gere la selection d'un modele"""
+        selection = self.model_tree.selection()
+        if selection:
+            item = selection[0]
+            self.selected_model = self.model_tree.item(item, "values")[0]
+    
     def charger_liste_modeles(self):
-        """Charge la liste des modèles depuis le serveur"""
+        """Charge la liste des modeles depuis le serveur"""
         self.status_label.configure(text="Chargement...")
         
-        # Effacer la liste actuelle
-        for widget in self.listbox_frame.winfo_children():
-            widget.destroy()
+        # Effacer le tableau
+        for item in self.model_tree.get_children():
+            self.model_tree.delete(item)
         
-        self.models_list = []
+        self.models_data = {}
         self.selected_model = None
-        self.radio_var = ctk.StringVar(value="")
         
-        try:
-            response = requests.get(f"{URL}/model/list", timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                models = data.get("models", [])
-                
-                if not models:
-                    label = ctk.CTkLabel(
-                        self.listbox_frame, 
-                        text="Aucun modèle sauvegardé",
-                        font=ctk.CTkFont(size=14)
-                    )
-                    label.pack(pady=20)
-                    self.status_label.configure(text="Aucun modèle trouvé")
+        def fetch_models():
+            try:
+                # Recuperer la liste des modeles
+                response = requests.get(f"{URL}/model/list", timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    models = data.get("models", [])
+                    self.after(0, lambda: self._populate_table(models))
                 else:
-                    for model in models:
-                        name = model.get("name", model.get("nom", "inconnu"))
-                        self.models_list.append(name)
-                        
-                        radio = ctk.CTkRadioButton(
-                            self.listbox_frame,
-                            text=f"🧠 {name}",
-                            variable=self.radio_var,
-                            value=name,
-                            font=ctk.CTkFont(size=14)
-                        )
-                        radio.pack(anchor="w", pady=5, padx=10)
-                    
-                    self.status_label.configure(text=f"{len(models)} modèle(s) trouvé(s)")
-            else:
-                self.status_label.configure(text=f"Erreur: {response.status_code}")
-                
-        except requests.exceptions.ConnectionError:
-            self.status_label.configure(text="❌ Serveur IA non accessible")
-            label = ctk.CTkLabel(
-                self.listbox_frame, 
-                text="Impossible de se connecter au serveur",
-                font=ctk.CTkFont(size=14),
-                text_color="#E74C3C"
-            )
-            label.pack(pady=20)
-        except Exception as e:
-            self.status_label.configure(text=f"Erreur: {str(e)[:30]}")
+                    self.after(0, lambda: self.status_label.configure(
+                        text=f"Erreur: {response.status_code}"
+                    ))
+            except requests.exceptions.ConnectionError:
+                self.after(0, lambda: self.status_label.configure(
+                    text="Serveur IA non accessible"
+                ))
+            except Exception as e:
+                self.after(0, lambda: self.status_label.configure(
+                    text=f"Erreur: {str(e)[:40]}"
+                ))
+        
+        threading.Thread(target=fetch_models, daemon=True).start()
     
-    def charger_modele_selectionne(self):
-        """Charge le modèle sélectionné"""
-        selected = self.radio_var.get()
-        if not selected:
-            messagebox.showwarning("Attention", "Veuillez sélectionner un modèle")
+    def _populate_table(self, models):
+        """Remplit le tableau avec les modeles"""
+        if not models:
+            self.status_label.configure(text="Aucun modele sauvegarde")
             return
         
-        self.status_label.configure(text=f"Chargement de '{selected}'...")
+        for model in models:
+            name = model.get("name", model.get("nom", "inconnu"))
+            
+            # Extraire les infos du nom ou des metadonnees
+            model_type = model.get("model_type", "?")
+            dataset = model.get("dataset_name", "?")
+            window = model.get("window_size", "?")
+            
+            # Essayer d'extraire la date du nom (format: model_YYYYMMDD_HHMM)
+            date_str = "?"
+            if "_" in name:
+                parts = name.split("_")
+                if len(parts) >= 2:
+                    try:
+                        date_part = parts[1]
+                        if len(date_part) == 8:
+                            date_str = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
+                    except:
+                        pass
+            
+            self.models_data[name] = model
+            self.model_tree.insert("", "end", values=(name, model_type, dataset, window, date_str))
+        
+        self.status_label.configure(text=f"{len(models)} modele(s) trouve(s)")
+    
+    def charger_modele_selectionne(self):
+        """Charge le modele selectionne"""
+        if not self.selected_model:
+            messagebox.showwarning("Attention", "Veuillez selectionner un modele dans la liste")
+            return
+        
+        self.status_label.configure(text=f"Chargement de '{self.selected_model}'...")
         
         def load_in_thread():
             try:
                 response = requests.post(
                     f"{URL}/model/load",
-                    json={"name": selected},
+                    json={"name": self.selected_model},
                     timeout=30
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    self.after(0, lambda: self._on_load_success(selected, data))
+                    self.after(0, lambda: self._on_load_success(self.selected_model, data))
                 else:
                     error = response.json().get("detail", response.text)
                     self.after(0, lambda: self._on_load_error(error))
@@ -3002,43 +3073,41 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         threading.Thread(target=load_in_thread, daemon=True).start()
     
     def _on_load_success(self, name, data):
-        self.status_label.configure(text=f"✅ Modèle '{name}' chargé!")
+        self.status_label.configure(text=f"Modele '{name}' charge!")
         model_type = data.get("model_type", "inconnu")
         window_size = data.get("window_size", "?")
         
         messagebox.showinfo(
-            "Succès", 
-            f"Modèle '{name}' chargé avec succès!\n\n"
+            "Succes", 
+            f"Modele '{name}' charge avec succes!\n\n"
             f"Type: {model_type.upper()}\n"
-            f"Fenêtre: {window_size} points\n\n"
-            f"Vous pouvez maintenant aller dans l'onglet 'Prediction' "
-            f"pour faire des prédictions."
+            f"Fenetre: {window_size} points\n\n"
+            f"Selectionnez un dataset puis allez dans l'onglet Prediction."
         )
     
     def _on_load_error(self, error):
-        self.status_label.configure(text=f"❌ Erreur")
-        messagebox.showerror("Erreur", f"Impossible de charger le modèle:\n{error}")
+        self.status_label.configure(text="Erreur de chargement")
+        messagebox.showerror("Erreur", f"Impossible de charger le modele:\n{error}")
     
     def supprimer_modele_selectionne(self):
-        """Supprime le modèle sélectionné"""
-        selected = self.radio_var.get()
-        if not selected:
-            messagebox.showwarning("Attention", "Veuillez sélectionner un modèle")
+        """Supprime le modele selectionne"""
+        if not self.selected_model:
+            messagebox.showwarning("Attention", "Veuillez selectionner un modele dans la liste")
             return
         
         confirm = messagebox.askyesno(
             "Confirmation", 
-            f"Êtes-vous sûr de vouloir supprimer le modèle '{selected}'?\n"
-            "Cette action est irréversible."
+            f"Etes-vous sur de vouloir supprimer le modele '{self.selected_model}'?\n"
+            "Cette action est irreversible."
         )
         
         if not confirm:
             return
         
         try:
-            response = requests.delete(f"{URL}/model/delete/{selected}", timeout=10)
+            response = requests.delete(f"{URL}/model/delete/{self.selected_model}", timeout=10)
             if response.status_code == 200:
-                messagebox.showinfo("Succès", f"Modèle '{selected}' supprimé")
+                messagebox.showinfo("Succes", f"Modele '{self.selected_model}' supprime")
                 self.charger_liste_modeles()
             else:
                 error = response.json().get("detail", response.text)
@@ -3048,16 +3117,16 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
 
 
 # ====================================
-# FENÊTRE SAUVEGARDER MODÈLE
+# FENETRE SAUVEGARDER MODELE
 # ====================================
 class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
-    """Fenêtre pour sauvegarder le modèle entraîné"""
+    """Fenetre pour sauvegarder le modele entraine"""
     
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.title("💾 Sauvegarder le Modèle")
-        self.geometry("400x250")
+        self.title("Sauvegarder le Modele")
+        self.geometry("450x300")
         self.resizable(False, False)
         
         self.setup_ui()
@@ -3066,45 +3135,63 @@ class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
         # Titre
         titre = ctk.CTkLabel(
             self, 
-            text="💾 Sauvegarder le Modèle",
-            font=ctk.CTkFont(size=20, weight="bold")
+            text="Sauvegarder le Modele",
+            font=ctk.CTkFont(size=22, weight="bold")
         )
         titre.pack(pady=20)
         
-        # Frame pour le nom
-        frame_nom = ctk.CTkFrame(self, fg_color="transparent")
-        frame_nom.pack(fill="x", padx=30, pady=10)
+        # Frame principal
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=30, pady=10)
         
+        # Nom du modele
         label_nom = ctk.CTkLabel(
-            frame_nom, 
-            text="Nom du modèle:",
+            main_frame, 
+            text="Nom du modele:",
             font=ctk.CTkFont(size=14)
         )
         label_nom.pack(anchor="w")
         
         self.entry_nom = ctk.CTkEntry(
-            frame_nom, 
-            placeholder_text="ex: mon_modele_eurusd",
-            width=300,
-            height=35
+            main_frame, 
+            placeholder_text="ex: mlp_eurusd_v1",
+            height=40,
+            font=ctk.CTkFont(size=14)
         )
-        self.entry_nom.pack(fill="x", pady=5)
+        self.entry_nom.pack(fill="x", pady=(5, 15))
         
-        # Suggestion de nom
-        suggestion = f"model_{datetime.now().strftime('%Y%m%d_%H%M')}"
+        # Suggestion de nom avec type de modele et dataset
+        model_type = Parametres_choix_reseau_neurones.modele.lower() if hasattr(Parametres_choix_reseau_neurones, 'modele') else "model"
+        dataset_name = Parametres_temporels.nom_dataset if hasattr(Parametres_temporels, 'nom_dataset') and Parametres_temporels.nom_dataset else "data"
+        suggestion = f"{model_type}_{dataset_name}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+        # Nettoyer le nom (enlever caracteres speciaux)
+        suggestion = ''.join(c if c.isalnum() or c in '_-' else '_' for c in suggestion)
         self.entry_nom.insert(0, suggestion)
+        
+        # Infos sur le modele actuel
+        info_frame = ctk.CTkFrame(main_frame, fg_color="#2a2d2e", corner_radius=8)
+        info_frame.pack(fill="x", pady=10)
+        
+        info_text = f"Type: {model_type.upper()}  |  Dataset: {dataset_name}"
+        info_label = ctk.CTkLabel(
+            info_frame,
+            text=info_text,
+            font=ctk.CTkFont(size=12),
+            text_color="#888888"
+        )
+        info_label.pack(pady=10)
         
         # Label de statut
         self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
-        self.status_label.pack(pady=10)
+        self.status_label.pack(pady=5)
         
         # Boutons
         frame_buttons = ctk.CTkFrame(self, fg_color="transparent")
-        frame_buttons.pack(fill="x", padx=30, pady=20)
+        frame_buttons.pack(fill="x", padx=30, pady=15)
         
         btn_sauvegarder = ctk.CTkButton(
             frame_buttons, 
-            text="💾 Sauvegarder",
+            text="Sauvegarder",
             command=self.sauvegarder,
             width=150,
             height=40,
@@ -3115,7 +3202,7 @@ class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
         
         btn_annuler = ctk.CTkButton(
             frame_buttons, 
-            text="❌ Annuler",
+            text="Annuler",
             command=self.destroy,
             width=150,
             height=40
@@ -3123,14 +3210,14 @@ class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
         btn_annuler.pack(side="right", padx=10)
     
     def sauvegarder(self):
-        """Sauvegarde le modèle"""
+        """Sauvegarde le modele"""
         nom = self.entry_nom.get().strip()
         
         if not nom:
-            messagebox.showwarning("Attention", "Veuillez entrer un nom pour le modèle")
+            messagebox.showwarning("Attention", "Veuillez entrer un nom pour le modele")
             return
         
-        # Valider le nom (pas de caractères spéciaux)
+        # Valider le nom (pas de caracteres speciaux)
         import re
         if not re.match(r'^[a-zA-Z0-9_-]+$', nom):
             messagebox.showwarning(
@@ -3162,19 +3249,19 @@ class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
         threading.Thread(target=save_in_thread, daemon=True).start()
     
     def _on_save_success(self, nom, data):
-        self.status_label.configure(text=f"✅ Sauvegardé!")
+        self.status_label.configure(text="Sauvegarde reussie!")
         model_type = data.get("model_type", "inconnu")
         
         messagebox.showinfo(
-            "Succès", 
-            f"Modèle '{nom}' sauvegardé avec succès!\n\n"
+            "Succes", 
+            f"Modele '{nom}' sauvegarde avec succes!\n\n"
             f"Type: {model_type.upper()}\n\n"
-            f"Vous pouvez le recharger via 'Charger Modèle'."
+            f"Vous pouvez le recharger via 'Charger Modele'."
         )
         self.destroy()
     
     def _on_save_error(self, error):
-        self.status_label.configure(text=f"❌ Erreur")
+        self.status_label.configure(text="Erreur de sauvegarde")
         messagebox.showerror("Erreur", f"Impossible de sauvegarder:\n{error}")
 
 

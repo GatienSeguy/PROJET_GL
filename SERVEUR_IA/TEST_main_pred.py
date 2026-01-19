@@ -1374,7 +1374,7 @@ def save_model(request: SaveModelRequest):
 
 @app.get("/model/list")
 def list_models():
-    """Liste tous les modèles disponibles sur le serveur DATA"""
+    """Liste tous les modeles disponibles avec leurs metadonnees"""
     try:
         response = requests.post(
             f"{DATA_SERVER_URL}/models/model_all",
@@ -1386,13 +1386,31 @@ def list_models():
         
         models = response.json()
         
-        # Retourner juste les noms et métadonnées (pas le contenu base64)
+        # Pour chaque modele, essayer de recuperer les metadonnees depuis le backup local
         result = []
         for name, info in models.items():
-            result.append({
+            model_info = {
                 "name": name,
                 "nom": info.get("nom", name),
-            })
+                "model_type": "?",
+                "dataset_name": "?",
+                "window_size": "?",
+            }
+            
+            # Essayer de lire le backup local pour plus d'infos
+            backup_context_path = Path(f"./saved_models/{name}_context.json")
+            if backup_context_path.exists():
+                try:
+                    import json
+                    with open(backup_context_path, "r") as f:
+                        extra_context = json.load(f)
+                    model_info["model_type"] = extra_context.get("model_type", "?")
+                    model_info["dataset_name"] = extra_context.get("dataset_name", "?")
+                    model_info["window_size"] = extra_context.get("window_size", "?")
+                except:
+                    pass
+            
+            result.append(model_info)
         
         return {"models": result}
         
