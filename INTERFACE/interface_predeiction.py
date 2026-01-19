@@ -2846,7 +2846,7 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         super().__init__(parent)
         self.parent = parent
         self.title("Charger un Modele")
-        self.geometry("900x500")
+        self.geometry("900x550")
         self.resizable(True, True)
         
         self.models_data = {}
@@ -2874,9 +2874,11 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
                         fieldbackground="#343638",
                         bordercolor="#343638",
                         borderwidth=0,
-                        rowheight=40,
+                        rowheight=45,
                         font=("Arial", 14))
-        style.map('Models.Treeview', background=[('selected', '#22559b')])
+        style.map('Models.Treeview', 
+                  background=[('selected', '#1f6aa5')],
+                  foreground=[('selected', 'white')])
         
         style.configure("Models.Treeview.Heading",
                         background="#565b5e",
@@ -2908,9 +2910,9 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         self.model_tree.heading("Window", text="Fenetre")
         self.model_tree.heading("Date", text="Date Creation")
         
-        self.model_tree.column("Nom", width=200, anchor="w")
+        self.model_tree.column("Nom", width=220, anchor="w")
         self.model_tree.column("Type", width=100, anchor="center")
-        self.model_tree.column("Dataset", width=150, anchor="center")
+        self.model_tree.column("Dataset", width=180, anchor="center")
         self.model_tree.column("Window", width=80, anchor="center")
         self.model_tree.column("Date", width=150, anchor="center")
         
@@ -2921,12 +2923,22 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         scrollbar.pack(side="right", fill="y")
         self.model_tree.pack(fill="both", expand=True)
         
-        # Bind selection
+        # Bind selection et double-click
         self.model_tree.bind("<<TreeviewSelect>>", self.on_select)
+        self.model_tree.bind("<Double-1>", self.on_double_click)
+        
+        # Label de selection
+        self.selection_label = ctk.CTkLabel(
+            self, 
+            text="Aucun modele selectionne",
+            font=ctk.CTkFont(size=13),
+            text_color="#888888"
+        )
+        self.selection_label.pack(pady=5)
         
         # Label de statut
         self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
-        self.status_label.pack(pady=5)
+        self.status_label.pack(pady=2)
         
         # Frame pour les boutons
         frame_buttons = ctk.CTkFrame(self, fg_color="transparent")
@@ -2937,7 +2949,7 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
             text="Rafraichir",
             command=self.charger_liste_modeles,
             width=120,
-            height=35
+            height=38
         )
         btn_refresh.pack(side="left", padx=5)
         
@@ -2946,7 +2958,7 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
             text="Charger",
             command=self.charger_modele_selectionne,
             width=120,
-            height=35,
+            height=38,
             fg_color="#27AE60",
             hover_color="#1E8449"
         )
@@ -2957,7 +2969,7 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
             text="Supprimer",
             command=self.supprimer_modele_selectionne,
             width=120,
-            height=35,
+            height=38,
             fg_color="#E74C3C",
             hover_color="#C0392B"
         )
@@ -2968,7 +2980,7 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
             text="Fermer",
             command=self.destroy,
             width=120,
-            height=35
+            height=38
         )
         btn_fermer.pack(side="right", padx=5)
     
@@ -2977,11 +2989,25 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         selection = self.model_tree.selection()
         if selection:
             item = selection[0]
-            self.selected_model = self.model_tree.item(item, "values")[0]
+            values = self.model_tree.item(item, "values")
+            self.selected_model = values[0]  # Nom
+            model_type = values[1]  # Type
+            dataset = values[2]  # Dataset
+            
+            self.selection_label.configure(
+                text=f"Selection: {self.selected_model} ({model_type.upper()}) - Dataset: {dataset}",
+                text_color="#4CAF50"
+            )
+    
+    def on_double_click(self, event):
+        """Double-click pour charger directement"""
+        if self.selected_model:
+            self.charger_modele_selectionne()
     
     def charger_liste_modeles(self):
         """Charge la liste des modeles depuis le serveur"""
         self.status_label.configure(text="Chargement...")
+        self.selection_label.configure(text="Aucun modele selectionne", text_color="#888888")
         
         # Effacer le tableau
         for item in self.model_tree.get_children():
@@ -3022,19 +3048,27 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         for model in models:
             name = model.get("name", model.get("nom", "inconnu"))
             
-            # Extraire les infos du nom ou des metadonnees
-            model_type = model.get("model_type", "?")
-            dataset = model.get("dataset_name", "?")
-            window = model.get("window_size", "?")
+            # Recuperer les infos
+            model_type = model.get("model_type", "-")
+            if model_type == "?":
+                model_type = "-"
             
-            # Essayer d'extraire la date du nom (format: model_YYYYMMDD_HHMM)
-            date_str = "?"
+            dataset = model.get("dataset_name", "-")
+            if dataset == "?" or dataset == "unknown":
+                dataset = "-"
+            
+            window = model.get("window_size", "-")
+            if window == "?":
+                window = "-"
+            
+            # Extraire la date du nom (format: model_YYYYMMDD_HHMM)
+            date_str = "-"
             if "_" in name:
                 parts = name.split("_")
                 if len(parts) >= 2:
                     try:
                         date_part = parts[1]
-                        if len(date_part) == 8:
+                        if len(date_part) == 8 and date_part.isdigit():
                             date_str = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
                     except:
                         pass
@@ -3047,7 +3081,7 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
     def charger_modele_selectionne(self):
         """Charge le modele selectionne"""
         if not self.selected_model:
-            messagebox.showwarning("Attention", "Veuillez selectionner un modele dans la liste")
+            messagebox.showwarning("Attention", "Veuillez selectionner un modele dans la liste", parent=self)
             return
         
         self.status_label.configure(text=f"Chargement de '{self.selected_model}'...")
@@ -3082,23 +3116,25 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
             f"Modele '{name}' charge avec succes!\n\n"
             f"Type: {model_type.upper()}\n"
             f"Fenetre: {window_size} points\n\n"
-            f"Selectionnez un dataset puis allez dans l'onglet Prediction."
+            f"Selectionnez un dataset puis allez dans l'onglet Prediction.",
+            parent=self
         )
     
     def _on_load_error(self, error):
         self.status_label.configure(text="Erreur de chargement")
-        messagebox.showerror("Erreur", f"Impossible de charger le modele:\n{error}")
+        messagebox.showerror("Erreur", f"Impossible de charger le modele:\n{error}", parent=self)
     
     def supprimer_modele_selectionne(self):
         """Supprime le modele selectionne"""
         if not self.selected_model:
-            messagebox.showwarning("Attention", "Veuillez selectionner un modele dans la liste")
+            messagebox.showwarning("Attention", "Veuillez selectionner un modele dans la liste", parent=self)
             return
         
         confirm = messagebox.askyesno(
             "Confirmation", 
             f"Etes-vous sur de vouloir supprimer le modele '{self.selected_model}'?\n"
-            "Cette action est irreversible."
+            "Cette action est irreversible.",
+            parent=self
         )
         
         if not confirm:
@@ -3107,13 +3143,13 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         try:
             response = requests.delete(f"{URL}/model/delete/{self.selected_model}", timeout=10)
             if response.status_code == 200:
-                messagebox.showinfo("Succes", f"Modele '{self.selected_model}' supprime")
+                messagebox.showinfo("Succes", f"Modele '{self.selected_model}' supprime", parent=self)
                 self.charger_liste_modeles()
             else:
                 error = response.json().get("detail", response.text)
-                messagebox.showerror("Erreur", f"Impossible de supprimer:\n{error}")
+                messagebox.showerror("Erreur", f"Impossible de supprimer:\n{error}", parent=self)
         except Exception as e:
-            messagebox.showerror("Erreur", f"Erreur: {str(e)}")
+            messagebox.showerror("Erreur", f"Erreur: {str(e)}", parent=self)
 
 
 # ====================================

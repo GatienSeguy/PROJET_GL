@@ -961,8 +961,10 @@ def proxy_fetch_dataset(payload: dict):
                 "status": "error",
                 "message": "Format de données inattendu depuis DATA_SERVER"
             }
-        payload_json = {"timestamps": ts, "values": vals}
-        print(f"[IA] Dataset chargé dans payload_json : {len(ts)} points")
+        # Stocker aussi le nom du dataset
+        dataset_name = payload.get("name", "unknown")
+        payload_json = {"timestamps": ts, "values": vals, "name": dataset_name}
+        print(f"[IA] Dataset '{dataset_name}' chargé dans payload_json : {len(ts)} points")
         return {"status": "success", "data": payload_json}
     except Exception as e:
         print("Exception côté IA lors du fetch_dataset :", e)
