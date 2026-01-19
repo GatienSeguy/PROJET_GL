@@ -188,8 +188,14 @@ class TrainingPipeline:
         if self.cfg and self.cfg.Parametres_temporels and self.cfg.Parametres_temporels.horizon:
             horizon = max(1, int(self.cfg.Parametres_temporels.horizon))
         
-        # Taille de fenêtre par défaut : 15 points de contexte
-        window_len = 15
+        # Taille de fenêtre depuis les paramètres ou valeur par défaut
+        window_len = 15  # valeur par défaut
+        if self.cfg and self.cfg.Parametres_temporels:
+            window_size_param = getattr(self.cfg.Parametres_temporels, 'window_size', None)
+            if window_size_param is not None and window_size_param > 0:
+                window_len = int(window_size_param)
+        
+        print(f"[PREPROCESS] window_size={window_len}, horizon={horizon}")
         
         X, y = build_supervised_tensors_with_step(
             self.series.values,

@@ -44,6 +44,7 @@ class Parametres_temporels_class():
     def __init__(self):
         self.nom_dataset="" # str
         self.horizon=1 # int
+        self.window_size=15 # int - taille de la fenetre d'observation
         self.dates=["2001-01-01", "2025-01-02"] # variable datetime
         self.pas_temporel=1 # int
         self.portion_decoupage=0.8# float entre 0 et 1
@@ -444,7 +445,8 @@ class Fenetre_Acceuil(ctk.CTk):
         # self.config_totale["Parametres_temporels"]=Parametres_temporels.__dict__
         self.config_totale["Parametres_temporels"] = {
             "horizon": Parametres_temporels.horizon,
-            "portion_decoupage": Parametres_temporels.portion_decoupage
+            "portion_decoupage": Parametres_temporels.portion_decoupage,
+            "window_size": Parametres_temporels.window_size
         }
         self.config_totale["Parametres_choix_reseau_neurones"]=Parametres_choix_reseau_neurones.__dict__
         #self.config_totale["Parametres_archi_reseau"]=Parametres_archi_reseau.__dict__
@@ -2199,7 +2201,7 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
         self.after(200, lambda: self.focus_force())
-        self.title("🧠 Paramétrage temporels et de découpage des données")
+        self.title("Parametrage temporels et de decoupage des donnees")
 
         # Définir une police personnalisée
         self.font_titre = ("Helvetica", 14, "bold")
@@ -2217,18 +2219,20 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
         
         # Variables
         self.Params_temporels_horizon = ctk.IntVar(value=Parametres_temporels.horizon)
+        self.Params_temporels_window_size = ctk.IntVar(value=Parametres_temporels.window_size)
         self.date_debut_str = ctk.StringVar(value=Parametres_temporels.dates[0])
         self.date_fin_str = ctk.StringVar(value=Parametres_temporels.dates[1])
         self.Params_temporels_pas_temporel = ctk.IntVar(value=Parametres_temporels.pas_temporel)
         self.Params_temporels_portion_decoupage = ctk.IntVar(value=Parametres_temporels.portion_decoupage * 100)
 
-        ctk.CTkLabel(self.params_frame, text="📅 Paramètres Temporels").grid(row=0, column=0, columnspan=2 , sticky="ew",padx=10,pady=20)
+        ctk.CTkLabel(self.params_frame, text="Parametres Temporels", font=("Helvetica", 16, "bold")).grid(row=0, column=0, columnspan=2 , sticky="ew",padx=10,pady=20)
 
         # Liste des champs
         champs = [
-            ("Horizon temporel (int) :", self.Params_temporels_horizon,"int"),
+            ("Horizon de prediction (int) :", self.Params_temporels_horizon,"int"),
+            ("Fenetre d'observation (int) :", self.Params_temporels_window_size,"int"),
             (f"Pas temporel (multiple de {Selected_Dataset.pas_temporel}) :", self.Params_temporels_pas_temporel,"int"),
-            ("Portion découpage (%) :", self.Params_temporels_portion_decoupage,"float"),
+            ("Portion decoupage train/test (%) :", self.Params_temporels_portion_decoupage,"float"),
         ]
 
         for i, (label, var, type_) in enumerate(champs):
@@ -2236,8 +2240,19 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
             ctk.CTkEntry(self.params_frame, textvariable=var, validate="key", validatecommand=(self.register(lambda P,t=type_: validate_fct(P, t)), "%P")).grid(row=i+1, column=1,padx=10,pady=(0,20),sticky="e")
 
         next_row=len(champs)+1
+        
+        # Info sur window_size
+        info_label = ctk.CTkLabel(
+            self.params_frame, 
+            text="Fenetre: nb de points passes utilises pour predire. Plus grand = plus de contexte.",
+            font=("Helvetica", 11),
+            text_color="#888888"
+        )
+        info_label.grid(row=next_row, column=0, columnspan=2, sticky="w", padx=10, pady=(0, 15))
+        next_row += 1
+        
         # Dates
-        ctk.CTkLabel(self.params_frame, text="Date de début :").grid(row=next_row, column=0, sticky="w",padx=10,pady=(0,20))
+        ctk.CTkLabel(self.params_frame, text="Date de debut :").grid(row=next_row, column=0, sticky="w",padx=10,pady=(0,20))
         ctk.CTkButton(self.params_frame, textvariable=self.date_debut_str, command=self.ouvrir_calendrier_debut).grid(row=next_row, column=1,padx=10,pady=(0,20),sticky="e")
 
         ctk.CTkLabel(self.params_frame, text="Date de fin :").grid(row=next_row+1, column=0, sticky="w",padx=10,pady=(0,20))
@@ -2246,14 +2261,16 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
         # Boutons d'action
         ctk.CTkButton(
             self.params_frame, 
-            text="💾 Sauvegarder la configuration",
+            text="Sauvegarder",
             font=("Roboto", 13),
             height=40,
+            fg_color="#27AE60",
+            hover_color="#1E8449",
             command=self.Save_quit
         ).grid(row=next_row+2, column=0,padx=10,pady=20,sticky="ew")
 
         ctk.CTkButton(
-            self.params_frame, text="❌ Quitter",
+            self.params_frame, text="Annuler",
             font=("Roboto", 13),
             height=40,
             command=self.destroy
@@ -2267,7 +2284,7 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
     # Fonction locale : ouvrir calendrier debut
     def ouvrir_calendrier_debut(self):
         topdebut = ctk.CTkToplevel(self)
-        topdebut.title("Sélectionner la date de début")
+        topdebut.title("Selectionner la date de debut")
         topdebut.geometry('400x300')
         topdebut.after(50, lambda: topdebut.focus_force())
         try:
@@ -2282,7 +2299,7 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
     # Fonction locale : ouvrir calendrier fin
     def ouvrir_calendrier_fin(self):
         topfin = ctk.CTkToplevel(self)
-        topfin.title("Sélectionner la date de fin")
+        topfin.title("Selectionner la date de fin")
         topfin.geometry('400x300')
         topfin.after(50, lambda: topfin.focus_force())
         try:
@@ -2296,6 +2313,7 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
         
     def Save_quit(self):
         Parametres_temporels.horizon = self.Params_temporels_horizon.get()
+        Parametres_temporels.window_size = self.Params_temporels_window_size.get()
         Parametres_temporels.pas_temporel = self.Params_temporels_pas_temporel.get()
         Parametres_temporels.portion_decoupage = self.Params_temporels_portion_decoupage.get() / 100
         Parametres_temporels.dates = [self.date_debut_str.get(), self.date_fin_str.get()]
@@ -2303,6 +2321,7 @@ class Fenetre_Params_horizon(ctk.CTkToplevel):
             
     def Quit(self):
         self.Params_temporels_horizon.set(Parametres_temporels.horizon)
+        self.Params_temporels_window_size.set(Parametres_temporels.window_size)
         self.date_debut_str.set(Parametres_temporels.dates[0])
         self.date_fin_str.set(value=Parametres_temporels.dates[1])
         self.Params_temporels_pas_temporel.set(Parametres_temporels.pas_temporel)
@@ -2846,7 +2865,8 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         super().__init__(parent)
         self.parent = parent
         self.title("Charger un Modele")
-        self.geometry("900x550")
+        self.geometry("950x650")
+        self.minsize(900, 600)
         self.resizable(True, True)
         
         self.models_data = {}
@@ -2856,14 +2876,77 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         self.charger_liste_modeles()
     
     def setup_ui(self):
-        # Titre
+        # ========== BOUTONS EN BAS (pack en premier avec side=bottom) ==========
+        frame_buttons = ctk.CTkFrame(self, fg_color="transparent", height=60)
+        frame_buttons.pack(side="bottom", fill="x", padx=20, pady=15)
+        frame_buttons.pack_propagate(False)
+        
+        # Boutons centrés
+        btn_refresh = ctk.CTkButton(
+            frame_buttons, 
+            text="Rafraichir",
+            command=self.charger_liste_modeles,
+            width=130,
+            height=42
+        )
+        btn_refresh.pack(side="left", padx=10, pady=5)
+        
+        btn_charger = ctk.CTkButton(
+            frame_buttons, 
+            text="Charger",
+            command=self.charger_modele_selectionne,
+            width=130,
+            height=42,
+            fg_color="#27AE60",
+            hover_color="#1E8449"
+        )
+        btn_charger.pack(side="left", padx=10, pady=5)
+        
+        btn_supprimer = ctk.CTkButton(
+            frame_buttons, 
+            text="Supprimer",
+            command=self.supprimer_modele_selectionne,
+            width=130,
+            height=42,
+            fg_color="#E74C3C",
+            hover_color="#C0392B"
+        )
+        btn_supprimer.pack(side="left", padx=10, pady=5)
+        
+        btn_fermer = ctk.CTkButton(
+            frame_buttons, 
+            text="Fermer",
+            command=self.destroy,
+            width=130,
+            height=42
+        )
+        btn_fermer.pack(side="right", padx=10, pady=5)
+        
+        # ========== LABELS DE STATUT (au-dessus des boutons) ==========
+        status_frame = ctk.CTkFrame(self, fg_color="transparent", height=50)
+        status_frame.pack(side="bottom", fill="x", padx=20)
+        status_frame.pack_propagate(False)
+        
+        self.selection_label = ctk.CTkLabel(
+            status_frame, 
+            text="Cliquez sur une ligne pour selectionner un modele",
+            font=ctk.CTkFont(size=13),
+            text_color="#888888"
+        )
+        self.selection_label.pack(pady=2)
+        
+        self.status_label = ctk.CTkLabel(status_frame, text="", font=ctk.CTkFont(size=12))
+        self.status_label.pack(pady=2)
+        
+        # ========== TITRE EN HAUT ==========
         titre = ctk.CTkLabel(
             self, 
             text="Modeles Sauvegardes",
             font=ctk.CTkFont(size=24, weight="bold")
         )
-        titre.pack(pady=20)
+        titre.pack(side="top", pady=15)
         
+        # ========== TABLEAU AU MILIEU (prend l'espace restant) ==========
         # Configuration du style Treeview
         style = ttk.Style()
         style.theme_use("default")
@@ -2890,7 +2973,7 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         
         # Frame pour le tableau
         frame_table = ctk.CTkFrame(self)
-        frame_table.pack(fill="both", expand=True, padx=20, pady=10)
+        frame_table.pack(side="top", fill="both", expand=True, padx=20, pady=10)
         
         # Colonnes du tableau
         columns = ("Nom", "Type", "Dataset", "Window", "Date")
@@ -2910,93 +2993,54 @@ class Fenetre_Charger_Modele(ctk.CTkToplevel):
         self.model_tree.heading("Window", text="Fenetre")
         self.model_tree.heading("Date", text="Date Creation")
         
-        self.model_tree.column("Nom", width=220, anchor="w")
+        self.model_tree.column("Nom", width=250, anchor="w")
         self.model_tree.column("Type", width=100, anchor="center")
         self.model_tree.column("Dataset", width=180, anchor="center")
-        self.model_tree.column("Window", width=80, anchor="center")
+        self.model_tree.column("Window", width=100, anchor="center")
         self.model_tree.column("Date", width=150, anchor="center")
         
         # Scrollbar
-        scrollbar = ctk.CTkScrollbar(frame_table, command=self.model_tree.yview)
+        scrollbar = ttk.Scrollbar(frame_table, orient="vertical", command=self.model_tree.yview)
         self.model_tree.configure(yscrollcommand=scrollbar.set)
         
+        self.model_tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        self.model_tree.pack(fill="both", expand=True)
         
-        # Bind selection et double-click
+        # Bind selection
         self.model_tree.bind("<<TreeviewSelect>>", self.on_select)
+        self.model_tree.bind("<ButtonRelease-1>", self.on_click)
         self.model_tree.bind("<Double-1>", self.on_double_click)
-        
-        # Label de selection
-        self.selection_label = ctk.CTkLabel(
-            self, 
-            text="Aucun modele selectionne",
-            font=ctk.CTkFont(size=13),
-            text_color="#888888"
-        )
-        self.selection_label.pack(pady=5)
-        
-        # Label de statut
-        self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
-        self.status_label.pack(pady=2)
-        
-        # Frame pour les boutons
-        frame_buttons = ctk.CTkFrame(self, fg_color="transparent")
-        frame_buttons.pack(fill="x", padx=20, pady=15)
-        
-        btn_refresh = ctk.CTkButton(
-            frame_buttons, 
-            text="Rafraichir",
-            command=self.charger_liste_modeles,
-            width=120,
-            height=38
-        )
-        btn_refresh.pack(side="left", padx=5)
-        
-        btn_charger = ctk.CTkButton(
-            frame_buttons, 
-            text="Charger",
-            command=self.charger_modele_selectionne,
-            width=120,
-            height=38,
-            fg_color="#27AE60",
-            hover_color="#1E8449"
-        )
-        btn_charger.pack(side="left", padx=5)
-        
-        btn_supprimer = ctk.CTkButton(
-            frame_buttons, 
-            text="Supprimer",
-            command=self.supprimer_modele_selectionne,
-            width=120,
-            height=38,
-            fg_color="#E74C3C",
-            hover_color="#C0392B"
-        )
-        btn_supprimer.pack(side="left", padx=5)
-        
-        btn_fermer = ctk.CTkButton(
-            frame_buttons, 
-            text="Fermer",
-            command=self.destroy,
-            width=120,
-            height=38
-        )
-        btn_fermer.pack(side="right", padx=5)
     
     def on_select(self, event):
-        """Gere la selection d'un modele"""
+        """Gere la selection d'un modele via TreeviewSelect"""
+        self._update_selection()
+    
+    def on_click(self, event):
+        """Gere la selection d'un modele via clic"""
+        # Petit délai pour laisser le Treeview mettre à jour la sélection
+        self.after(10, self._update_selection)
+    
+    def _update_selection(self):
+        """Met à jour l'affichage de la sélection"""
         selection = self.model_tree.selection()
         if selection:
             item = selection[0]
             values = self.model_tree.item(item, "values")
-            self.selected_model = values[0]  # Nom
-            model_type = values[1]  # Type
-            dataset = values[2]  # Dataset
-            
+            if values:
+                self.selected_model = values[0]  # Nom
+                model_type = values[1] if len(values) > 1 else "-"
+                dataset = values[2] if len(values) > 2 else "-"
+                
+                self.selection_label.configure(
+                    text=f"Selection: {self.selected_model} ({model_type.upper()}) - Dataset: {dataset}",
+                    text_color="#4CAF50"
+                )
+                print(f"[DEBUG] Modele selectionne: {self.selected_model}")
+        else:
+            self.selected_model = None
             self.selection_label.configure(
-                text=f"Selection: {self.selected_model} ({model_type.upper()}) - Dataset: {dataset}",
-                text_color="#4CAF50"
+                text="Aucun modele selectionne",
+                text_color="#888888"
             )
     
     def on_double_click(self, event):
@@ -3162,23 +3206,53 @@ class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
         super().__init__(parent)
         self.parent = parent
         self.title("Sauvegarder le Modele")
-        self.geometry("450x300")
-        self.resizable(False, False)
+        self.geometry("500x350")
+        self.minsize(450, 320)
+        self.resizable(True, True)
         
         self.setup_ui()
     
     def setup_ui(self):
-        # Titre
+        # ========== BOUTONS EN BAS (pack en premier avec side=bottom) ==========
+        frame_buttons = ctk.CTkFrame(self, fg_color="transparent", height=60)
+        frame_buttons.pack(side="bottom", fill="x", padx=30, pady=15)
+        frame_buttons.pack_propagate(False)
+        
+        btn_sauvegarder = ctk.CTkButton(
+            frame_buttons, 
+            text="Sauvegarder",
+            command=self.sauvegarder,
+            width=160,
+            height=42,
+            fg_color="#27AE60",
+            hover_color="#1E8449"
+        )
+        btn_sauvegarder.pack(side="left", padx=10)
+        
+        btn_annuler = ctk.CTkButton(
+            frame_buttons, 
+            text="Annuler",
+            command=self.destroy,
+            width=160,
+            height=42
+        )
+        btn_annuler.pack(side="right", padx=10)
+        
+        # ========== STATUT AU-DESSUS DES BOUTONS ==========
+        self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
+        self.status_label.pack(side="bottom", pady=5)
+        
+        # ========== TITRE EN HAUT ==========
         titre = ctk.CTkLabel(
             self, 
             text="Sauvegarder le Modele",
             font=ctk.CTkFont(size=22, weight="bold")
         )
-        titre.pack(pady=20)
+        titre.pack(side="top", pady=20)
         
-        # Frame principal
+        # ========== CONTENU AU MILIEU ==========
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
-        main_frame.pack(fill="both", expand=True, padx=30, pady=10)
+        main_frame.pack(side="top", fill="both", expand=True, padx=30, pady=10)
         
         # Nom du modele
         label_nom = ctk.CTkLabel(
@@ -3191,7 +3265,7 @@ class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
         self.entry_nom = ctk.CTkEntry(
             main_frame, 
             placeholder_text="ex: mlp_eurusd_v1",
-            height=40,
+            height=42,
             font=ctk.CTkFont(size=14)
         )
         self.entry_nom.pack(fill="x", pady=(5, 15))
@@ -3205,45 +3279,17 @@ class Fenetre_Sauvegarder_Modele(ctk.CTkToplevel):
         self.entry_nom.insert(0, suggestion)
         
         # Infos sur le modele actuel
-        info_frame = ctk.CTkFrame(main_frame, fg_color="#2a2d2e", corner_radius=8)
+        info_frame = ctk.CTkFrame(main_frame, fg_color="#3a3d3e", corner_radius=8)
         info_frame.pack(fill="x", pady=10)
         
         info_text = f"Type: {model_type.upper()}  |  Dataset: {dataset_name}"
         info_label = ctk.CTkLabel(
             info_frame,
             text=info_text,
-            font=ctk.CTkFont(size=12),
-            text_color="#888888"
+            font=ctk.CTkFont(size=14),
+            text_color="white"
         )
-        info_label.pack(pady=10)
-        
-        # Label de statut
-        self.status_label = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=12))
-        self.status_label.pack(pady=5)
-        
-        # Boutons
-        frame_buttons = ctk.CTkFrame(self, fg_color="transparent")
-        frame_buttons.pack(fill="x", padx=30, pady=15)
-        
-        btn_sauvegarder = ctk.CTkButton(
-            frame_buttons, 
-            text="Sauvegarder",
-            command=self.sauvegarder,
-            width=150,
-            height=40,
-            fg_color="#27AE60",
-            hover_color="#1E8449"
-        )
-        btn_sauvegarder.pack(side="left", padx=10)
-        
-        btn_annuler = ctk.CTkButton(
-            frame_buttons, 
-            text="Annuler",
-            command=self.destroy,
-            width=150,
-            height=40
-        )
-        btn_annuler.pack(side="right", padx=10)
+        info_label.pack(pady=12)
     
     def sauvegarder(self):
         """Sauvegarde le modele"""
