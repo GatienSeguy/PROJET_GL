@@ -1,0 +1,37 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title Diagramme d'Activité - Pipeline
+
+start
+:Clic Start;
+:load_data();
+:preprocess_data();
+:normalize_data();
+:split_data_three_way();
+
+partition "Phase 1: Entraînement" #E3F2FD {
+  while (epoch < nb_epochs?)
+    :Forward + Backward;
+    :SSE epoch;
+  endwhile
+}
+
+partition "Phase 2: Validation" #E8F5E9 {
+  while (i < n_val?)
+    :Prédire yhat;
+    :SSE val_pair;
+  endwhile
+  :Calculer residual_std;
+}
+
+partition "Phase 3: Test" #FFF8E1 {
+  while (step < n_test?)
+    :Prédire + IC;
+    :SSE pred_point;
+    :Recalibrer;
+  endwhile
+}
+
+:SSE fin_pipeline;
+stop
+@enduml

@@ -4,175 +4,96 @@ skinparam classAttributeIconSize 0
 skinparam backgroundColor #FFFFFF
 skinparam roundcorner 10
 
-title Diagramme de Classes - Interface Utilisateur (Tkinter)
+title Diagramme de Classes - Interface Utilisateur (React + Zustand)
 
-package "Interface Utilisateur" {
+package "Frontend React" {
     
-    ' ==== Fenêtre Principale ====
-    class Fenetre_Acceuil {
-        - root : Tk
-        - notebook : ttk.Notebook
-        - cadre_entrainement : Cadre_Entrainement
-        - cadre_testing : Cadre_Testing
-        - cadre_metrics : Cadre_Metrics
-        - cadre_prediction : Cadre_Prediction
-        - dataset_selectionne : TimeSeriesData
-        - modele_charge : dict
+    class UseStore <<Zustand Store>> {
+        + config: GlobalConfig
+        + modelConfig: ModelConfig
+        + isTraining: boolean
+        + trainingData: EpochLoss[]
+        + testingData: FinalPlotData
+        + metrics: MetricsResponse
         --
-        + __init__(root: Tk)
-        + creer_menu() : void
-        + ouvrir_fenetre_params() : void
-        + charger_dataset() : void
-        + charger_modele() : void
-        + lancer_entrainement() : void
+        + startTraining()
+        + stopTraining()
+        + addTrainingPoint(epoch, loss)
+        + setTestingData(data)
+        + setMetrics(metrics)
+    }
+
+    class App {
+        + render()
+    }
+
+    class TrainingControl {
+        + handleStart()
+        + handleStop()
+    }
+
+    class TrainingChart {
+        + render(lossSeries)
+    }
+
+    class TestingChart {
+        + render(testingData)
+        + zoomXY()
+    }
+
+    class ModelSelector {
+        + handleModelChange()
+    }
+
+    class NetworkArchitecture {
+        + renderLayerConfig()
+    }
+
+    class TrainingParams {
+        + handleParamChange()
     }
     
-    ' ==== Cadres (Onglets) ====
-    class Cadre_Entrainement {
-        - parent : ttk.Frame
-        - graphique_loss : MatplotlibCanvas
-        - label_epoch : Label
-        - label_loss_value : Label
-        - barre_progression : Progressbar
-        - bouton_annuler : Button
-        --
-        + __init__(parent: ttk.Frame)
-        + mettre_a_jour_loss(epoch: int, loss: float) : void
-        + mettre_a_jour_progression(pct: float) : void
-        + afficher_erreur(message: str) : void
+    class DatasetList {
+        + handleSelect()
     }
-    
-    class Cadre_Testing {
-        - parent : ttk.Frame
-        - graphique_predictions : MatplotlibCanvas
-        - label_metriques : Label
-        - liste_predictions : Listbox
-        --
-        + __init__(parent: ttk.Frame)
-        + afficher_prediction(y_true: float, y_pred: float) : void
-        + afficher_metriques(metrics: dict) : void
-        + tracer_predictions(y_true: list, y_pred: list) : void
+
+    class HorizonConfig {
+        + handleHorizonChange()
     }
-    
-    class Cadre_Metrics {
-        - parent : ttk.Frame
-        - tableau_metriques : TreeView
-        - graphique_comparaison : MatplotlibCanvas
-        --
-        + __init__(parent: ttk.Frame)
-        + afficher_metriques_finales(metrics: dict) : void
-        + comparer_modeles(liste_modeles: list) : void
+
+    ' ==== Services API ====
+    class trainingAPI <<Service>> {
+        + startTraining(config, modelConfig, callbacks)
+        + stopTraining()
     }
-    
-    class Cadre_Prediction {
-        - parent : ttk.Frame
-        - graphique_futur : MatplotlibCanvas
-        - entry_horizon : Entry
-        - bouton_predire : Button
-        - liste_predictions_futures : Listbox
-        --
-        + __init__(parent: ttk.Frame)
-        + lancer_prediction(horizon: int) : void
-        + afficher_predictions_futures(predictions: list) : void
-        + exporter_predictions(format: str) : void
+
+    class datasetAPI <<Service>> {
+        + fetchDataset(payload)
     }
-    
-    ' ==== Fenêtres de Configuration ====
-    class Fenetre_Params {
-        - root : Toplevel
-        - model_type : StringVar
-        - config_mlp : Parametres_archi_reseau_MLP
-        - config_cnn : Parametres_archi_reseau_CNN
-        - config_lstm : Parametres_archi_reseau_LSTM
-        - config_loss : Parametres_choix_loss_fct
-        - config_optim : Parametres_optimisateur
-        - config_train : Parametres_entrainement
-        --
-        + __init__(parent: Tk)
-        + creer_interface() : void
-        + sauvegarder_config() : PaquetComplet
-        + valider_parametres() : bool
-    }
-    
-    class Fenetre_Params_horizon {
-        - root : Toplevel
-        - config_temporel : Parametres_temporels
-        - entry_horizon : Entry
-        - entry_pas : Entry
-        - entry_portion : Entry
-        - calendrier_debut : DateEntry
-        - calendrier_fin : DateEntry
-        --
-        + __init__(parent: Tk)
-        + valider_dates() : bool
-        + obtenir_config() : Parametres_temporels
-    }
-    
-    class Fenetre_Choix_datasets {
-        - root : Toplevel
-        - liste_datasets : Listbox
-        - datasets_disponibles : list
-        - dataset_selectionne : str
-        --
-        + __init__(parent: Tk)
-        + charger_liste_datasets() : void
-        + selectionner_dataset() : str
-        + rafraichir_liste() : void
-    }
-    
-    ' ==== Classe de Communication ====
-    class HTTPClient {
-        - base_url_ia : str
-        - session : requests.Session
-        - timeout : int
-        --
-        + __init__(base_url: str)
-        + post_train_full(config: PaquetComplet) : StreamingResponse
-        + get_models() : list
-        + post_import_dataset(data: TimeSeriesData) : dict
-        + stream_events(url: str) : Generator
-        + gerer_erreur(response: Response) : void
-    }
-    
-    ' ==== Classe Utilitaire ====
-    class MatplotlibCanvas {
-        - figure : Figure
-        - ax : Axes
-        - canvas : FigureCanvasTkAgg
-        --
-        + __init__(parent: Frame, figsize: tuple)
-        + tracer_courbe(x: list, y: list, label: str) : void
-        + ajouter_point(x: float, y: float) : void
-        + effacer() : void
-        + rafraichir() : void
-    }
-    
+
     ' ==== Relations ====
-    Fenetre_Acceuil *-- Cadre_Entrainement : contient
-    Fenetre_Acceuil *-- Cadre_Testing : contient
-    Fenetre_Acceuil *-- Cadre_Metrics : contient
-    Fenetre_Acceuil *-- Cadre_Prediction : contient
-    Fenetre_Acceuil --> HTTPClient : utilise
-    Fenetre_Acceuil --> Fenetre_Params : ouvre
-    Fenetre_Acceuil --> Fenetre_Params_horizon : ouvre
-    Fenetre_Acceuil --> Fenetre_Choix_datasets : ouvre
+    App *-- TrainingControl
+    App *-- TrainingChart
+    App *-- TestingChart
+    App *-- ModelSelector
+    App *-- NetworkArchitecture
+    App *-- TrainingParams
+    App *-- DatasetList
+    App *-- HorizonConfig
+
+    TrainingControl ..> UseStore : reads/writes
+    TrainingChart ..> UseStore : reads
+    TestingChart ..> UseStore : reads
+    ModelSelector ..> UseStore : writes
     
-    Cadre_Entrainement *-- MatplotlibCanvas : contient
-    Cadre_Testing *-- MatplotlibCanvas : contient
-    Cadre_Metrics *-- MatplotlibCanvas : contient
-    Cadre_Prediction *-- MatplotlibCanvas : contient
+    TrainingControl ..> trainingAPI : calls
+    DatasetList ..> datasetAPI : calls
 }
 
-note right of Fenetre_Acceuil
-  Point d'entrée de l'application
-  Gère la coordination entre les onglets
-  et la communication avec le Serveur IA
-end note
-
-note right of HTTPClient
-  Gère toutes les communications
-  HTTP/REST avec le Serveur IA
-  Supporte SSE pour le streaming
+note right of UseStore
+  Store global (Zustand)
+  Centralise l'état de l'application
+  et les données de visualisation
 end note
 
 @enduml

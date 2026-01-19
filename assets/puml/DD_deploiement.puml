@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title Diagramme de Déploiement - MLApp
+
+node "Machine Client" {
+  artifact "Python 3.8+" as PY_C
+  artifact "Tkinter/CTk" as TK
+  artifact "Matplotlib" as MPL
+  artifact "Requests" as REQ
+  
+  PY_C --> TK
+  TK --> MPL
+  TK --> REQ
+}
+
+node "Serveur IA (Port 8000)" {
+  artifact "Python 3.8+" as PY_IA
+  artifact "FastAPI" as FAST_IA
+  artifact "PyTorch" as TORCH
+  artifact "NumPy/SciPy" as NP
+  
+  PY_IA --> FAST_IA
+  FAST_IA --> TORCH
+  FAST_IA --> NP
+}
+
+node "Serveur Data (Port 8001)" {
+  artifact "Python 3.8+" as PY_D
+  artifact "FastAPI" as FAST_D
+  
+  database "datasets/" as DS
+  database "models/" as MD
+  database "contextes/" as CTX
+  
+  PY_D --> FAST_D
+  FAST_D --> DS
+  FAST_D --> MD
+  FAST_D --> CTX
+}
+
+"Machine Client" --> "Serveur IA (Port 8000)" : HTTP/SSE\nPort 8000
+"Serveur IA (Port 8000)" --> "Serveur Data (Port 8001)" : HTTP REST\nPort 8001
+
+note right of "Serveur IA (Port 8000)"
+  GPU optionnel:
+  CUDA / MPS
+end note
+
+note right of "Serveur Data (Port 8001)"
+  Stockage fichiers:
+  JSON + .pth
+end note
+@enduml

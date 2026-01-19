@@ -1,0 +1,58 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS4: Calcul et Affichage des Métriques
+
+participant "UI\nCadre_Metrics" as UI
+participant "TrainingPipeline" as TP
+
+== Fin Phase 2: Validation ==
+TP -> TP: Calculer métriques validation
+note right of TP
+  y_true_arr = [y1, y2, ...]
+  y_pred_arr = [yhat1, yhat2, ...]
+  
+  MSE = mean((y - yhat)²)
+  MAE = mean(|y - yhat|)
+  residual_std = std(y - yhat)
+end note
+
+TP -->> UI: SSE: {type: "val_end",\nmetrics: {MSE: 0.0012, MAE: 0.028},\nresidual_std: 0.035}
+
+== Fin Phase 3: Test Prédictif ==
+TP -> TP: Calculer métriques test
+note right of TP
+  MSE = mean((y - yhat)²)
+  MAE = mean(|y - yhat|)
+  RMSE = sqrt(MSE)
+  
+  SS_res = sum((y - yhat)²)
+  SS_tot = sum((y - mean(y))²)
+  R² = 1 - SS_res/SS_tot
+  
+  MAPE = mean(|y-yhat|/|y|) × 100
+end note
+
+TP -->> UI: SSE: {type: "pred_end",\nmetrics: {MSE: 0.0015, MAE: 0.031}}
+
+== Fin Pipeline ==
+TP -->> UI: SSE: {type: "final_plot_data",\nval_metrics: {MSE, MAE},\npred_metrics: {MSE, MAE}}
+
+UI -> UI: Calculer métriques dérivées:\n- RMSE = sqrt(MSE)\n- R²\n- MAPE
+
+UI -> UI: update_metrics_display()
+
+actor Utilisateur as U
+U -> UI: Consulte Onglet Metrics
+
+note over UI
+  Affichage:
+  ┌─────────────────────┐
+  │ MSE:   0.0015       │
+  │ MAE:   0.031        │
+  │ RMSE:  0.039        │
+  │ R²:    0.94         │
+  │ MAPE:  2.8%         │
+  │ σ_res: 0.035        │
+  └─────────────────────┘
+end note
+@enduml

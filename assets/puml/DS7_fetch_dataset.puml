@@ -1,0 +1,51 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS7: Chargement Dataset (Fetch)
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA\n(Proxy)" as IA
+participant "payload_json" as PJ
+participant "Serveur Data" as DATA
+
+== Liste des datasets ==
+U -> UI: Ouvre application
+activate UI
+
+UI -> IA: POST /datasets/info_all\n{message: "choix_datasets"}
+activate IA
+IA -> DATA: POST /datasets/info_all
+DATA --> IA: {datasets: ["ds1", "ds2", ...]}
+IA --> UI: {datasets: [...]}
+deactivate IA
+
+UI -> UI: Afficher dans Treeview
+
+== Sélection et chargement ==
+U -> UI: Sélectionne dataset\ndans Treeview
+U -> UI: Configure dates (optionnel):\n- date_start\n- date_end
+U -> UI: Clic "Charger"
+
+UI -> IA: POST /datasets/fetch_dataset\n{name: "ds1",\ndates: ["2020-01-01", "2025-12-31"]}
+activate IA
+
+IA -> DATA: POST /datasets/data_solo\n{name, dates}
+activate DATA
+
+DATA -> DATA: Lire datasets/{name}.json
+DATA -> DATA: Filtrer par dates si spécifié
+
+DATA --> IA: {timestamps: [...],\nvalues: [...]}
+deactivate DATA
+
+IA -> PJ: Stocker globalement:\npayload_json = {\n  timestamps: [...],\n  values: [...],\n  name: "ds1"\n}
+
+IA --> UI: {status: "success",\ndata: {timestamps, values},\nn_points: 4500}
+deactivate IA
+
+UI -> UI: Afficher série dans\nonglet Représentation
+UI -> UI: Activer bouton "Start"
+UI --> U: "Dataset chargé (4500 points)"
+
+deactivate UI
+@enduml

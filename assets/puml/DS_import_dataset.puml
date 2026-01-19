@@ -1,0 +1,39 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Import Dataset (via Proxy IA)
+
+actor Utilisateur as U
+participant "UI\nGestion_Datasets" as UI
+participant "Serveur IA\n(Proxy)" as IA
+participant "Serveur Data" as DATA
+
+U -> UI: Sélectionne fichier CSV/JSON
+U -> UI: Clic "Importer"
+activate UI
+
+UI -> UI: Parser fichier\n→ timestamps, values
+
+UI -> IA: POST /datasets/add_dataset\n{name, timestamps, values}
+activate IA
+
+note right of IA
+  Proxy: forward
+  vers Serveur Data
+end note
+
+IA -> DATA: POST /datasets/add_dataset\n{name, timestamps, values}
+activate DATA
+
+DATA -> DATA: Valider format
+DATA -> DATA: Écrire datasets/{name}.json
+
+DATA --> IA: {status: ok, n_points: 5000}
+deactivate DATA
+
+IA --> UI: {status: ok, n_points: 5000}
+deactivate IA
+
+UI -> UI: Rafraîchir liste datasets
+UI -> UI: Afficher confirmation
+deactivate UI
+@enduml

@@ -2187,7 +2187,7 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             text="Supprimer un Dataset",
             font=("Roboto", 13),
             height=40,
-            command=self.test
+            command=self.Supprimer_Dataset
         ).grid(row=2, column=1,padx=10,pady=(50,20),sticky="ew")
 
         ctk.CTkButton(
@@ -2227,6 +2227,87 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             
             self.Dataset_tree.insert(parent='', index=num, values=(nom, dates_str, pas, taille))
 
+    def Supprimer_Dataset(self):
+        """Supprime le dataset sélectionné après confirmation"""
+        
+        # Vérifier qu'un dataset est sélectionné
+        if not self.Selected_Dataset or "name" not in self.Selected_Dataset:
+            messagebox.showwarning(
+                "Aucun Dataset sélectionné",
+                "Veuillez sélectionner un dataset dans la liste avant de le supprimer.",
+                parent=self
+            )
+            return
+        
+        dataset_name = self.Selected_Dataset["name"]
+        
+        # Demander confirmation
+        confirmation = messagebox.askyesno(
+            "Confirmer la suppression",
+            f"⚠️ Voulez-vous vraiment supprimer le dataset '{dataset_name}' ?\n\n"
+            f"Cette action est irréversible.",
+            parent=self
+        )
+        
+        if not confirmation:
+            return
+        
+        # Préparer le payload pour le serveur
+        payload_delete = {
+            "name": dataset_name
+        }
+        
+        url = f"{URL}/datasets/data_suppression_proxy"
+        
+        try:
+            print(f"Envoi de la demande de suppression pour: {dataset_name}")
+            r = requests.post(url, json=payload_delete, timeout=1000)
+            r.raise_for_status()
+            response_data = r.json()
+            
+            print("Réponse serveur:", response_data)
+            
+            # Recharger la liste complète des datasets depuis le serveur
+            print("Rechargement de la liste des datasets...")
+            app.obtenir_datasets()
+            
+            # Rafraîchir l'affichage
+            self.rafraichir_liste_datasets()
+            
+            # Réinitialiser la sélection
+            self.Selected_Dataset = {}
+            
+            messagebox.showinfo(
+                "Succès",
+                f"✅ Dataset '{dataset_name}' supprimé avec succès !",
+                parent=self
+            )
+        
+        except requests.exceptions.HTTPError as e:
+            print("HTTPError:", e)
+            error_msg = "Erreur serveur"
+            if e.response is not None:
+                print("Status:", e.response.status_code)
+                print("Body:", e.response.text)
+                try:
+                    error_detail = e.response.json()
+                    error_msg = error_detail.get("detail", str(e))
+                except:
+                    error_msg = e.response.text
+            
+            messagebox.showerror(
+                "Erreur",
+                f"❌ Impossible de supprimer le dataset:\n{error_msg}",
+                parent=self
+            )
+        
+        except requests.exceptions.RequestException as e:
+            messagebox.showerror(
+                "Erreur de connexion",
+                f"❌ Impossible de se connecter au serveur:\n{str(e)}",
+                parent=self
+            )
+            print("Erreur de connexion:", e)
 
     def Ajouter_Dataset(self):
         self.payload_add_dataset = None

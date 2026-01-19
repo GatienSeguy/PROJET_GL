@@ -103,23 +103,28 @@ def train_LSTM(
     Retourne (model, last_avg) et yield un dict toutes les k époques comme train_MLP.
     """
 
-    print(f"DEBUG - X.shape: {X.shape}, y.shape: {y.shape}, batch_first: {batch_first}")
+    print(f"[LSTM TRAIN] ENTRÉE - X.shape: {X.shape}, y.shape: {y.shape}, batch_first: {batch_first}")
     
     # Sanity checks rapides
     if batch_first:
         if X.ndim == 2:
+            # (B, T) -> (B, T, 1) pour série univariée
+            print(f"[LSTM TRAIN] Reshape X de {X.shape} vers (B, T, 1)")
             X = X.unsqueeze(-1)
         elif X.ndim == 1:
             X = X.unsqueeze(0).unsqueeze(-1)
-        assert X.ndim == 3, "X doit être (B, T, in_dim) avec batch_first=True"
+        
+        assert X.ndim == 3, f"X doit être (B, T, in_dim) avec batch_first=True, got shape {X.shape}"
         B, T, in_dim = X.shape
+        print(f"[LSTM TRAIN] Après reshape - B={B}, T={T}, in_dim={in_dim}")
     else:
         if X.ndim == 2:
             X = X.unsqueeze(-1)
         elif X.ndim == 1:
             X = X.unsqueeze(0).unsqueeze(-1)
-        assert X.ndim == 3, "X doit être (T, B, in_dim) avec batch_first=False"
+        assert X.ndim == 3, f"X doit être (T, B, in_dim) avec batch_first=False, got shape {X.shape}"
         T, B, in_dim = X.shape
+        print(f"[LSTM TRAIN] Après reshape - T={T}, B={B}, in_dim={in_dim}")
 
     # Détermination de out_dim selon la forme de y
     if y.ndim == 3:

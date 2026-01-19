@@ -1,0 +1,66 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title Diagramme d'Activité - Pipeline Complet
+
+start
+:Utilisateur clique "Start";
+
+partition "Initialisation" {
+  :load_data(payload_json);
+  :setup_model_config();
+  :preprocess_data();
+  :normalize_data();
+  :split_data_three_way()\n(80% / 10% / 10%);
+}
+
+partition "Phase 1: Entraînement (80%)" #E3F2FD {
+  :SSE: phase=train;
+  
+  while (epoch < nb_epochs?) is (oui)
+    :Forward pass;
+    :Calcul loss;
+    :Backward pass;
+    :optimizer.step();
+    :SSE: epoch + avg_loss;
+    
+    if (stop_flag?) then (oui)
+      :SSE: stopped;
+      stop
+    endif
+  endwhile (non)
+  
+  :Récupérer model_trained;
+}
+
+partition "Phase 2: Validation (10%)" #E8F5E9 {
+  :SSE: phase=validation;
+  
+  while (i < n_val?) is (oui)
+    :y_hat = model(X_val[i]);
+    :Dénormaliser;
+    :SSE: val_pair (idx, y, yhat);
+  endwhile (non)
+  
+  :residual_std = std(résidus);
+  :SSE: val_end + metrics;
+}
+
+partition "Phase 3: Test Prédictif (10%)" #FFF8E1 {
+  :SSE: phase=prediction;
+  
+  while (step < n_test?) is (oui)
+    :y_hat = model(context);
+    :Calculer IC 95%;
+    :SSE: pred_point (yhat, low, high);
+    :Recalibrer context avec y_true;
+  endwhile (non)
+  
+  :SSE: pred_end + metrics;
+}
+
+:Sauvegarder trained_model_state;
+:SSE: final_plot_data;
+:SSE: fin_pipeline;
+
+stop
+@enduml

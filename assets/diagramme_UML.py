@@ -47,175 +47,96 @@ skinparam classAttributeIconSize 0
 skinparam backgroundColor #FFFFFF
 skinparam roundcorner 10
 
-title Diagramme de Classes - Interface Utilisateur (Tkinter)
+title Diagramme de Classes - Interface Utilisateur (React + Zustand)
 
-package "Interface Utilisateur" {
+package "Frontend React" {
     
-    ' ==== Fenêtre Principale ====
-    class Fenetre_Acceuil {
-        - root : Tk
-        - notebook : ttk.Notebook
-        - cadre_entrainement : Cadre_Entrainement
-        - cadre_testing : Cadre_Testing
-        - cadre_metrics : Cadre_Metrics
-        - cadre_prediction : Cadre_Prediction
-        - dataset_selectionne : TimeSeriesData
-        - modele_charge : dict
+    class UseStore <<Zustand Store>> {
+        + config: GlobalConfig
+        + modelConfig: ModelConfig
+        + isTraining: boolean
+        + trainingData: EpochLoss[]
+        + testingData: FinalPlotData
+        + metrics: MetricsResponse
         --
-        + __init__(root: Tk)
-        + creer_menu() : void
-        + ouvrir_fenetre_params() : void
-        + charger_dataset() : void
-        + charger_modele() : void
-        + lancer_entrainement() : void
+        + startTraining()
+        + stopTraining()
+        + addTrainingPoint(epoch, loss)
+        + setTestingData(data)
+        + setMetrics(metrics)
+    }
+
+    class App {
+        + render()
+    }
+
+    class TrainingControl {
+        + handleStart()
+        + handleStop()
+    }
+
+    class TrainingChart {
+        + render(lossSeries)
+    }
+
+    class TestingChart {
+        + render(testingData)
+        + zoomXY()
+    }
+
+    class ModelSelector {
+        + handleModelChange()
+    }
+
+    class NetworkArchitecture {
+        + renderLayerConfig()
+    }
+
+    class TrainingParams {
+        + handleParamChange()
     }
     
-    ' ==== Cadres (Onglets) ====
-    class Cadre_Entrainement {
-        - parent : ttk.Frame
-        - graphique_loss : MatplotlibCanvas
-        - label_epoch : Label
-        - label_loss_value : Label
-        - barre_progression : Progressbar
-        - bouton_annuler : Button
-        --
-        + __init__(parent: ttk.Frame)
-        + mettre_a_jour_loss(epoch: int, loss: float) : void
-        + mettre_a_jour_progression(pct: float) : void
-        + afficher_erreur(message: str) : void
+    class DatasetList {
+        + handleSelect()
     }
-    
-    class Cadre_Testing {
-        - parent : ttk.Frame
-        - graphique_predictions : MatplotlibCanvas
-        - label_metriques : Label
-        - liste_predictions : Listbox
-        --
-        + __init__(parent: ttk.Frame)
-        + afficher_prediction(y_true: float, y_pred: float) : void
-        + afficher_metriques(metrics: dict) : void
-        + tracer_predictions(y_true: list, y_pred: list) : void
+
+    class HorizonConfig {
+        + handleHorizonChange()
     }
-    
-    class Cadre_Metrics {
-        - parent : ttk.Frame
-        - tableau_metriques : TreeView
-        - graphique_comparaison : MatplotlibCanvas
-        --
-        + __init__(parent: ttk.Frame)
-        + afficher_metriques_finales(metrics: dict) : void
-        + comparer_modeles(liste_modeles: list) : void
+
+    ' ==== Services API ====
+    class trainingAPI <<Service>> {
+        + startTraining(config, modelConfig, callbacks)
+        + stopTraining()
     }
-    
-    class Cadre_Prediction {
-        - parent : ttk.Frame
-        - graphique_futur : MatplotlibCanvas
-        - entry_horizon : Entry
-        - bouton_predire : Button
-        - liste_predictions_futures : Listbox
-        --
-        + __init__(parent: ttk.Frame)
-        + lancer_prediction(horizon: int) : void
-        + afficher_predictions_futures(predictions: list) : void
-        + exporter_predictions(format: str) : void
+
+    class datasetAPI <<Service>> {
+        + fetchDataset(payload)
     }
-    
-    ' ==== Fenêtres de Configuration ====
-    class Fenetre_Params {
-        - root : Toplevel
-        - model_type : StringVar
-        - config_mlp : Parametres_archi_reseau_MLP
-        - config_cnn : Parametres_archi_reseau_CNN
-        - config_lstm : Parametres_archi_reseau_LSTM
-        - config_loss : Parametres_choix_loss_fct
-        - config_optim : Parametres_optimisateur
-        - config_train : Parametres_entrainement
-        --
-        + __init__(parent: Tk)
-        + creer_interface() : void
-        + sauvegarder_config() : PaquetComplet
-        + valider_parametres() : bool
-    }
-    
-    class Fenetre_Params_horizon {
-        - root : Toplevel
-        - config_temporel : Parametres_temporels
-        - entry_horizon : Entry
-        - entry_pas : Entry
-        - entry_portion : Entry
-        - calendrier_debut : DateEntry
-        - calendrier_fin : DateEntry
-        --
-        + __init__(parent: Tk)
-        + valider_dates() : bool
-        + obtenir_config() : Parametres_temporels
-    }
-    
-    class Fenetre_Choix_datasets {
-        - root : Toplevel
-        - liste_datasets : Listbox
-        - datasets_disponibles : list
-        - dataset_selectionne : str
-        --
-        + __init__(parent: Tk)
-        + charger_liste_datasets() : void
-        + selectionner_dataset() : str
-        + rafraichir_liste() : void
-    }
-    
-    ' ==== Classe de Communication ====
-    class HTTPClient {
-        - base_url_ia : str
-        - session : requests.Session
-        - timeout : int
-        --
-        + __init__(base_url: str)
-        + post_train_full(config: PaquetComplet) : StreamingResponse
-        + get_models() : list
-        + post_import_dataset(data: TimeSeriesData) : dict
-        + stream_events(url: str) : Generator
-        + gerer_erreur(response: Response) : void
-    }
-    
-    ' ==== Classe Utilitaire ====
-    class MatplotlibCanvas {
-        - figure : Figure
-        - ax : Axes
-        - canvas : FigureCanvasTkAgg
-        --
-        + __init__(parent: Frame, figsize: tuple)
-        + tracer_courbe(x: list, y: list, label: str) : void
-        + ajouter_point(x: float, y: float) : void
-        + effacer() : void
-        + rafraichir() : void
-    }
-    
+
     ' ==== Relations ====
-    Fenetre_Acceuil *-- Cadre_Entrainement : contient
-    Fenetre_Acceuil *-- Cadre_Testing : contient
-    Fenetre_Acceuil *-- Cadre_Metrics : contient
-    Fenetre_Acceuil *-- Cadre_Prediction : contient
-    Fenetre_Acceuil --> HTTPClient : utilise
-    Fenetre_Acceuil --> Fenetre_Params : ouvre
-    Fenetre_Acceuil --> Fenetre_Params_horizon : ouvre
-    Fenetre_Acceuil --> Fenetre_Choix_datasets : ouvre
+    App *-- TrainingControl
+    App *-- TrainingChart
+    App *-- TestingChart
+    App *-- ModelSelector
+    App *-- NetworkArchitecture
+    App *-- TrainingParams
+    App *-- DatasetList
+    App *-- HorizonConfig
+
+    TrainingControl ..> UseStore : reads/writes
+    TrainingChart ..> UseStore : reads
+    TestingChart ..> UseStore : reads
+    ModelSelector ..> UseStore : writes
     
-    Cadre_Entrainement *-- MatplotlibCanvas : contient
-    Cadre_Testing *-- MatplotlibCanvas : contient
-    Cadre_Metrics *-- MatplotlibCanvas : contient
-    Cadre_Prediction *-- MatplotlibCanvas : contient
+    TrainingControl ..> trainingAPI : calls
+    DatasetList ..> datasetAPI : calls
 }
 
-note right of Fenetre_Acceuil
-  Point d'entrée de l'application
-  Gère la coordination entre les onglets
-  et la communication avec le Serveur IA
-end note
-
-note right of HTTPClient
-  Gère toutes les communications
-  HTTP/REST avec le Serveur IA
-  Supporte SSE pour le streaming
+note right of UseStore
+  Store global (Zustand)
+  Centralise l'état de l'application
+  et les données de visualisation
 end note
 
 @enduml
@@ -286,7 +207,7 @@ package "Serveur IA" {
     }
     
     ' ==== Modèles PyTorch (Abstract) ====
-    abstract class BaseModel <<PyTorch>> {
+    abstract class NeuralNet <<PyTorch>> {
         # input_size : int
         # output_size : int
         --
@@ -296,7 +217,7 @@ package "Serveur IA" {
     }
     
     ' ==== Modèles Concrets ====
-    class MLPModel <<PyTorch>> {
+    class MLP <<PyTorch>> {
         - layers : nn.ModuleList
         - dropout : nn.Dropout
         - batch_norm : nn.BatchNorm1d
@@ -310,7 +231,7 @@ package "Serveur IA" {
         - _get_activation(name: str) : nn.Module
     }
     
-    class CNNModel <<PyTorch>> {
+    class CNN <<PyTorch>> {
         - conv_layers : nn.ModuleList
         - fc_layers : nn.ModuleList
         - kernel_size : int
@@ -322,7 +243,7 @@ package "Serveur IA" {
         - _calculate_conv_output_size() : int
     }
     
-    class LSTMModel <<PyTorch>> {
+    class LSTM <<PyTorch>> {
         - lstm : nn.LSTM
         - fc : nn.Linear
         - hidden_size : int
@@ -337,7 +258,7 @@ package "Serveur IA" {
     ' ==== Factory Pattern ====
     class ModelFactory {
         --
-        + {static} create(model_type: str, config: dict) : BaseModel
+        + {static} create(model_type: str, config: dict) : NeuralNet
         - {static} _validate_config(model_type: str, config: dict) : void
     }
     
@@ -354,14 +275,14 @@ package "Serveur IA" {
     }
     
     ' ==== Entraînement ====
-    class TrainingEngine {
-        - model : BaseModel
+    class Trainer {
+        - model : NeuralNet
         - criterion : nn.Module
         - optimizer : Optimizer
         - device : str
         - history : list
         --
-        + __init__(model: BaseModel, criterion, optimizer, device: str)
+        + __init__(model: NeuralNet, criterion, optimizer, device: str)
         + train_epoch(X: Tensor, y: Tensor, batch_size: int) : dict
         + compute_gradient_norm() : float
         + save_checkpoint(path: str) : void
@@ -411,25 +332,25 @@ package "Serveur IA" {
     }
     
     ' ==== Relations ====
-    BaseModel <|-- MLPModel : hérite
-    BaseModel <|-- CNNModel : hérite
-    BaseModel <|-- LSTMModel : hérite
+    NeuralNet <|-- MLP : hérite
+    NeuralNet <|-- CNN : hérite
+    NeuralNet <|-- LSTM : hérite
     
-    ModelFactory ..> BaseModel : crée
-    ModelFactory ..> MLPModel : instancie
-    ModelFactory ..> CNNModel : instancie
-    ModelFactory ..> LSTMModel : instancie
+    ModelFactory ..> NeuralNet : crée
+    ModelFactory ..> MLP : instancie
+    ModelFactory ..> CNN : instancie
+    ModelFactory ..> LSTM : instancie
     
     FastAPIApp --> PaquetComplet : reçoit
-    FastAPIApp --> TrainingEngine : utilise
+    FastAPIApp --> Trainer : utilise
     FastAPIApp --> DataPreprocessor : utilise
     FastAPIApp --> TestingModule : utilise
     FastAPIApp --> SSEStreamer : utilise
     FastAPIApp --> DataServerProxy : utilise
     
-    TrainingEngine --> BaseModel : entraîne
-    TrainingEngine --> LossFactory : utilise
-    TrainingEngine --> OptimizerFactory : utilise
+    Trainer --> NeuralNet : entraîne
+    Trainer --> LossFactory : utilise
+    Trainer --> OptimizerFactory : utilise
     
     PaquetComplet o-- Parametres_archi_reseau_MLP
     PaquetComplet o-- Parametres_archi_reseau_CNN
@@ -687,30 +608,43 @@ skinparam sequenceMessageAlign center
 
 title Diagramme de Séquence - Entraînement Complet avec Streaming
 
-actor Utilisateur
-participant "UI\n(Tkinter)" as UI
+actor "Opérateur" as User
+participant "UI\n(React)" as UI
+participant "Store\n(Zustand)" as Store
+participant "TrainingAPI" as TrainAPI
 participant "Serveur IA\n(FastAPI)" as IA
-participant "Training\nEngine" as Engine
+participant "Trainer" as Engine
 participant "Data\nPreprocessor" as Prep
 participant "Model\nFactory" as Factory
 participant "SSE\nStreamer" as SSE
 participant "Serveur Data\n(REST API)" as Data
 
 == Phase 1 : Configuration ==
-Utilisateur -> UI : Configure paramètres\n(modèle, hyperparamètres, etc.)
-UI -> UI : Valide configuration
-UI -> UI : Crée PaquetComplet (JSON)
+User -> UI : Configure paramètres\n(modèle, hyperparamètres, etc.)
+UI -> Store : Update config
 
 == Phase 2 : Lancement Entraînement ==
-Utilisateur -> UI : Clique "Lancer Entraînement"
-UI -> IA : POST /train_full\n(PaquetComplet + payload_model)
+User -> UI : Clique "Lancer"
+UI -> Store : startTraining()
+UI -> TrainAPI : startTraining(config)
+TrainAPI -> IA : POST /train_full
 activate IA
 
 == Phase 3 : Récupération Dataset ==
 IA -> Data : GET /datasets/{id}
 activate Data
-Data -> Data : Charge dataset
-Data --> IA : TimeSeriesData\n(timestamps, values)
+alt Succès
+    Data -> Data : Charge dataset
+    Data --> IA : TimeSeriesData\n(timestamps, values)
+else Erreur (Fichier introuvable / Corrompu)
+    Data --> IA : 404/500 Error
+    IA -> SSE : Stream erreur
+    SSE -> TrainAPI : data: {"type":"error", "msg":"..."}
+    TrainAPI -> UI : onError()
+    UI -> Store : stopTraining()
+    deactivate Data
+    destroy IA
+end
 deactivate Data
 
 == Phase 4 : Préparation des Données ==
@@ -735,15 +669,16 @@ Prep --> IA : X_train, y_train, X_test, y_test
 deactivate Prep
 
 IA -> SSE : Stream événement "split"
-SSE -> UI : data: {"type":"info", "n_train":800, "n_test":200}
+SSE -> TrainAPI : data: {"type":"info", "n_train":800, "n_test":200}
+TrainAPI -> UI : onEvent(info)
 UI -> UI : Affiche info split
 
 == Phase 5 : Instanciation Modèle ==
 IA -> Factory : create(model_type, config)
 activate Factory
 Factory -> Factory : Valide configuration
-Factory -> Factory : Instancie MLPModel/CNNModel/LSTMModel
-Factory --> IA : model (BaseModel)
+Factory -> Factory : Instancie MLP/CNN/LSTM
+Factory --> IA : model (NeuralNet)
 deactivate Factory
 
 IA -> Engine : __init__(model, criterion, optimizer, device)
@@ -760,13 +695,15 @@ loop Pour chaque epoch (1 à nb_epochs)
     
     Engine --> IA : Événement epoch\n{"epoch", "loss", "gradient_norm"}
     IA -> SSE : format_sse(événement)
-    SSE -> UI : data: {"type":"train", "epoch":1, "loss":0.45}
-    UI -> UI : Met à jour graphique
-    UI -> UI : Met à jour barre progression
+    SSE -> TrainAPI : data: {"type":"epoch", "loss":0.45}
+    TrainAPI -> UI : onEvent(epoch)
+    UI -> Store : addTrainingPoint()
+    Store -> UI : Update TrainingChart
     
     alt Si bouton Annuler cliqué
-        Utilisateur -> UI : Clique "Annuler"
-        UI -> IA : Interruption signal
+        User -> UI : Clique "Arrêter"
+        UI -> TrainAPI : stopTraining()
+        TrainAPI -> IA : Interruption signal
         IA -> Engine : Stop training
         note right: Entraînement arrêté\nà la fin de l'epoch courante
     end
@@ -783,19 +720,22 @@ loop Pour chaque échantillon de test
     IA -> IA : y_pred = model(X_test[i])
     IA -> IA : Dénormalisation\ninverse_fn(y_test[i]), inverse_fn(y_pred)
     IA -> SSE : Stream prédiction
-    SSE -> UI : data: {"type":"test_prediction", "y_true":10.5, "y_pred":10.3}
-    UI -> UI : Affiche dans tableau/graphique
+    SSE -> TrainAPI : data: {"type":"pred_point", ...}
+    TrainAPI -> UI : onEvent(pred_point)
 end
 
 IA -> IA : Calcul métriques finales\n(MSE, MAE, RMSE, MAPE, R²)
 IA -> SSE : Stream métriques
-SSE -> UI : data: {"type":"test_metrics", "mse":0.052, "mae":0.183, ...}
-UI -> UI : Affiche métriques dans onglet Testing
+SSE -> TrainAPI : data: {"type":"final_plot_data", ...}
+TrainAPI -> UI : onComplete()
+UI -> Store : setTestingData()
+Store -> UI : Update TestingChart
 deactivate IA
 
-== Phase 9 : Prédiction future (Horizon paramétré) ==
-Utilisateur -> UI : Définit horizon H
-UI -> IA : POST /predict\n(model_id, horizon=H, params_temporels)
+== Phase 8 : Prédiction future (Optionnel) ==
+User -> UI : Définit horizon H
+UI -> TrainAPI : predict(horizon=H)
+TrainAPI -> IA : POST /predict
 activate IA
 IA -> Prep : Prépare entrée\n(dernières observations, fenêtres)
 activate Prep
@@ -806,15 +746,15 @@ loop Pour t = 1..H
     IA -> IA : y_pred_t = model(x_t)
     IA -> IA : Dénormalisation\ninverse_fn(y_pred_t)
     IA -> SSE : Stream prédiction future
-    SSE -> UI : data: {"type":"forecast_step","t":t,"y_pred":...}
+    SSE -> TrainAPI : data: {"type":"forecast_step",...}
     IA -> IA : Met à jour x_{t+1}\n(roll/auto-régression)
 end
 
-IA --> UI : Série de prédictions\n[{t, y_pred}]
-UI -> UI : Affiche graphique futur
+IA --> TrainAPI : Série de prédictions
+TrainAPI --> UI : Résultat
 deactivate IA
 
-== Phase 9 : Sauvegarde ==
+== Phase 9 : Sauvegarde Automatique ==
 IA -> IA : Prépare contexte complet\n(archi, params, metrics, history)
 IA -> Data : POST /models\n(state_dict + context)
 activate Data
@@ -825,12 +765,11 @@ Data --> IA : {"id": "uuid-1234", "created_at": "..."}
 deactivate Data
 
 IA -> SSE : Stream événement "complete"
-SSE -> UI : data: {"type":"complete", "model_id":"uuid-1234"}
-UI -> UI : Affiche confirmation
-UI -> UI : Active onglet Prediction
+SSE -> TrainAPI : data: {"type":"fin_pipeline"}
+TrainAPI -> UI : onComplete()
 deactivate IA
 
-Utilisateur -> UI : Consulte résultats
+User -> UI : Consulte résultats
 
 @enduml
 """
@@ -845,21 +784,23 @@ skinparam componentStyle rectangle
 
 title Schéma d'Architecture - MLApp (Vue Simplifiée)
 
-cloud "Utilisateur" as user
+cloud "Opérateur" as user
 
-package "Interface Utilisateur" <<Application Desktop>> {
-    [Tkinter GUI] as ui
-    [Matplotlib] as plot
-    [HTTP Client] as httpclient
+package "Interface Utilisateur" <<Electron App>> {
+    [React Frontend] as ui
+    [Zustand Store] as store
+    [Recharts] as plot
+    [API Services] as apis
     
-    ui -down-> plot : visualisation
-    ui -down-> httpclient : requêtes
+    ui -down-> store : state
+    ui -down-> plot : render
+    ui -down-> apis : calls
 }
 
 package "Serveur IA" <<Backend FastAPI>> {
-    [FastAPI API] as api
-    [Training Engine] as train
-    [PyTorch Models] as models
+    [FastAPI] as api
+    [Trainer] as train
+    [Neural Networks] as models
     [Data Preprocessor] as prep
     [SSE Streamer] as sse
     [Data Proxy] as proxy
@@ -896,7 +837,7 @@ database "Stockage" {
 ' === Relations entre composants ===
 user -down-> ui : interactions
 
-httpclient -right-> api : HTTP/REST\n+ SSE
+apis -right-> api : HTTP/REST\n+ SSE
 note on link
   Protocoles :
   - POST /train_full (SSE)
@@ -915,9 +856,9 @@ end note
 ' === Notes importantes ===
 note right of ui
   Technologies :
-  - Python + Tkinter
-  - Matplotlib (graphiques)
-  - Threading (non-bloquant)
+  - React + TypeScript
+  - Electron (packaging)
+  - Recharts (visu)
 end note
 
 note right of api
@@ -961,7 +902,7 @@ title Diagramme de Cas d'Utilisation - MLApp
 
 left to right direction
 
-actor "Data Scientist" as user
+actor "Opérateur Métier" as user
 actor "Serveur IA" as ia
 actor "Serveur Data" as data
 

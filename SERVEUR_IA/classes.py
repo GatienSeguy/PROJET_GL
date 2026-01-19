@@ -26,6 +26,7 @@ class AddDatasetPacket(BaseModel):
 
 class Parametres_temporels(BaseModel):
     horizon: Optional[int] = Field(None, description="Nombre de pas temporels à prédire")
+    window_size: Optional[int] = Field(None, description="Taille de la fenêtre d'observation (nb de points passés)")
     # dates: Optional[List[str]] = Field(None, description="Période de début/fin (AAAA-MM-JJ)")
     # pas_temporel: Optional[int] = Field(None, description="Pas temporel entre deux points")
     portion_decoupage: Optional[confloat(gt=0, lt=1)] = Field(None, description="Proportion de découpage train/test")
@@ -54,7 +55,7 @@ class Parametres_entrainement(BaseModel):
     clip_gradient: Optional[float] = Field(None)
     
 class Parametres_visualisation_suivi(BaseModel):
-    metriques: Optional[List[str]] = Field(None, description="Liste des métriques suivies pendant l’entraînement")
+    metriques: Optional[List[str]] = Field(None, description="Liste des métriques suivies pendant l'entraînement")
 
 
 
@@ -82,7 +83,7 @@ class Parametres_archi_reseau_MLP(BaseModel):
         description="Fraction de neurones désactivés pendant l'entraînement (ex: 0.1)"
     )
 
-    # --- 4) Fonction d’activation ---
+    # --- 4) Fonction d'activation ---
     fonction_activation: Optional[Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"]] = Field(
         None,
         description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
@@ -109,7 +110,7 @@ class Parametres_archi_reseau_CNN(BaseModel):
     )
 
 
-    # --- 4) Fonction d’activation ---
+    # --- 4) Fonction d'activation ---
     fonction_activation: Optional[Literal["ReLU", "GELU", "tanh", "sigmoid", "leaky_relu"]] = Field(
         None,
         description="Type de fonction d'activation interne (ReLU / GELU / tanh / ...)"
@@ -212,4 +213,3 @@ class PaquetComplet2(BaseModel):
     # Parametres_archi_reseau_MLP: Optional[Parametres_archi_reseau_MLP]
     # Parametres_archi_reseau_CNN: Optional[Parametres_archi_reseau_CNN]
     # Parametres_archi_reseau_LSTM: Optional[Parametres_archi_reseau_LSTM]
-    

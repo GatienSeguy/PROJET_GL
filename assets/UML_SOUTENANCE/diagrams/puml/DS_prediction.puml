@@ -1,0 +1,30 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Prédiction Future (Onglet Prediction)
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "/predict" as API
+participant "trained_model_state" as STATE
+
+U -> UI: Configure horizon H
+U -> UI: Clic Prédire
+UI -> API: POST /predict {horizon: H}
+activate API
+
+API -> STATE: Vérifier is_trained
+API -> API: Préparer contexte initial
+
+API -->> UI: SSE: pred_start
+
+loop step = 1 à H
+  API -> API: y_pred = model(context)
+  note right: IC croissant:\nuncertainty = residual_std × z × sqrt(step+1)
+  API -->> UI: SSE: pred_point (step, yhat, low, high)
+  API -> API: context[-1] = y_pred (autorégression)
+end
+
+API -->> UI: SSE: pred_end
+API -->> UI: SSE: fin_prediction
+deactivate API
+@enduml

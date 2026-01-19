@@ -8,7 +8,7 @@ title Diagramme de Cas d'Utilisation - MLApp
 
 left to right direction
 
-actor "Data Scientist" as user
+actor "Opérateur Métier" as user
 actor "Serveur IA" as ia
 actor "Serveur Data" as data
 

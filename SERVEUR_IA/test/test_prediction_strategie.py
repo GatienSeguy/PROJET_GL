@@ -78,7 +78,13 @@ def get_z_score(confidence: float) -> float:
 
 def predict_one_step_internal(model: nn.Module, window_norm: np.ndarray, device: str) -> float:
     """Prédit un seul pas avec le modèle"""
-    x = torch.FloatTensor(window_norm).unsqueeze(0).to(device)
+    x = torch.FloatTensor(window_norm).unsqueeze(0).to(device)  # (1, window_size)
+    
+    # Détecter si c'est un LSTM (a besoin de 3D input)
+    model_name = model.__class__.__name__.lower()
+    if 'lstm' in model_name or 'gru' in model_name or 'rnn' in model_name:
+        x = x.unsqueeze(-1)  # (1, window_size) -> (1, window_size, 1)
+    
     with torch.no_grad():
         pred = model(x)
     if pred.ndim == 3:
@@ -276,6 +282,12 @@ def predict_direct(
         if step >= n_steps:
             break
         x_input = torch.FloatTensor(current_window_norm).unsqueeze(0).to(device)
+        
+        # Détecter si c'est un LSTM (a besoin de 3D input)
+        model_name = model.__class__.__name__.lower()
+        if 'lstm' in model_name or 'gru' in model_name or 'rnn' in model_name:
+            x_input = x_input.unsqueeze(-1)  # (1, window_size) -> (1, window_size, 1)
+        
         pred_horizon = model(x_input)
         if pred_horizon.ndim == 3:
             pred_horizon = pred_horizon[:, -1, :]

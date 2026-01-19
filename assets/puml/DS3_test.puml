@@ -1,0 +1,67 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS3: Phase de Test (Validation + Test Prédictif)
+
+participant "UI\nCadre_Testing" as UI
+participant "TrainingPipeline" as TP
+participant "model_trained" as MODEL
+
+activate TP
+
+== Phase 2: Validation (10%) - Courbe Verte ==
+TP -->> UI: SSE: {type: "phase",\nphase: "validation", status: "start"}
+TP -->> UI: SSE: {type: "val_start",\nn_points: 500, idx_start: 4015}
+
+loop Pour chaque point de validation
+  TP -> MODEL: model(X_val[i])
+  MODEL --> TP: y_hat_norm
+  
+  TP -> TP: y_hat = inverse_normalize(y_hat_norm)
+  TP -> TP: Stocker (y_true, y_hat)
+  
+  TP -->> UI: SSE: {type: "val_pair",\nidx: i, y: 1.234, yhat: 1.228}
+  UI -> UI: plot_validation(idx, y, yhat)
+end
+
+TP -> TP: residual_std = std(y_true - y_pred)
+TP -->> UI: SSE: {type: "val_end",\nresidual_std: 0.035,\nmetrics: {MSE, MAE}}
+
+note right of TP
+  residual_std utilisé pour
+  les intervalles de confiance
+end note
+
+== Phase 3: Test Prédictif (10%) - Courbe Rouge + IC ==
+TP -->> UI: SSE: {type: "phase",\nphase: "prediction", status: "start"}
+TP -->> UI: SSE: {type: "pred_start",\nn_steps: 500, idx_start: 4515}
+
+loop Pour chaque point de test
+  TP -> MODEL: model(context)
+  MODEL --> TP: y_hat_norm
+  
+  TP -> TP: y_hat = inverse_normalize(y_hat_norm)
+  TP -> TP: low = y_hat - 1.96 × residual_std
+  TP -> TP: high = y_hat + 1.96 × residual_std
+  
+  TP -->> UI: SSE: {type: "pred_point",\nidx: i, yhat: 1.089,\ny: 1.092, low: 1.02, high: 1.16}
+  UI -> UI: plot_prediction(idx, yhat, low, high)
+  
+  TP -> TP: Recalibrer context\navec y_true (ONE_STEP)
+end
+
+TP -->> UI: SSE: {type: "pred_end",\nmetrics: {MSE, MAE}}
+
+== Finalisation ==
+TP -> TP: Sauvegarder trained_model_state
+TP -->> UI: SSE: {type: "final_plot_data",\nval_predictions, pred_predictions,\npred_low, pred_high}
+TP -->> UI: SSE: {type: "fin_pipeline", done: 1}
+
+deactivate TP
+
+note over UI
+  Onglet Testing affiche:
+  - Série réelle (bleu)
+  - Validation (vert)
+  - Test + IC 95% (rouge)
+end note
+@enduml

@@ -1,0 +1,26 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Chargement Modèle
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA" as IA
+participant "Serveur Data" as DATA
+
+U -> UI: Sélectionne modèle
+UI -> IA: POST /model/load {name}
+activate IA
+
+IA -> DATA: POST /contexte/all
+DATA --> IA: {contextes}
+
+IA -> DATA: POST /models/model_all
+DATA --> IA: {modèles base64}
+
+IA -> IA: Décoder + Reconstruire modèle
+IA -> IA: model.load_state_dict()
+IA -> IA: trained_model_state.is_trained = True
+
+IA --> UI: {status: ok, model_type: mlp}
+deactivate IA
+@enduml

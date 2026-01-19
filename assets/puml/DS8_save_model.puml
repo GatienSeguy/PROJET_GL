@@ -1,0 +1,56 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS8: Sauvegarde du Modèle
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA\n/model/save" as IA
+participant "trained_model_state" as STATE
+participant "Serveur Data" as DATA
+
+U -> UI: Clic "Sauvegarder Modèle"
+U -> UI: Entre nom: "mon_modele"
+activate UI
+
+UI -> IA: POST /model/save\n{name: "mon_modele"}
+activate IA
+
+IA -> STATE: Vérifier is_trained
+STATE --> IA: True
+
+== Sauvegarde du modèle (.pth) ==
+IA -> STATE: Récupérer model
+IA -> IA: buffer = BytesIO()
+IA -> IA: torch.save(model.state_dict(), buffer)
+IA -> IA: model_base64 = base64.encode(buffer)
+
+IA -> DATA: POST /models/model_add\n{name: "mon_modele",\ndata: "<base64>"}
+activate DATA
+DATA -> DATA: Décoder base64
+DATA -> DATA: Écrire models/mon_modele.pth
+DATA --> IA: {status: "ok"}
+deactivate DATA
+
+== Sauvegarde du contexte (.json) ==
+IA -> STATE: Récupérer:\n- norm_params\n- window_size\n- residual_std\n- arch_params
+
+IA -> IA: Construire contexte complet
+
+IA -> DATA: POST /contexte/add_solo\n{payload, payload_model,\npayload_dataset, payload_name_model}
+activate DATA
+DATA -> DATA: Écrire contextes/mon_modele.json
+DATA --> IA: {status: "ok"}
+deactivate DATA
+
+== Backup local ==
+IA -> IA: Écrire saved_models/mon_modele.pth
+IA -> IA: Écrire saved_models/mon_modele_context.json
+
+IA --> UI: {status: "ok",\nmessage: "Modèle sauvegardé",\nmodel_type: "mlp"}
+deactivate IA
+
+UI -> UI: Afficher confirmation
+UI -> UI: Rafraîchir liste modèles
+
+deactivate UI
+@enduml

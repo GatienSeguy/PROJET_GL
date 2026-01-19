@@ -1,0 +1,44 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title Diagramme de Classes - DTOs Pydantic
+
+class TimeSeriesData <<BaseModel>> {
+  +timestamps: List[datetime]
+  +values: List[float]
+}
+
+class PaquetComplet <<BaseModel>> {
+  +Parametres_temporels
+  +Parametres_choix_reseau_neurones
+  +Parametres_choix_loss_fct
+  +Parametres_optimisateur
+  +Parametres_entrainement
+}
+
+class Parametres_temporels {
+  +horizon: int = 1
+  +window_size: int = 15
+  +portion_decoupage: float = 0.8
+}
+
+class Parametres_archi_reseau_MLP {
+  +nb_couches: int = 2
+  +hidden_size: int = 128
+  +dropout_rate: float = 0.0
+  +fonction_activation: str = "ReLU"
+}
+
+class Parametres_archi_reseau_CNN {
+  +nb_couches: int = 2
+  +hidden_size: int = 64
+  +kernel_size: int = 3
+}
+
+class Parametres_archi_reseau_LSTM {
+  +nb_couches: int = 2
+  +hidden_size: int = 64
+  +bidirectional: bool = False
+}
+
+PaquetComplet *-- Parametres_temporels
+@enduml

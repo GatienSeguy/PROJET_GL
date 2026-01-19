@@ -821,8 +821,6 @@ def proxy_suppression_dataset(payload: deleteDatasetRequest):
         print(f"Erreur lors de la suppression: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur serveur Data: {str(e)}")
 
-
-
 @app.post("/train_full")
 def training(payload: PaquetComplet, payload_model: dict):
     """Route d'entraînement complet avec le nouveau pipeline 3 phases"""
@@ -840,6 +838,27 @@ def stop_training():
     return {"status": "ok", "message": "Arrêt demandé"}
 
 
+
+
+
 @app.get("/")
 def root():
     return {"message": "Serveur IA actif !"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############## PREDICTION ###

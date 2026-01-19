@@ -5,30 +5,43 @@ skinparam sequenceMessageAlign center
 
 title Diagramme de Séquence - Entraînement Complet avec Streaming
 
-actor Utilisateur
-participant "UI\n(Tkinter)" as UI
+actor "Opérateur" as User
+participant "UI\n(React)" as UI
+participant "Store\n(Zustand)" as Store
+participant "TrainingAPI" as TrainAPI
 participant "Serveur IA\n(FastAPI)" as IA
-participant "Training\nEngine" as Engine
+participant "Trainer" as Engine
 participant "Data\nPreprocessor" as Prep
 participant "Model\nFactory" as Factory
 participant "SSE\nStreamer" as SSE
 participant "Serveur Data\n(REST API)" as Data
 
 == Phase 1 : Configuration ==
-Utilisateur -> UI : Configure paramètres\n(modèle, hyperparamètres, etc.)
-UI -> UI : Valide configuration
-UI -> UI : Crée PaquetComplet (JSON)
+User -> UI : Configure paramètres\n(modèle, hyperparamètres, etc.)
+UI -> Store : Update config
 
 == Phase 2 : Lancement Entraînement ==
-Utilisateur -> UI : Clique "Lancer Entraînement"
-UI -> IA : POST /train_full\n(PaquetComplet + payload_model)
+User -> UI : Clique "Lancer"
+UI -> Store : startTraining()
+UI -> TrainAPI : startTraining(config)
+TrainAPI -> IA : POST /train_full
 activate IA
 
 == Phase 3 : Récupération Dataset ==
 IA -> Data : GET /datasets/{id}
 activate Data
-Data -> Data : Charge dataset
-Data --> IA : TimeSeriesData\n(timestamps, values)
+alt Succès
+    Data -> Data : Charge dataset
+    Data --> IA : TimeSeriesData\n(timestamps, values)
+else Erreur (Fichier introuvable / Corrompu)
+    Data --> IA : 404/500 Error
+    IA -> SSE : Stream erreur
+    SSE -> TrainAPI : data: {"type":"error", "msg":"..."}
+    TrainAPI -> UI : onError()
+    UI -> Store : stopTraining()
+    deactivate Data
+    destroy IA
+end
 deactivate Data
 
 == Phase 4 : Préparation des Données ==
@@ -53,15 +66,16 @@ Prep --> IA : X_train, y_train, X_test, y_test
 deactivate Prep
 
 IA -> SSE : Stream événement "split"
-SSE -> UI : data: {"type":"info", "n_train":800, "n_test":200}
+SSE -> TrainAPI : data: {"type":"info", "n_train":800, "n_test":200}
+TrainAPI -> UI : onEvent(info)
 UI -> UI : Affiche info split
 
 == Phase 5 : Instanciation Modèle ==
 IA -> Factory : create(model_type, config)
 activate Factory
 Factory -> Factory : Valide configuration
-Factory -> Factory : Instancie MLPModel/CNNModel/LSTMModel
-Factory --> IA : model (BaseModel)
+Factory -> Factory : Instancie MLP/CNN/LSTM
+Factory --> IA : model (NeuralNet)
 deactivate Factory
 
 IA -> Engine : __init__(model, criterion, optimizer, device)
@@ -78,13 +92,15 @@ loop Pour chaque epoch (1 à nb_epochs)
     
     Engine --> IA : Événement epoch\n{"epoch", "loss", "gradient_norm"}
     IA -> SSE : format_sse(événement)
-    SSE -> UI : data: {"type":"train", "epoch":1, "loss":0.45}
-    UI -> UI : Met à jour graphique
-    UI -> UI : Met à jour barre progression
+    SSE -> TrainAPI : data: {"type":"epoch", "loss":0.45}
+    TrainAPI -> UI : onEvent(epoch)
+    UI -> Store : addTrainingPoint()
+    Store -> UI : Update TrainingChart
     
     alt Si bouton Annuler cliqué
-        Utilisateur -> UI : Clique "Annuler"
-        UI -> IA : Interruption signal
+        User -> UI : Clique "Arrêter"
+        UI -> TrainAPI : stopTraining()
+        TrainAPI -> IA : Interruption signal
         IA -> Engine : Stop training
         note right: Entraînement arrêté\nà la fin de l'epoch courante
     end
@@ -101,19 +117,22 @@ loop Pour chaque échantillon de test
     IA -> IA : y_pred = model(X_test[i])
     IA -> IA : Dénormalisation\ninverse_fn(y_test[i]), inverse_fn(y_pred)
     IA -> SSE : Stream prédiction
-    SSE -> UI : data: {"type":"test_prediction", "y_true":10.5, "y_pred":10.3}
-    UI -> UI : Affiche dans tableau/graphique
+    SSE -> TrainAPI : data: {"type":"pred_point", ...}
+    TrainAPI -> UI : onEvent(pred_point)
 end
 
 IA -> IA : Calcul métriques finales\n(MSE, MAE, RMSE, MAPE, R²)
 IA -> SSE : Stream métriques
-SSE -> UI : data: {"type":"test_metrics", "mse":0.052, "mae":0.183, ...}
-UI -> UI : Affiche métriques dans onglet Testing
+SSE -> TrainAPI : data: {"type":"final_plot_data", ...}
+TrainAPI -> UI : onComplete()
+UI -> Store : setTestingData()
+Store -> UI : Update TestingChart
 deactivate IA
 
-== Phase 8 : Prédiction future (Horizon paramétré) ==
-Utilisateur -> UI : Définit horizon H
-UI -> IA : POST /predict\n(model_id, horizon=H, params_temporels)
+== Phase 8 : Prédiction future (Optionnel) ==
+User -> UI : Définit horizon H
+UI -> TrainAPI : predict(horizon=H)
+TrainAPI -> IA : POST /predict
 activate IA
 IA -> Prep : Prépare entrée\n(dernières observations, fenêtres)
 activate Prep
@@ -124,15 +143,15 @@ loop Pour t = 1..H
     IA -> IA : y_pred_t = model(x_t)
     IA -> IA : Dénormalisation\ninverse_fn(y_pred_t)
     IA -> SSE : Stream prédiction future
-    SSE -> UI : data: {"type":"forecast_step","t":t,"y_pred":...}
+    SSE -> TrainAPI : data: {"type":"forecast_step",...}
     IA -> IA : Met à jour x_{t+1}\n(roll/auto-régression)
 end
 
-IA --> UI : Série de prédictions\n[{t, y_pred}]
-UI -> UI : Affiche graphique futur
+IA --> TrainAPI : Série de prédictions
+TrainAPI --> UI : Résultat
 deactivate IA
 
-== Phase 9 : Sauvegarde ==
+== Phase 9 : Sauvegarde Automatique ==
 IA -> IA : Prépare contexte complet\n(archi, params, metrics, history)
 IA -> Data : POST /models\n(state_dict + context)
 activate Data
@@ -143,11 +162,10 @@ Data --> IA : {"id": "uuid-1234", "created_at": "..."}
 deactivate Data
 
 IA -> SSE : Stream événement "complete"
-SSE -> UI : data: {"type":"complete", "model_id":"uuid-1234"}
-UI -> UI : Affiche confirmation
-UI -> UI : Active onglet Prediction
+SSE -> TrainAPI : data: {"type":"fin_pipeline"}
+TrainAPI -> UI : onComplete()
 deactivate IA
 
-Utilisateur -> UI : Consulte résultats
+User -> UI : Consulte résultats
 
 @enduml

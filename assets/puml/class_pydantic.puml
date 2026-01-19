@@ -1,0 +1,82 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+
+title Diagramme de Classes - DTOs Pydantic
+
+package "DTOs Principaux" #EBF5FB {
+  class TimeSeriesData <<BaseModel>> {
+    + timestamps: List[datetime]
+    + values: List[Optional[float]]
+    --
+    + model_post_init(): void
+  }
+  
+  class PaquetComplet <<BaseModel>> {
+    + Parametres_temporels
+    + Parametres_choix_reseau_neurones
+    + Parametres_choix_loss_fct
+    + Parametres_optimisateur
+    + Parametres_entrainement
+  }
+}
+
+package "Paramètres" #FDF2E9 {
+  class Parametres_temporels <<BaseModel>> {
+    + horizon: Optional[int]
+    + window_size: Optional[int]
+    + portion_decoupage: Optional[float]
+  }
+  
+  class Parametres_choix_reseau_neurones <<BaseModel>> {
+    + modele: Literal["MLP","LSTM","CNN"]
+  }
+  
+  class Parametres_choix_loss_fct <<BaseModel>> {
+    + fonction_perte: Literal["MSE","MAE","Huber"]
+  }
+  
+  class Parametres_optimisateur <<BaseModel>> {
+    + optimisateur: Literal["Adam","SGD","RMSprop"]
+    + learning_rate: Optional[float]
+    + scheduler: Optional[str]
+  }
+  
+  class Parametres_entrainement <<BaseModel>> {
+    + nb_epochs: Optional[int]
+    + batch_size: Optional[int]
+    + clip_gradient: Optional[float]
+  }
+}
+
+package "Architectures" #E8F6F3 {
+  class Parametres_archi_reseau_MLP <<BaseModel>> {
+    + nb_couches: Optional[int]
+    + hidden_size: Optional[int]
+    + dropout_rate: Optional[float]
+    + fonction_activation: Optional[str]
+  }
+  
+  class Parametres_archi_reseau_CNN <<BaseModel>> {
+    + nb_couches: Optional[int]
+    + hidden_size: Optional[int]
+    + kernel_size: Optional[int]
+    + stride: Optional[int]
+    + padding: Optional[int]
+  }
+  
+  class Parametres_archi_reseau_LSTM <<BaseModel>> {
+    + nb_couches: Optional[int]
+    + hidden_size: Optional[int]
+    + bidirectional: Optional[bool]
+    + batch_first: Optional[bool]
+  }
+}
+
+PaquetComplet *-- Parametres_temporels
+PaquetComplet *-- Parametres_choix_reseau_neurones
+PaquetComplet *-- Parametres_choix_loss_fct
+PaquetComplet *-- Parametres_optimisateur
+PaquetComplet *-- Parametres_entrainement
+
+@enduml
