@@ -32,7 +32,7 @@ function App() {
               <Activity className="text-white" size={20} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">IRMA ML</h1>
+              <h1 className="text-xl font-bold text-white">MLApp</h1>
               <p className="text-xs text-gray-400">Machine Learning Application</p>
             </div>
           </div>
