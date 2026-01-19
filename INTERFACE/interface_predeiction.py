@@ -2758,9 +2758,41 @@ class Fenetre_Gestion_Datasets(ctk.CTkToplevel):
             Selected_Dataset.name=self.Selected_Dataset["name"]
             Selected_Dataset.dates=self.Selected_Dataset["dates"]
             Selected_Dataset.pas_temporel=self.Selected_Dataset["pas_temporel"]
+            
+            # NOUVEAU: Charger le dataset sur le serveur IA
+            self.charger_dataset_sur_serveur()
+            
             self.destroy()
         else:
             messagebox.showwarning("Aucun Dataset sélectionné", "Veuillez sélectionner un Dataset dans la liste.",parent=self)
+    
+    def charger_dataset_sur_serveur(self):
+        """Charge le dataset sélectionné sur le serveur IA pour les prédictions"""
+        if not self.Selected_Dataset:
+            return
+        
+        payload_dataset = {
+            "name": self.Selected_Dataset["name"],
+            "dates": self.Selected_Dataset["dates"],
+            "pas_temporel": 1  # Pas par défaut
+        }
+        
+        def fetch_in_thread():
+            try:
+                print(f"[DATASET] Chargement de '{payload_dataset['name']}' sur le serveur IA...")
+                r = requests.post(
+                    f"{URL}/datasets/fetch_dataset",
+                    json=payload_dataset,
+                    timeout=30
+                )
+                r.raise_for_status()
+                data = r.json()
+                print(f"[DATASET] ✅ Dataset chargé: {len(data.get('data', {}).get('values', []))} points")
+            except Exception as e:
+                print(f"[DATASET] ❌ Erreur: {e}")
+        
+        # Lancer dans un thread pour ne pas bloquer l'interface
+        threading.Thread(target=fetch_in_thread, daemon=True).start()
 
     def test(self):
         pass
