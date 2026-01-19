@@ -214,8 +214,18 @@ class TrainingPipeline:
         
         print(f"[PREPROCESS] window_size={window_len}, horizon={horizon}")
         
+        # IMPORTANT: Filtrer les None de la série AVANT de construire X/y
+        # Sinon les indices ne correspondent plus
+        raw_values = self.series.values
+        clean_values = [v for v in raw_values if v is not None]
+        n_none = len(raw_values) - len(clean_values)
+        print(f"[PREPROCESS] Série originale: {len(raw_values)} points, {n_none} None supprimés -> {len(clean_values)} points")
+        
+        # Stocker la série nettoyée pour l'affichage
+        self.series_clean = clean_values
+        
         X, y = build_supervised_tensors_with_step(
-            self.series.values,
+            clean_values,  # Utiliser la série nettoyée
             window_len=window_len,
             horizon=horizon
         )
@@ -505,9 +515,9 @@ class TrainingPipeline:
         # Vérifier que y_val[0] correspond bien à series[idx_val_start_series]
         y_val_0_norm = self.y_val[0].item()
         y_val_0_denorm = self.inverse_fn(torch.tensor([y_val_0_norm])).item()
-        series_at_idx = self.series.values[idx_val_start_series]
+        series_at_idx = self.series_clean[idx_val_start_series]
         print(f"[VAL ALIGN DEBUG] y_val[0] dénormalisé = {y_val_0_denorm:.6f}")
-        print(f"[VAL ALIGN DEBUG] series[{idx_val_start_series}] = {series_at_idx}")
+        print(f"[VAL ALIGN DEBUG] series_clean[{idx_val_start_series}] = {series_at_idx}")
         if series_at_idx is not None:
             print(f"[VAL ALIGN DEBUG] Différence = {abs(y_val_0_denorm - series_at_idx):.6f}")
         
@@ -515,14 +525,14 @@ class TrainingPipeline:
         target_val = y_val_0_denorm
         closest_idx = -1
         closest_diff = float('inf')
-        for i, v in enumerate(self.series.values):
+        for i, v in enumerate(self.series_clean):
             if v is not None:
                 diff = abs(v - target_val)
                 if diff < closest_diff:
                     closest_diff = diff
                     closest_idx = i
         if closest_idx >= 0:
-            print(f"[VAL ALIGN DEBUG] y_val[0]={target_val:.6f} est plus proche de series[{closest_idx}]={self.series.values[closest_idx]:.6f} (diff={closest_diff:.6f})")
+            print(f"[VAL ALIGN DEBUG] y_val[0]={target_val:.6f} est plus proche de series_clean[{closest_idx}]={self.series_clean[closest_idx]:.6f} (diff={closest_diff:.6f})")
             print(f"[VAL ALIGN DEBUG] Décalage apparent = {closest_idx - idx_val_start_series}")
         
         model = self.model_trained
@@ -624,7 +634,7 @@ class TrainingPipeline:
             yield {"type": "warn", "message": "Pas de données pour test prédictif."}
             return
         
-        y_true_values = self.series.values[idx_test_start_series:idx_test_start_series + n_test]
+        y_true_values = self.series_clean[idx_test_start_series:idx_test_start_series + n_test]
         model_type = self.cfg.Parametres_choix_reseau_neurones.modele.lower()
         
         print(f"[PRED] model_type={model_type}, window_size={window_size}, n_test={n_test}")
@@ -651,7 +661,7 @@ class TrainingPipeline:
             method = norm_params.get("method", "standardization")
             
             # Préparer les données
-            values = self.series.values
+            values = self.series_clean
             series_array = np.array(values, dtype=np.float32)
             
             if method == "minmax":
@@ -800,13 +810,13 @@ class TrainingPipeline:
         idx_test_start = self.split_info["idx_test_start"]
         n_test = self.split_info["n_test"]
         window_size = self.X.shape[1] if self.X.ndim >= 2 else 1
-        y_true_values = self.series.values[idx_test_start:idx_test_start + n_test]
+        y_true_values = self.series_clean[idx_test_start:idx_test_start + n_test]
         
         yield {"type": "comparison_start", "n_strategies": 3}
         
         results = compare_all_strategies(
             model=self.model_trained,
-            values=self.series.values,
+            values=self.series_clean,
             norm_stats=self.norm_params,
             window_size=window_size,
             n_steps=n_test,
@@ -856,7 +866,7 @@ class TrainingPipeline:
             idx_val_start_series = split_info["idx_val_start"] + window_size
             idx_test_start_series = split_info["idx_test_start"] + window_size
             
-            print(f"[SPLIT] n_total_series={len(self.series.values)}")
+            print(f"[SPLIT] n_total_series={len(self.series_clean)}")
             print(f"[SPLIT] window_size={window_size}")
             print(f"[SPLIT] n_train={split_info['n_train']}, n_val={split_info['n_val']}, n_test={split_info['n_test']}")
             print(f"[SPLIT] idx_val_start (fenêtres)={split_info['idx_val_start']}, idx_val_start (série)={idx_val_start_series}")
@@ -876,7 +886,7 @@ class TrainingPipeline:
             # Envoyer la série complète pour l'affichage
             yield sse({
                 "type": "serie_complete",
-                "values": self.series.values,
+                "values": self.series_clean,
             })
             
             # ========== PHASE 1 : ENTRAÎNEMENT ==========
@@ -947,7 +957,7 @@ class TrainingPipeline:
             # ========== DONNÉES FINALES ==========
             yield sse({
                 "type": "final_plot_data",
-                "series_complete": self.series.values,
+                "series_complete": self.series_clean,
                 "val_predictions": val_predictions,
                 "val_true": val_true,
                 "pred_predictions": pred_predictions,
