@@ -497,6 +497,19 @@ class TrainingPipeline:
         idx_val_start_windows = self.split_info["idx_val_start"]
         idx_val_start_series = idx_val_start_windows + window_size
         
+        # DEBUG: Vérifier l'alignement
+        print(f"[VAL ALIGN DEBUG] idx_val_start_windows={idx_val_start_windows}")
+        print(f"[VAL ALIGN DEBUG] idx_val_start_series={idx_val_start_series}")
+        print(f"[VAL ALIGN DEBUG] window_size={window_size}")
+        
+        # Vérifier que y_val[0] correspond bien à series[idx_val_start_series]
+        y_val_0_norm = self.y_val[0].item()
+        y_val_0_denorm = self.inverse_fn(torch.tensor([y_val_0_norm])).item()
+        series_at_idx = self.series.values[idx_val_start_series]
+        print(f"[VAL ALIGN DEBUG] y_val[0] dénormalisé = {y_val_0_denorm:.6f}")
+        print(f"[VAL ALIGN DEBUG] series[{idx_val_start_series}] = {series_at_idx:.6f}")
+        print(f"[VAL ALIGN DEBUG] Différence = {abs(y_val_0_denorm - series_at_idx):.6f}")
+        
         model = self.model_trained
         model_type = trained_model_state.get("model_type", "mlp")
         device = self.device
@@ -858,6 +871,10 @@ class TrainingPipeline:
                 yield sse(msg)
             
             yield sse({"type": "phase", "phase": "train", "status": "end"})
+            
+            # IMPORTANT: Définir model_type dans trained_model_state AVANT la validation
+            trained_model_state["model_type"] = model_type
+            trained_model_state["model"] = self.model_trained
             
             # ========== PHASE 2 : VALIDATION ==========
             yield sse({"type": "phase", "phase": "validation", "status": "start"})
