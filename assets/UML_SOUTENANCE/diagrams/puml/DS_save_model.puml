@@ -1,0 +1,24 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Sauvegarde Modèle
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA" as IA
+participant "Serveur Data" as DATA
+
+U -> UI: Clic Sauvegarder
+UI -> IA: POST /model/save {name}
+activate IA
+
+IA -> IA: Encoder state_dict en Base64
+IA -> DATA: POST /models/model_add
+DATA --> IA: OK
+
+IA -> IA: Préparer contexte
+IA -> DATA: POST /contexte/add_solo
+DATA --> IA: OK
+
+IA --> UI: {status: ok}
+deactivate IA
+@enduml

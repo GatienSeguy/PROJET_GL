@@ -1,0 +1,36 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Fetch Dataset (Sélection + Chargement)
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA\n(Proxy)" as IA
+participant "payload_json" as PJ
+participant "Serveur Data" as DATA
+
+U -> UI: Sélectionne dataset\ndans Treeview
+U -> UI: Configure dates (optionnel)
+U -> UI: Clic "Charger"
+activate UI
+
+UI -> IA: POST /datasets/fetch_dataset\n{name, dates: [start, end]}
+activate IA
+
+IA -> DATA: POST /datasets/data_solo\n{name, dates}
+activate DATA
+
+DATA -> DATA: Lire datasets/{name}.json
+DATA -> DATA: Filtrer par dates
+
+DATA --> IA: {timestamps: [...], values: [...]}
+deactivate DATA
+
+IA -> PJ: Stocker globalement:\npayload_json = {\n  timestamps,\n  values,\n  name\n}
+
+IA --> UI: {status: success,\ndata: {timestamps, values}}
+deactivate IA
+
+UI -> UI: Afficher série dans\nonglet Représentation
+UI -> UI: Activer bouton "Start"
+deactivate UI
+@enduml

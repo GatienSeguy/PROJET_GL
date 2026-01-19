@@ -1,0 +1,40 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Affichage des Métriques (Onglet Metrics)
+
+actor Utilisateur as U
+participant "UI\nCadre_Metrics" as UI
+participant "TrainingPipeline" as TP
+
+== Fin Phase 2: Validation ==
+TP -> TP: Calculer métriques validation
+note right of TP
+  y_true_arr = all_true
+  y_pred_arr = all_predictions
+  
+  MSE = mean((y_true - y_pred)²)
+  MAE = mean(|y_true - y_pred|)
+  residual_std = std(y_true - y_pred)
+end note
+
+TP -->> UI: SSE: {type: "val_end",\nmetrics: {MSE, MAE},\nresidual_std: 0.035}
+
+== Fin Phase 3: Test Prédictif ==
+TP -> TP: Calculer métriques test
+note right of TP
+  MSE = mean((y_true - y_pred)²)
+  MAE = mean(|y_true - y_pred|)
+  RMSE = sqrt(MSE)
+  R² = 1 - SS_res/SS_tot
+end note
+
+TP -->> UI: SSE: {type: "pred_end",\nmetrics: {MSE, MAE}}
+
+== Fin Pipeline ==
+TP -->> UI: SSE: {type: "final_plot_data",\nval_metrics: {...},\npred_metrics: {...}}
+
+UI -> UI: update_metrics()
+UI -> UI: Afficher dans Onglet Metrics:\n- MSE, MAE, RMSE\n- R², MAPE\n- residual_std
+
+U -> UI: Consulte Onglet Metrics
+@enduml

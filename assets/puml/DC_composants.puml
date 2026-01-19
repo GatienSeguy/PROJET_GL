@@ -1,24 +1,23 @@
 @startuml
 skinparam backgroundColor #FEFEFE
-skinparam component {
-    BackgroundColor #F8F9FA
-    BorderColor #2C3E50
-}
-
 title Diagramme de Composants - Architecture MLApp
 
-package "Client" #E8F6F3 {
+package "Client" #FFF8E1 {
   [Interface Tkinter/CTk] as UI
   component "Matplotlib" as MPL
   component "Threading" as THR
   component "Requests" as REQ
-  
   UI --> MPL : visualisation
   UI --> THR : async SSE
   UI --> REQ : HTTP client
 }
 
-package "Serveur IA (Port 8000)" #EBF5FB {
+note right of UI
+  Streaming SSE pour
+  mise à jour temps réel
+end note
+
+package "Serveur IA (Port 8000)" #E3F2FD {
   [FastAPI App] as IA_API
   component "TrainingPipeline" as TP
   component "PyTorch Models" as PT
@@ -30,49 +29,46 @@ package "Serveur IA (Port 8000)" #EBF5FB {
   }
   
   package "Modules Test" {
-    [test_validation]
-    [predict_multistep]
+    [run_validation]
+    [run_prediction_test]
+  }
+  
+  package "Prédiction Future" {
+    [predict_future]
+  }
+  
+  package "Proxies vers Data" {
+    [proxy_fetch_dataset]
+    [proxy_add_dataset]
+    [proxy_suppression]
+    [proxy_info_all]
   }
   
   IA_API --> TP
+  IA_API --> [predict_future]
+  IA_API --> [proxy_fetch_dataset]
   TP --> PT
   TP --> [train_MLP]
-  TP --> [train_CNN]
-  TP --> [train_LSTM]
-  TP --> [test_validation]
-  TP --> [predict_multistep]
+  TP --> [run_validation]
+  TP --> [run_prediction_test]
 }
 
-package "Serveur Data (Port 8001)" #FDF2E9 {
+package "Serveur Data (Port 8001)" #E8F5E9 {
   [FastAPI App] as DATA_API
   component "DatasetService" as DS
   component "ModelService" as MS
   component "ContexteService" as CS
-  
   database "datasets/" as DB_DS
   database "models/" as DB_MD
   database "contextes/" as DB_CTX
-  
   DATA_API --> DS
   DATA_API --> MS
   DATA_API --> CS
-  
-  DS --> DB_DS : JSON files
-  MS --> DB_MD : .pth files
-  CS --> DB_CTX : JSON files
+  DS --> DB_DS
+  MS --> DB_MD
+  CS --> DB_CTX
 }
 
-UI -down-> IA_API : HTTP/SSE
-IA_API -down-> DATA_API : HTTP REST
-
-note right of UI
-  Streaming SSE pour
-  mise à jour temps réel
-end note
-
-note right of DATA_API
-  Persistance fichiers
-  JSON et PyTorch
-end note
-
+UI --> IA_API : HTTP/SSE
+IA_API --> DATA_API : HTTP REST (via Proxies)
 @enduml

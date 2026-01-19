@@ -5,21 +5,23 @@ skinparam componentStyle rectangle
 
 title Schéma d'Architecture - MLApp (Vue Simplifiée)
 
-cloud "Utilisateur" as user
+cloud "Opérateur" as user
 
-package "Interface Utilisateur" <<Application Desktop>> {
-    [Tkinter GUI] as ui
-    [Matplotlib] as plot
-    [HTTP Client] as httpclient
+package "Interface Utilisateur" <<Electron App>> {
+    [React Frontend] as ui
+    [Zustand Store] as store
+    [Recharts] as plot
+    [API Services] as apis
     
-    ui -down-> plot : visualisation
-    ui -down-> httpclient : requêtes
+    ui -down-> store : state
+    ui -down-> plot : render
+    ui -down-> apis : calls
 }
 
 package "Serveur IA" <<Backend FastAPI>> {
-    [FastAPI API] as api
-    [Training Engine] as train
-    [PyTorch Models] as models
+    [FastAPI] as api
+    [Trainer] as train
+    [Neural Networks] as models
     [Data Preprocessor] as prep
     [SSE Streamer] as sse
     [Data Proxy] as proxy
@@ -56,7 +58,7 @@ database "Stockage" {
 ' === Relations entre composants ===
 user -down-> ui : interactions
 
-httpclient -right-> api : HTTP/REST\n+ SSE
+apis -right-> api : HTTP/REST\n+ SSE
 note on link
   Protocoles :
   - POST /train_full (SSE)
@@ -75,9 +77,9 @@ end note
 ' === Notes importantes ===
 note right of ui
   Technologies :
-  - Python + Tkinter
-  - Matplotlib (graphiques)
-  - Threading (non-bloquant)
+  - React + TypeScript
+  - Electron (packaging)
+  - Recharts (visu)
 end note
 
 note right of api

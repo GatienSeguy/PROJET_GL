@@ -1,0 +1,79 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+
+title Diagramme de Séquence - Pipeline execute_full_pipeline()
+
+actor Utilisateur as U
+participant "UI\n(Tkinter)" as UI #E8F6F3
+participant "TrainingPipeline\n(Serveur IA)" as TP #EBF5FB
+participant "Serveur Data" as DATA #FDF2E9
+
+== Initialisation ==
+U -> UI: Clic "Start"
+activate UI
+UI -> TP: POST /train_full
+activate TP
+
+TP -> TP: load_data(payload_json)
+TP -> TP: setup_model_config()
+TP -> TP: preprocess_data()
+TP -> TP: normalize_data()
+TP -> TP: split_data_three_way()\n(80% / 10% / 10%)
+
+TP -->> UI: SSE: {"type": "split_info", ...}
+TP -->> UI: SSE: {"type": "serie_complete", "values": [...]}
+
+== Phase 1: Entraînement (80%) ==
+TP -->> UI: SSE: {"type": "phase", "phase": "train"}
+
+loop Pour chaque epoch
+  TP -> TP: run_training()
+  TP -->> UI: SSE: {"type": "epoch", "avg_loss": ...}
+  UI -> UI: update_plot() [Onglet Training]
+end
+
+TP -->> UI: SSE: {"type": "phase", "phase": "train", "status": "end"}
+
+== Phase 2: Validation (10%) - Courbe Verte ==
+TP -->> UI: SSE: {"type": "phase", "phase": "validation"}
+note right: run_validation()\nTeacher forcing
+
+TP -->> UI: SSE: {"type": "val_start", "n_points": N}
+
+loop Pour chaque point de validation
+  TP -> TP: model(x_sample)
+  TP -> TP: denormalize(y_pred)
+  TP -->> UI: SSE: {"type": "val_pair",\n"idx": ..., "y": ..., "yhat": ...}
+end
+
+TP -> TP: residual_std = std(y_true - y_pred)
+TP -->> UI: SSE: {"type": "val_end",\n"residual_std": 0.035}
+UI -> UI: Affiche courbe verte [Testing]
+
+== Phase 3: Test Prédictif (10%) - Courbe Rouge + IC ==
+TP -->> UI: SSE: {"type": "phase", "phase": "prediction"}
+note right: run_prediction_test()\nONE_STEP + IC 95%
+
+TP -->> UI: SSE: {"type": "pred_start", "n_steps": N}
+
+loop Pour chaque pas de test
+  TP -> TP: model(context)
+  TP -> TP: low = yhat - 1.96 × residual_std
+  TP -> TP: high = yhat + 1.96 × residual_std
+  TP -->> UI: SSE: {"type": "pred_point",\n"yhat", "y", "low", "high"}
+  TP -> TP: context[-1] = normalize(y_true)
+end
+
+TP -->> UI: SSE: {"type": "pred_end", "metrics": {...}}
+UI -> UI: Affiche courbe rouge + halo [Testing]
+
+== Finalisation ==
+TP -> TP: Sauvegarder trained_model_state
+TP -->> UI: SSE: {"type": "final_plot_data", ...}
+TP -->> UI: SSE: {"type": "fin_pipeline", "done": 1}
+
+deactivate TP
+deactivate UI
+
+@enduml

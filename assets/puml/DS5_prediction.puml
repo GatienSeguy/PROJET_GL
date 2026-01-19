@@ -1,0 +1,64 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS5: Prédiction Future (Onglet Prediction)
+
+actor Utilisateur as U
+participant "UI\nCadre_Prediction" as UI
+participant "Serveur IA\n/predict" as API
+participant "trained_model_state" as STATE
+participant "model" as MODEL
+
+U -> UI: Configure horizon H
+U -> UI: Clic "Prédire"
+activate UI
+
+UI -> API: POST /predict\n{horizon: H, confidence_level: 0.95}
+activate API
+
+API -> STATE: Vérifier is_trained
+STATE --> API: True
+
+API -> STATE: Récupérer:\n- model\n- norm_params\n- window_size\n- residual_std
+
+API -> API: Préparer contexte initial\ncontext = series[-window_size:]\ncontext_norm = normalize(context)
+
+API -->> UI: SSE: {type: "pred_start",\nn_steps: H, series_length: N}
+
+loop Pour step = 1 à H
+  API -> MODEL: model(context_norm)
+  MODEL --> API: y_pred_norm
+  
+  API -> API: y_pred = denormalize(y_pred_norm)
+  
+  note right of API
+    Incertitude croissante:
+    σ = residual_std × z × √(step+1)
+    
+    z = 1.96 pour IC 95%
+  end note
+  
+  API -> API: uncertainty = σ × √(step+1)
+  API -> API: low = y_pred - uncertainty
+  API -> API: high = y_pred + uncertainty
+  
+  API -->> UI: SSE: {type: "pred_point",\nstep: step, yhat: y_pred,\nlow: low, high: high}
+  
+  UI -> UI: plot_future_prediction()
+  
+  API -> API: AUTORÉGRESSION:\ncontext_norm = roll(context_norm, -1)\ncontext_norm[-1] = y_pred_norm
+end
+
+API -->> UI: SSE: {type: "pred_end",\npredictions: [...],\npred_low: [...], pred_high: [...]}
+API -->> UI: SSE: {type: "fin_prediction", done: 1}
+
+deactivate API
+
+note over UI
+  Mode RECURSIVE:
+  Pas de y_true disponible
+  → utilise ses propres prédictions
+  → IC croît avec √(step+1)
+end note
+
+deactivate UI
+@enduml

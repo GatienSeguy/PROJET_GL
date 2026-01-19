@@ -1,0 +1,41 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title Diagramme de Classes - Serveur Data
+
+class FastAPIApp {
+  +POST /datasets/info_all
+  +POST /datasets/data_solo
+  +POST /datasets/add_dataset
+  +POST /datasets/data_supression
+  +POST /models/model_add
+  +POST /models/model_all
+  +POST /contexte/add_solo
+  +POST /contexte/all
+}
+
+class DatasetService {
+  -base_path: Path
+  +list_datasets()
+  +get_dataset_data()
+  +add_dataset()
+  +delete_dataset()
+}
+
+class ModelService {
+  -base_path: Path
+  +list_models()
+  +get_model()
+  +add_model()
+}
+
+class ContexteService {
+  -base_path: Path
+  +list_contextes()
+  +get_contexte()
+  +add_contexte()
+}
+
+FastAPIApp --> DatasetService
+FastAPIApp --> ModelService
+FastAPIApp --> ContexteService
+@enduml

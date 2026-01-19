@@ -1,0 +1,65 @@
+@startuml
+left to right direction
+skinparam backgroundColor #FEFEFE
+title Diagramme de Cas d'Utilisation - MLApp
+
+actor Utilisateur as U
+
+rectangle "MLApp" {
+  package "Gestion Données" {
+    usecase "UC1: Importer Dataset" as UC1
+    usecase "UC2: Sélectionner Dataset" as UC2
+    usecase "UC11: Supprimer Dataset" as UC11
+    usecase "UC12: Filtrer par dates" as UC12
+  }
+  
+  package "Configuration" {
+    usecase "UC3: Configurer Modèle (MLP/CNN/LSTM)" as UC3
+    usecase "UC4: Configurer Entraînement" as UC4
+  }
+  
+  package "Entraînement" {
+    usecase "UC5: Lancer Entraînement" as UC5
+    usecase "UC6: Arrêter Entraînement" as UC6
+    usecase "UC7: Visualiser Loss" as UC7
+  }
+  
+  package "Évaluation" {
+    usecase "UC8: Visualiser Métriques" as UC8
+    usecase "UC9: Voir Tests (Validation + Prédiction)" as UC9
+  }
+  
+  package "Prédiction" {
+    usecase "UC13: Prédire sur Horizon H" as UC13
+  }
+  
+  package "Persistance" {
+    usecase "UC10: Sauvegarder Modèle" as UC10
+    usecase "UC15: Charger Modèle" as UC15
+  }
+}
+
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC8
+U --> UC9
+U --> UC10
+U --> UC13
+U --> UC15
+
+UC5 ..> UC2 : <<include>>
+UC5 ..> UC3 : <<include>>
+UC5 ..> UC4 : <<include>>
+UC5 .> UC7 : <<include>>
+UC2 .> UC12 : <<extend>>
+
+note right of UC9
+  Onglet Testing:
+  Courbe verte (validation)
+  Courbe rouge + IC (test)
+end note
+@enduml

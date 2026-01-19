@@ -1,0 +1,84 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+
+title Diagramme de Séquence - Stratégies de Prédiction
+
+participant "TrainingPipeline" as TP #E8F6F3
+participant "predict_multistep" as PM #EBF5FB
+participant "Model (PyTorch)" as M #FDEDEC
+
+TP -> PM: predict_multistep(model, config)
+activate PM
+
+PM -> PM: model.eval()
+PM -> PM: Extraire fenêtre initiale
+PM -> PM: Normaliser fenêtre
+
+alt strategy == ONE_STEP (Gold Standard)
+  note right of PM
+    Recalibration immédiate
+    sur y_true à chaque pas.
+    Incertitude constante.
+  end note
+  loop Pour chaque pas
+    PM -> M: forward(window)
+    M --> PM: pred_norm
+    PM -> PM: denormalize(pred_norm)
+    PM -> PM: IC = pred ± z × σ_residual
+    PM -->> TP: yield {"type": "pred_point"}
+    PM -> PM: window[-1] = y_true (recalib)
+  end
+
+else strategy == RECALIBRATION
+  note right of PM
+    Recalibration périodique
+    tous les N pas.
+    Incertitude croissante.
+  end note
+  loop Pour chaque pas
+    PM -> M: forward(window)
+    M --> PM: pred_norm
+    PM -> PM: σ = σ_residual × √(steps+1)
+    PM -->> TP: yield {"type": "pred_point"}
+    alt steps >= recalib_every
+      PM -> PM: Recalibration sur y_true
+    else
+      PM -> PM: window[-1] = pred_norm
+    end
+  end
+
+else strategy == RECURSIVE
+  note right of PM
+    Pas de recalibration.
+    Diverge rapidement.
+    Pour prédiction pure.
+  end note
+  loop Pour chaque pas
+    PM -> M: forward(window)
+    M --> PM: pred_norm
+    PM -> PM: σ croissante exponentiellement
+    PM -->> TP: yield {"type": "pred_point"}
+    PM -> PM: window[-1] = pred_norm
+  end
+
+else strategy == DIRECT
+  note right of PM
+    Prédiction H pas d'un coup.
+    Évite accumulation erreurs.
+  end note
+  loop Chunks de H pas
+    PM -> M: forward(window)
+    M --> PM: [pred_1, ..., pred_H]
+    loop h = 1 à H
+      PM -->> TP: yield {"type": "pred_point"}
+    end
+  end
+end
+
+PM -> PM: compute_metrics()
+PM -->> TP: yield {"type": "pred_end", "metrics"}
+
+deactivate PM
+
+@enduml

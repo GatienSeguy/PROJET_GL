@@ -1,0 +1,32 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Suppression Dataset
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA\n(Proxy)" as IA
+participant "Serveur Data" as DATA
+
+U -> UI: Sélectionne dataset
+U -> UI: Clic "Supprimer"
+activate UI
+
+UI -> UI: Confirmation utilisateur
+
+UI -> IA: POST /datasets/data_suppression_proxy\n{name}
+activate IA
+
+IA -> DATA: POST /datasets/data_supression\n{name}
+activate DATA
+
+DATA -> DATA: Supprimer datasets/{name}.json
+
+DATA --> IA: {status: ok}
+deactivate DATA
+
+IA --> UI: {status: ok}
+deactivate IA
+
+UI -> UI: Rafraîchir liste datasets
+deactivate UI
+@enduml

@@ -1,0 +1,65 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS2: Lancement de l'Entraînement (Phase 1)
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA\n/train_full" as IA
+participant "TrainingPipeline" as TP
+participant "train_MLP/CNN/LSTM" as TRAIN
+
+U -> UI: Clic "Start"
+activate UI
+
+UI -> IA: POST /train_full\n{payload, payload_model}
+activate IA
+
+IA -> TP: new TrainingPipeline(cfg)
+activate TP
+
+== Initialisation ==
+TP -> TP: load_data(payload_json)
+TP -> TP: setup_model_config()
+TP -> TP: preprocess_data()
+TP -> TP: normalize_data()
+TP -> TP: split_data_three_way()\n(80% train / 10% val / 10% test)
+
+TP -->> UI: SSE: {type: "split_info",\nn_train, n_val, n_test}
+TP -->> UI: SSE: {type: "serie_complete",\nvalues: [...]}
+
+== Phase 1: Entraînement ==
+TP -->> UI: SSE: {type: "phase",\nphase: "train", status: "start"}
+
+TP -> TRAIN: Créer générateur train_*()
+activate TRAIN
+
+loop Pour chaque epoch (1 à nb_epochs)
+  TRAIN -> TRAIN: Forward pass (batches)
+  TRAIN -> TRAIN: Calcul loss
+  TRAIN -> TRAIN: Backward + optimizer.step()
+  
+  TRAIN -->> TP: yield {epoch, avg_loss}
+  TP -->> UI: SSE: {type: "epoch",\nepoch: n, avg_loss: 0.0234}
+  
+  UI -> UI: update_loss_plot()
+  
+  alt stop_flag == True
+    TP -->> UI: SSE: {type: "stopped"}
+    TP -> TP: break
+  end
+end
+
+TRAIN --> TP: model_trained
+deactivate TRAIN
+
+TP -->> UI: SSE: {type: "phase",\nphase: "train", status: "end"}
+
+note right of TP
+  model_trained sauvegardé
+  dans trained_model_state
+end note
+
+deactivate TP
+deactivate IA
+deactivate UI
+@enduml

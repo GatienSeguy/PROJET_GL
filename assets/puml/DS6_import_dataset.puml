@@ -1,0 +1,43 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS6: Import Dataset
+
+actor Utilisateur as U
+participant "UI\nGestion_Datasets" as UI
+participant "Serveur IA\n(Proxy)" as IA
+participant "Serveur Data" as DATA
+
+U -> UI: Clic "Importer"
+U -> UI: Sélectionne fichier\nCSV ou JSON
+activate UI
+
+UI -> UI: Parser fichier\n→ timestamps[]\n→ values[]
+
+UI -> UI: Demander nom du dataset
+
+UI -> IA: POST /datasets/add_dataset\n{name, timestamps, values}
+activate IA
+
+note right of IA
+  Proxy: forward vers
+  Serveur Data
+end note
+
+IA -> DATA: POST /datasets/add_dataset\n{name, timestamps, values}
+activate DATA
+
+DATA -> DATA: Valider format:\n- len(timestamps) == len(values)\n- timestamps parsables\n- values numériques
+
+DATA -> DATA: Écrire fichier\ndatasets/{name}.json
+
+DATA --> IA: {status: "ok",\nn_points: 5000}
+deactivate DATA
+
+IA --> UI: {status: "ok",\nn_points: 5000}
+deactivate IA
+
+UI -> UI: Rafraîchir liste datasets
+UI -> UI: Afficher confirmation:\n"Dataset importé (5000 points)"
+
+deactivate UI
+@enduml

@@ -1,0 +1,41 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS1: Configuration du Modèle
+
+actor Utilisateur as U
+participant "UI\nFenetre_Params" as UI
+participant "Formatter_JSON" as FMT
+
+U -> UI: Ouvre Fenêtre Paramètres
+activate UI
+
+== Configuration Modèle ==
+U -> UI: Sélectionne type modèle\n(MLP / CNN / LSTM)
+UI -> UI: Affiche paramètres spécifiques
+
+alt MLP sélectionné
+  U -> UI: Configure:\n- nb_couches\n- hidden_size\n- dropout_rate\n- activation
+else CNN sélectionné
+  U -> UI: Configure:\n- nb_couches\n- hidden_size\n- kernel_size\n- stride, padding
+else LSTM sélectionné
+  U -> UI: Configure:\n- nb_couches\n- hidden_size\n- bidirectional
+end
+
+== Configuration Entraînement ==
+U -> UI: Configure paramètres temporels:\n- window_size\n- horizon
+
+U -> UI: Configure optimiseur:\n- type (Adam/SGD/RMSprop)\n- learning_rate\n- weight_decay
+
+U -> UI: Configure entraînement:\n- nb_epochs\n- batch_size\n- loss (MSE/MAE/Huber)
+
+== Création Payload ==
+U -> UI: Clic "Valider"
+UI -> FMT: Formatter_JSON_global()
+FMT -> FMT: Créer PaquetComplet
+FMT -> FMT: Créer payload_model
+
+FMT --> UI: {payload, payload_model}
+UI --> U: Configuration prête\nBouton "Start" activé
+
+deactivate UI
+@enduml

@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title Diagramme de Classes - Serveur IA
+
+class FastAPIApp {
+  +POST /train_full
+  +POST /stop_training
+  +POST /predict
+  +GET /model/status
+  +POST /model/save
+  +POST /model/load
+  +POST /datasets/info_all (proxy)
+  +POST /datasets/fetch_dataset (proxy)
+}
+
+class TrainingPipeline {
+  -stop_flag: bool
+  -cfg: PaquetComplet
+  -device: torch.device
+  -X_train, y_train: Tensor
+  -X_val, y_val: Tensor
+  -X_test, y_test: Tensor
+  -norm_params: dict
+  -residual_std: float
+  -model_trained: nn.Module
+  +load_data()
+  +preprocess_data()
+  +normalize_data()
+  +split_data_three_way()
+  +run_training(): Generator
+  +run_validation(): Generator
+  +run_prediction_test(): Generator
+  +execute_full_pipeline(): Generator
+}
+
+class trained_model_state <<dict>> {
+  +model: nn.Module
+  +norm_params: dict
+  +window_size: int
+  +residual_std: float
+  +model_type: str
+  +is_trained: bool
+}
+
+class DatasetManager {
+  -data_server_url: str
+  +fetch_dataset()
+}
+
+FastAPIApp --> TrainingPipeline
+FastAPIApp --> trained_model_state
+TrainingPipeline --> trained_model_state
+@enduml

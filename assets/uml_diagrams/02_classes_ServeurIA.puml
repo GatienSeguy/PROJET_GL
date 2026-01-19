@@ -60,7 +60,7 @@ package "Serveur IA" {
     }
     
     ' ==== Modèles PyTorch (Abstract) ====
-    abstract class BaseModel <<PyTorch>> {
+    abstract class NeuralNet <<PyTorch>> {
         # input_size : int
         # output_size : int
         --
@@ -70,7 +70,7 @@ package "Serveur IA" {
     }
     
     ' ==== Modèles Concrets ====
-    class MLPModel <<PyTorch>> {
+    class MLP <<PyTorch>> {
         - layers : nn.ModuleList
         - dropout : nn.Dropout
         - batch_norm : nn.BatchNorm1d
@@ -84,7 +84,7 @@ package "Serveur IA" {
         - _get_activation(name: str) : nn.Module
     }
     
-    class CNNModel <<PyTorch>> {
+    class CNN <<PyTorch>> {
         - conv_layers : nn.ModuleList
         - fc_layers : nn.ModuleList
         - kernel_size : int
@@ -96,7 +96,7 @@ package "Serveur IA" {
         - _calculate_conv_output_size() : int
     }
     
-    class LSTMModel <<PyTorch>> {
+    class LSTM <<PyTorch>> {
         - lstm : nn.LSTM
         - fc : nn.Linear
         - hidden_size : int
@@ -111,7 +111,7 @@ package "Serveur IA" {
     ' ==== Factory Pattern ====
     class ModelFactory {
         --
-        + {static} create(model_type: str, config: dict) : BaseModel
+        + {static} create(model_type: str, config: dict) : NeuralNet
         - {static} _validate_config(model_type: str, config: dict) : void
     }
     
@@ -128,14 +128,14 @@ package "Serveur IA" {
     }
     
     ' ==== Entraînement ====
-    class TrainingEngine {
-        - model : BaseModel
+    class Trainer {
+        - model : NeuralNet
         - criterion : nn.Module
         - optimizer : Optimizer
         - device : str
         - history : list
         --
-        + __init__(model: BaseModel, criterion, optimizer, device: str)
+        + __init__(model: NeuralNet, criterion, optimizer, device: str)
         + train_epoch(X: Tensor, y: Tensor, batch_size: int) : dict
         + compute_gradient_norm() : float
         + save_checkpoint(path: str) : void
@@ -185,25 +185,25 @@ package "Serveur IA" {
     }
     
     ' ==== Relations ====
-    BaseModel <|-- MLPModel : hérite
-    BaseModel <|-- CNNModel : hérite
-    BaseModel <|-- LSTMModel : hérite
+    NeuralNet <|-- MLP : hérite
+    NeuralNet <|-- CNN : hérite
+    NeuralNet <|-- LSTM : hérite
     
-    ModelFactory ..> BaseModel : crée
-    ModelFactory ..> MLPModel : instancie
-    ModelFactory ..> CNNModel : instancie
-    ModelFactory ..> LSTMModel : instancie
+    ModelFactory ..> NeuralNet : crée
+    ModelFactory ..> MLP : instancie
+    ModelFactory ..> CNN : instancie
+    ModelFactory ..> LSTM : instancie
     
     FastAPIApp --> PaquetComplet : reçoit
-    FastAPIApp --> TrainingEngine : utilise
+    FastAPIApp --> Trainer : utilise
     FastAPIApp --> DataPreprocessor : utilise
     FastAPIApp --> TestingModule : utilise
     FastAPIApp --> SSEStreamer : utilise
     FastAPIApp --> DataServerProxy : utilise
     
-    TrainingEngine --> BaseModel : entraîne
-    TrainingEngine --> LossFactory : utilise
-    TrainingEngine --> OptimizerFactory : utilise
+    Trainer --> NeuralNet : entraîne
+    Trainer --> LossFactory : utilise
+    Trainer --> OptimizerFactory : utilise
     
     PaquetComplet o-- Parametres_archi_reseau_MLP
     PaquetComplet o-- Parametres_archi_reseau_CNN

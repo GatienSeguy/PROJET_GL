@@ -1,0 +1,27 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title Diagramme de Déploiement
+
+node "Client" {
+  artifact "Python 3.8+"
+  artifact "Tkinter/CTk"
+  artifact "Matplotlib"
+}
+
+node "Serveur IA" {
+  artifact "FastAPI"
+  artifact "PyTorch"
+  component "Port 8000"
+}
+
+node "Serveur Data" {
+  artifact "FastAPI"
+  component "Port 8001"
+  database "datasets/"
+  database "models/"
+  database "contextes/"
+}
+
+Client --> "Serveur IA" : HTTP/SSE Port 8000
+"Serveur IA" --> "Serveur Data" : HTTP REST Port 8001
+@enduml

@@ -1,0 +1,59 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS9: Chargement du Modèle
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "Serveur IA\n/model/load" as IA
+participant "trained_model_state" as STATE
+participant "Serveur Data" as DATA
+
+U -> UI: Sélectionne modèle\ndans liste
+U -> UI: Clic "Charger Modèle"
+activate UI
+
+UI -> IA: POST /model/load\n{name: "mon_modele"}
+activate IA
+
+== Récupération du contexte ==
+IA -> DATA: POST /contexte/all
+activate DATA
+DATA --> IA: {contextes: {...}}
+deactivate DATA
+
+IA -> IA: Extraire contexte "mon_modele":\n- model_type\n- arch_params\n- norm_params\n- window_size
+
+== Récupération du modèle ==
+IA -> DATA: POST /models/model_all
+activate DATA
+DATA --> IA: {models: {mon_modele: "<base64>"}}
+deactivate DATA
+
+IA -> IA: state_dict = base64.decode(data)
+
+== Reconstruction du modèle ==
+IA -> IA: Créer architecture selon model_type
+
+alt model_type == "mlp"
+  IA -> IA: model = MLP(in_dim, hidden_size,\nout_dim, num_blocks)
+else model_type == "cnn"
+  IA -> IA: model = CNN(in_dim, hidden_dim,\nout_dim, kernel_size, ...)
+else model_type == "lstm"
+  IA -> IA: model = LSTM(in_dim, hidden_dim,\nout_dim, nb_couches, ...)
+end
+
+IA -> IA: model.load_state_dict(state_dict)
+IA -> IA: model.eval()
+IA -> IA: model.to(device)
+
+== Mise à jour état global ==
+IA -> STATE: trained_model_state = {\n  model: model,\n  is_trained: True,\n  norm_params: {...},\n  window_size: 15,\n  residual_std: 0.035,\n  model_type: "mlp"\n}
+
+IA --> UI: {status: "ok",\nmodel_type: "mlp",\nis_ready_for_prediction: true}
+deactivate IA
+
+UI -> UI: Afficher confirmation
+UI -> UI: Activer onglet Prediction
+
+deactivate UI
+@enduml

@@ -1,0 +1,44 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+title DS: Pipeline execute_full_pipeline()
+
+actor Utilisateur as U
+participant "UI" as UI
+participant "TrainingPipeline" as TP
+participant "Serveur Data" as DATA
+
+U -> UI: Clic Start
+UI -> TP: POST /train_full
+activate TP
+
+TP -> TP: load_data()
+TP -> TP: split_data_three_way() 80/10/10
+TP -->> UI: SSE: split_info
+TP -->> UI: SSE: serie_complete
+
+== Phase 1: Entraînement (80%) ==
+TP -->> UI: SSE: phase=train
+loop epochs
+  TP -->> UI: SSE: epoch, avg_loss
+end
+
+== Phase 2: Validation (10%) - Courbe Verte ==
+TP -->> UI: SSE: phase=validation
+loop points validation
+  TP -->> UI: SSE: val_pair (idx, y, yhat)
+end
+TP -> TP: residual_std = std(residus)
+TP -->> UI: SSE: val_end
+
+== Phase 3: Test Prédictif (10%) - Courbe Rouge ==
+TP -->> UI: SSE: phase=prediction
+loop points test
+  TP -> TP: IC = yhat ± 1.96 × residual_std
+  TP -->> UI: SSE: pred_point (idx, yhat, y, low, high)
+end
+TP -->> UI: SSE: pred_end
+
+TP -->> UI: SSE: final_plot_data
+TP -->> UI: SSE: fin_pipeline
+deactivate TP
+@enduml
