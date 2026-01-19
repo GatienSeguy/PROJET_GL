@@ -510,6 +510,25 @@ class TrainingPipeline:
         print(f"[VAL ALIGN DEBUG] series[{idx_val_start_series}] = {series_at_idx:.6f}")
         print(f"[VAL ALIGN DEBUG] Différence = {abs(y_val_0_denorm - series_at_idx):.6f}")
         
+        # Chercher où y_val[0] dénormalisé apparaît dans la série
+        target_val = y_val_0_denorm
+        closest_idx = -1
+        closest_diff = float('inf')
+        for i, v in enumerate(self.series.values):
+            diff = abs(v - target_val)
+            if diff < closest_diff:
+                closest_diff = diff
+                closest_idx = i
+        print(f"[VAL ALIGN DEBUG] y_val[0]={target_val:.6f} est plus proche de series[{closest_idx}]={self.series.values[closest_idx]:.6f} (diff={closest_diff:.6f})")
+        print(f"[VAL ALIGN DEBUG] Décalage apparent = {closest_idx - idx_val_start_series}")
+        
+        # Vérifier aussi les valeurs brutes avant normalisation
+        # y[idx_val_start] devrait correspondre à series[idx_val_start + window_size]
+        y_raw_idx = idx_val_start_windows  # indice dans y (= indice dans X)
+        expected_series_idx = y_raw_idx + window_size
+        print(f"[VAL ALIGN DEBUG] y[{y_raw_idx}] devrait correspondre à series[{expected_series_idx}]")
+        print(f"[VAL ALIGN DEBUG] series[{expected_series_idx}] = {self.series.values[expected_series_idx]:.6f}")
+        
         model = self.model_trained
         model_type = trained_model_state.get("model_type", "mlp")
         device = self.device
