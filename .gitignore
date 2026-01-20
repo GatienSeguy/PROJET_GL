@@ -15,6 +15,7 @@ checkpoints/
 # Ignore the test interface project
 test_interface_javascript/nodes_modules/
 test_interface_javascript/.vite/
+test_interface_javascript/.vite/deps
 test_interface_javascript/release/
 # Ignore heavy artifacts from the test interface project (keep source tracked)
 test_interface_javascript/node_modules/
@@ -26,6 +27,6 @@ test_interface_javascript/.turbo/
 test_interface_javascript/.vite/
 test_interface_javascript/*.log
 test_interface_javascript/*.zip
-
+test_interface_javascript/*.vite
 test_interface_javascript.zip
 test_interface_javascript.zip
