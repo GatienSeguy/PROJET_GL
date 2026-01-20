@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from ..models.optim import make_loss, make_optimizer
 from ..models.model_CNN import CNN 
 import time
-import math
 
 def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
     """
@@ -70,21 +69,24 @@ def train_CNN(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: str = "cpu",
+    device: str = "mps",
 ):
     """
     Entraîne un CNN1D.
+    Attend X: (B, seq_len) ou (B, seq_len, 1)
+           y: (B, out_dim)
     """
     # Reshape si nécessaire
     if X.ndim == 2:
-        X = X.unsqueeze(1)
+        X = X.unsqueeze(1)  # (B, seq_len) -> (B, 1, seq_len)
     if y.ndim == 1:
-        y = y.unsqueeze(1)
+        y = y.unsqueeze(1)  # (B,) -> (B, 1)
 
-    pin_memory = (str(device) == "cuda" or "cuda" in str(device))
-    loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+    loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True)
 
-    in_channels = X.shape[1]
+    # Modèle
+    in_channels = X.shape[1]  # Normalement 1
+    seq_len = X.shape[2]
     out_dim = y.shape[1]
 
     model = _build_cnn_safely(
@@ -102,7 +104,7 @@ def train_CNN(
     criterion = make_loss({"name": loss_name})
     optimizer = make_optimizer(model, {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay})
 
-    last_avg = 0.0
+    last_avg = None
     for epoch in range(1, epochs + 1):
         epoch_start = time.time()
         model.train()
@@ -110,11 +112,13 @@ def train_CNN(
         
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
-            optimizer.zero_grad(set_to_none=True)
+            optimizer.zero_grad()
             
-            pred = model(xb)
+            pred = model(xb)  # (B, out_channels, seq_out)
+            
+            # Adapter la sortie selon ce que renvoie le CNN
             if pred.ndim == 3:
-                pred = pred.mean(dim=2)
+                pred = pred.mean(dim=2)  # Moyenne sur dimension temporelle
             if pred.ndim == 3:
                 pred = pred.squeeze(1)
             
@@ -122,24 +126,17 @@ def train_CNN(
             loss.backward()
             optimizer.step()
             
-            loss_val = loss.item()
-            if math.isfinite(loss_val):
-                total += loss_val * xb.size(0)
+            total += loss.item() * xb.size(0)
             n += xb.size(0)
 
         last_avg = total / max(1, n)
         epoch_duration = time.time() - epoch_start
 
-        epoch_s = 1.0 / epoch_duration if epoch_duration > 0.001 else 1000.0
-        if not math.isfinite(epoch_s):
-            epoch_s = 1000.0
-        if not math.isfinite(last_avg):
-            last_avg = 0.0
+        if epoch % 1 == 0:
+             yield {"type": "epoch","epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
 
-        yield {"type": "epoch", "epochs": epoch, "avg_loss": last_avg, "epoch_s": epoch_s}
         print(f"[CNN {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
-    final_loss = last_avg if math.isfinite(last_avg) else 0.0
-    yield {"done": True, "final_loss": final_loss}
+    yield {"done": True, "final_loss": float(last_avg)}
 
     return model

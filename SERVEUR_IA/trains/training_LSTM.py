@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from ..models.optim import make_loss, make_optimizer
 from ..models.model_LSTM import LSTM 
 import time
-import math
 
 
 def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
@@ -172,7 +171,7 @@ def train_LSTM(
     )
 
     # Boucle d'entraînement
-    last_avg = 0.0
+    last_avg = None
     for epoch in range(1, epochs + 1):
         epoch_start = time.time()
         model.train()
@@ -180,7 +179,7 @@ def train_LSTM(
 
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
-            optimizer.zero_grad(set_to_none=True)
+            optimizer.zero_grad()
             pred = model(xb)  # (B, T, out_dim) si batch_first
 
             if seq_to_seq:
@@ -205,23 +204,17 @@ def train_LSTM(
             optimizer.step()
 
             bs = xb.size(0) if batch_first else xb.size(1)
-            loss_val = loss.item()
-            if math.isfinite(loss_val):
-                total += loss_val * bs
+            total += loss.item() * bs
             n += bs
 
         last_avg = total / max(1, n)
         epoch_duration = time.time() - epoch_start
 
-        epoch_s = 1.0 / epoch_duration if epoch_duration > 0.001 else 1000.0
-        if not math.isfinite(epoch_s):
-            epoch_s = 1000.0
-        if not math.isfinite(last_avg):
-            last_avg = 0.0
+        k = 1
+        if epoch % k == 0:
+            yield {"type": "epoch","epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
 
-        yield {"type": "epoch", "epochs": epoch, "avg_loss": last_avg, "epoch_s": epoch_s}
         print(f"[LSTM {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
-    final_loss = last_avg if math.isfinite(last_avg) else 0.0
-    yield {"done": True, "final_loss": final_loss}
+    yield {"done": True, "final_loss": float(last_avg)}
     return model

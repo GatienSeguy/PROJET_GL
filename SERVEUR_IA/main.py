@@ -12,40 +12,6 @@ from fastapi import HTTPException
 import json
 import torch
 import numpy as np
-import os
-from multiprocessing import cpu_count
-
-# ====================================
-# CONFIGURATION PARALLÉLISATION (SIMPLE)
-# ====================================
-NUM_CORES = cpu_count()
-
-# Configurer PyTorch pour utiliser tous les cœurs
-torch.set_num_threads(NUM_CORES)
-try:
-    torch.set_num_interop_threads(max(1, NUM_CORES // 2))
-except RuntimeError:
-    pass  # Déjà configuré
-
-# Variables d'environnement pour les libs numériques
-os.environ["OMP_NUM_THREADS"] = str(NUM_CORES)
-os.environ["MKL_NUM_THREADS"] = str(NUM_CORES)
-os.environ["OPENBLAS_NUM_THREADS"] = str(NUM_CORES)
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-# Détection du device optimal
-if torch.cuda.is_available():
-    DEVICE = torch.device("cuda")
-    torch.backends.cudnn.benchmark = True  # Optimise les convolutions
-    print(f"🚀 CUDA activé: {torch.cuda.get_device_name(0)}")
-elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-    DEVICE = torch.device("mps")
-    print(f"🍎 MPS (Apple Silicon) activé")
-else:
-    DEVICE = torch.device("cpu")
-    print(f"💻 CPU activé: {NUM_CORES} cœurs, {torch.get_num_threads()} threads PyTorch")
-
-print(f"📊 Configuration: {NUM_CORES} cœurs CPU disponibles")
 
 # Train Modele
 from .trains.training_MLP import train_MLP
@@ -85,6 +51,7 @@ from .fonctions_pour_main import (
     create_inverse_function
 )
 
+import os
 import requests
 
 DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
@@ -161,8 +128,7 @@ class TrainingPipeline:
 
         self.cfg = payload
         self.payload_model = payload_model
-        # Utiliser le DEVICE global configuré au démarrage
-        self.device = DEVICE
+        self.device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
 
         # Variables d'état
         self.series = time_series_data

@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from ..models.optim import make_loss, make_optimizer
 from ..models.model_MLP import MLP
 import time
-import math
 
 def _build_mlp_safely(in_dim: int, out_dim: int, **kwargs):
     """
@@ -81,20 +80,12 @@ def train_MLP(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: str = "cpu",
+    device: str = "msp",
 ):
     if y.ndim == 1:
         y = y.unsqueeze(1)
 
-    # Optimisation: pin_memory pour CUDA
-    pin_memory = (str(device) == "cuda" or "cuda" in str(device))
-    loader = DataLoader(
-        TensorDataset(X, y), 
-        batch_size=batch_size, 
-        shuffle=True, 
-        drop_last=True,
-        pin_memory=pin_memory
-    )
+    loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True,drop_last=True)
 
     model = _build_mlp_safely(
         in_dim=X.shape[1],
@@ -112,41 +103,28 @@ def train_MLP(
         {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay}
     )
 
-    last_avg = 0.0
+    last_avg = None
     for epoch in range(1, epochs + 1):
         epoch_start = time.time()
         total, n = 0.0, 0
-        model.train()
-        
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
-            optimizer.zero_grad(set_to_none=True)  # Plus efficace
+            optimizer.zero_grad()
             pred = model(xb)
             loss = criterion(pred, yb)
             loss.backward()
             optimizer.step()
-            
-            loss_val = loss.item()
-            # Protection contre NaN/Inf
-            if math.isfinite(loss_val):
-                total += loss_val * xb.size(0)
+            total += loss.item() * xb.size(0)
             n += xb.size(0)
-        
         last_avg = total / max(1, n) if n > 0 else 0.0
         epoch_duration = time.time() - epoch_start
-        
-        # Protection contre division par zéro et valeurs infinies
-        epoch_s = 1.0 / epoch_duration if epoch_duration > 0.001 else 1000.0
-        if not math.isfinite(epoch_s):
-            epoch_s = 1000.0
-        if not math.isfinite(last_avg):
-            last_avg = 0.0
-            
-        yield {"type": "epoch", "epochs": epoch, "avg_loss": last_avg, "epoch_s": epoch_s}
-        print(f"[MLP {epoch:03d}/{epochs}] loss={last_avg:.6f}")
+        k = 1
+        if epoch % k == 0:
+            yield {"type": "epoch","epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
 
-    final_loss = last_avg if math.isfinite(last_avg) else 0.0
-    yield {"done": True, "final_loss": final_loss}
+        print(f"[{epoch:03d}/{epochs}] loss={last_avg:.6f}")
+
+    yield {"done": True, "final_loss": float(last_avg)}
 
     return model
 
