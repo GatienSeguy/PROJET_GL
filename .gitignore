@@ -28,4 +28,4 @@ INTERFACE_JS/.vite/
 INTERFACE_JS/*.log
 INTERFACE_JS/*.zip
 INTERFACE_JS/*.vite
-
+INTERFACE_JS/package-lock.json
