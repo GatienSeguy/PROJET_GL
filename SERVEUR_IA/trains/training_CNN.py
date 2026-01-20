@@ -1,20 +1,30 @@
 # trains/training_CNN.py
+"""
+Module d'entraînement CNN optimisé avec parallélisation multi-cœurs/GPU.
+Utilise multiprocessing pour maximiser l'utilisation CPU.
+"""
 import inspect
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from ..models.optim import make_loss, make_optimizer
-from ..models.model_CNN import CNN 
 import time
+
+from ..models.optim import make_loss, make_optimizer
+from ..models.model_CNN import CNN
+from ..hardware_config import (
+    DEVICE, NUM_WORKERS, HARDWARE_INFO,
+    get_optimal_dataloader, ParallelTrainer, AMPTrainer
+)
+
 
 def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
     """
-    Crée un CNN1D en détectant la signature réelle et en mappant les alias
+    Crée un CNN1D en détectant la signature réelle et en mappant les alias.
     """
     sig = inspect.signature(CNN.__init__)
     params = set(sig.parameters.keys())
     resolved = {}
 
-    # in/out dims
     for cand in ("in_dim", "input_dim", "in_channels"):
         if cand in params:
             resolved[cand] = in_dim
@@ -30,7 +40,6 @@ def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
                 resolved[name] = value
                 return
 
-    # Mapping des paramètres
     put(kwargs.get("hidden_size", 64), "hidden_dim", "hidden_size", "width")
     put(kwargs.get("nb_couches", 2), "nb_couches", "n_layers", "depth", "layers")
     put(kwargs.get("activation", "relu"), "activation", "act", "activation_name")
@@ -39,7 +48,6 @@ def _build_cnn_safely(in_dim: int, out_dim: int, **kwargs):
     put(kwargs.get("stride", 1), "stride")
     put(kwargs.get("padding", 1), "padding")
 
-    # Tout autre kw explicite
     for k, v in kwargs.items():
         if k in params:
             resolved[k] = v
@@ -69,24 +77,48 @@ def train_CNN(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: str = "mps",
+    device: torch.device = None,
+    
+    # --- PARALLÉLISATION ---
+    use_amp: bool = None,
+    use_parallel: bool = True,
 ):
     """
-    Entraîne un CNN1D.
-    Attend X: (B, seq_len) ou (B, seq_len, 1)
-           y: (B, out_dim)
+    Entraîne un CNN1D avec parallélisation optimale.
+    
+    Optimisations:
+    - DataLoader multi-workers avec pin_memory
+    - Mixed Precision (AMP) sur CUDA
+    - Multi-GPU avec DataParallel
+    - Transferts non-bloquants
     """
+    if device is None:
+        device = DEVICE
+    
+    if use_amp is None:
+        use_amp = (device.type == "cuda")
+    
+    print(f"[CNN TRAIN] 🚀 Device: {device}")
+    print(f"[CNN TRAIN] 📊 Workers: {NUM_WORKERS}, Threads: {HARDWARE_INFO.torch_threads}")
+    print(f"[CNN TRAIN] ⚡ AMP: {use_amp}, Parallel: {use_parallel}")
+    
     # Reshape si nécessaire
     if X.ndim == 2:
         X = X.unsqueeze(1)  # (B, seq_len) -> (B, 1, seq_len)
     if y.ndim == 1:
-        y = y.unsqueeze(1)  # (B,) -> (B, 1)
+        y = y.unsqueeze(1)
 
-    loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True)
+    # ========== DATALOADER OPTIMISÉ ==========
+    loader = get_optimal_dataloader(
+        X, y,
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=False,
+        device=device
+    )
 
-    # Modèle
-    in_channels = X.shape[1]  # Normalement 1
-    seq_len = X.shape[2]
+    # ========== MODÈLE ==========
+    in_channels = X.shape[1]
     out_dim = y.shape[1]
 
     model = _build_cnn_safely(
@@ -99,11 +131,27 @@ def train_CNN(
         padding=padding,
         activation=activation,
         use_batchnorm=use_batchnorm,
-    ).to(device)
+    )
+    
+    # ========== PARALLÉLISATION ==========
+    if use_parallel and use_amp and device.type == "cuda":
+        trainer = AMPTrainer(model, device)
+        model = trainer.model
+    elif use_parallel:
+        trainer = ParallelTrainer(model, device)
+        model = trainer.model
+    else:
+        model = model.to(device)
+        trainer = None
 
     criterion = make_loss({"name": loss_name})
     optimizer = make_optimizer(model, {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay})
+    
+    scaler = None
+    if use_amp and device.type == "cuda":
+        scaler = torch.cuda.amp.GradScaler()
 
+    # ========== BOUCLE D'ENTRAÎNEMENT ==========
     last_avg = None
     for epoch in range(1, epochs + 1):
         epoch_start = time.time()
@@ -111,32 +159,54 @@ def train_CNN(
         total, n = 0.0, 0
         
         for xb, yb in loader:
-            xb, yb = xb.to(device), yb.to(device)
-            optimizer.zero_grad()
+            xb = xb.to(device, non_blocking=True)
+            yb = yb.to(device, non_blocking=True)
             
-            pred = model(xb)  # (B, out_channels, seq_out)
+            optimizer.zero_grad(set_to_none=True)
             
-            # Adapter la sortie selon ce que renvoie le CNN
-            if pred.ndim == 3:
-                pred = pred.mean(dim=2)  # Moyenne sur dimension temporelle
-            if pred.ndim == 3:
-                pred = pred.squeeze(1)
-            
-            loss = criterion(pred, yb)
-            loss.backward()
-            optimizer.step()
+            if use_amp and scaler is not None:
+                with torch.cuda.amp.autocast():
+                    pred = model(xb)
+                    if pred.ndim == 3:
+                        pred = pred.mean(dim=2)
+                    if pred.ndim == 3:
+                        pred = pred.squeeze(1)
+                    loss = criterion(pred, yb)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                pred = model(xb)
+                if pred.ndim == 3:
+                    pred = pred.mean(dim=2)
+                if pred.ndim == 3:
+                    pred = pred.squeeze(1)
+                loss = criterion(pred, yb)
+                loss.backward()
+                optimizer.step()
             
             total += loss.item() * xb.size(0)
             n += xb.size(0)
 
         last_avg = total / max(1, n)
         epoch_duration = time.time() - epoch_start
+        samples_per_sec = n / epoch_duration if epoch_duration > 0 else 0
 
-        if epoch % 1 == 0:
-             yield {"type": "epoch","epochs": epoch, "avg_loss": float(last_avg), "epoch_s" : 1/epoch_duration}
+        yield {
+            "type": "epoch",
+            "epochs": epoch,
+            "avg_loss": float(last_avg),
+            "epoch_s": 1/epoch_duration if epoch_duration > 0 else 0,
+            "samples_per_sec": samples_per_sec,
+            "device": str(device)
+        }
 
-        print(f"[CNN {epoch:03d}/{epochs}] loss={last_avg:.6f}")
+        print(f"[CNN {epoch:03d}/{epochs}] loss={last_avg:.6f} ({epoch_duration:.2f}s, {samples_per_sec:.0f} samples/s)")
 
     yield {"done": True, "final_loss": float(last_avg)}
 
+    if trainer and hasattr(trainer, 'get_model'):
+        return trainer.get_model()
+    elif isinstance(model, nn.DataParallel):
+        return model.module
     return model

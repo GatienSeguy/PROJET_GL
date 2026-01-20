@@ -1,31 +1,44 @@
-# trains/training_LSTM.py
-"""
-Module d'entraînement LSTM optimisé avec parallélisation multi-cœurs/GPU.
-Utilise multiprocessing pour maximiser l'utilisation CPU.
-"""
+# trains/training_LSTM.py - VERSION OPTIMISÉE M3 Pro
 import inspect
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import time
-
 from ..models.optim import make_loss, make_optimizer
-from ..models.model_LSTM import LSTM
-from ..hardware_config import (
-    DEVICE, NUM_WORKERS, HARDWARE_INFO,
-    get_optimal_dataloader, ParallelTrainer, AMPTrainer
-)
+from ..models.model_LSTM import LSTM 
+
+
+def get_optimal_device():
+    """
+    Détecte automatiquement le meilleur device disponible.
+    Pour M3 Pro: privilégie MPS (Metal Performance Shaders)
+    """
+    if torch.backends.mps.is_available():
+        print("🚀 Utilisation du GPU Apple Silicon (MPS)")
+        return "mps"
+    elif torch.cuda.is_available():
+        print("🚀 Utilisation du GPU CUDA")
+        return "cuda"
+    else:
+        print("⚠️ Utilisation du CPU (considérez l'activation de MPS)")
+        return "cpu"
 
 
 def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
     """
-    Crée un LSTM en détectant la signature réelle et en mappant les alias.
+    Crée un LSTM en détectant la signature réelle et en mappant les alias :
+
+    - in_dim           -> input_dim | in_features
+    - out_dim          -> output_dim | out_features
+    - hidden_size       <- hidden_size | width
+    - nb_couches       <- n_layers | nb_couches | depth | layers | num_layers
+    - bidirectional    <- bi | bidir
+    - batch_first      <- batchfirst
     """
     sig = inspect.signature(LSTM.__init__)
     params = set(sig.parameters.keys())
 
     resolved = {}
 
+    # --- in/out dims ---
     for cand in ("in_dim", "input_dim", "in_features"):
         if cand in params:
             resolved[cand] = in_dim
@@ -41,6 +54,7 @@ def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
                 resolved[name] = value
                 return
 
+    # --- mapping des alias ---
     batch_first_val = kwargs.get("batch_first", True)
     if not isinstance(batch_first_val, bool):
         batch_first_val = True if str(batch_first_val).lower() == "true" else False
@@ -48,7 +62,7 @@ def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
     if "batch_first" in kwargs and not isinstance(kwargs["batch_first"], bool):
         del kwargs["batch_first"]
     put(batch_first_val, "batch_first", "batchfirst")
-
+    
     put(kwargs.get("nb_couches", 2), "num_layers", "n_layers", "nb_couches", "depth", "layers")
     put(kwargs.get("hidden_size", 128), "hidden_size", "width", "hidden_dim")
     put(kwargs.get("bidirectional", False), "bidirectional", "bi", "bidir")
@@ -79,55 +93,53 @@ def train_LSTM(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: torch.device = None,
-
+    device: str = None,  # Auto-détection si None
+    
+    # --- OPTIMISATIONS M3 Pro ---
+    num_workers: int = 4,  # Parallélisation du DataLoader (profite des 12 cœurs)
+    pin_memory: bool = True,  # Accélère les transferts CPU->GPU
+    persistent_workers: bool = True,  # Garde les workers actifs
+    prefetch_factor: int = 2,  # Précharge les batches
+    
     # --- COMPORTEMENT SORTIE ---
     take_last_if_needed: bool = True,
-    
-    # --- PARALLÉLISATION ---
-    use_amp: bool = None,
-    use_parallel: bool = True,
+    verbose: bool = True,
 ):
     """
-    Entraîne un LSTM avec parallélisation optimale.
-    
-    Optimisations:
-    - DataLoader multi-workers avec pin_memory
-    - Mixed Precision (AMP) sur CUDA
-    - Multi-GPU avec DataParallel
-    - Transferts non-bloquants
-    - cuDNN optimisé pour LSTM
+    Entraîne un modèle LSTM sur des tenseurs déjà supervisés.
+    VERSION OPTIMISÉE pour Apple Silicon M3 Pro.
+
+    Attendus :
+    - X: (B, T, in_dim) si batch_first=True (défaut)
+    - y: (B, T, out_dim) pour seq->seq
+         (B, out_dim)     pour seq->one
+
+    Retourne (model, last_avg) et yield un dict toutes les k époques.
     """
+    
+    # Auto-détection du device optimal
     if device is None:
-        device = DEVICE
+        device = get_optimal_device()
     
-    if use_amp is None:
-        use_amp = (device.type == "cuda")
+    if verbose:
+        print(f"📊 X.shape: {X.shape}, y.shape: {y.shape}, batch_first: {batch_first}")
+        print(f"🎯 Device: {device}, Batch size: {batch_size}, Epochs: {epochs}")
     
-    print(f"[LSTM TRAIN] 🚀 Device: {device}")
-    print(f"[LSTM TRAIN] 📊 Workers: {NUM_WORKERS}, Threads: {HARDWARE_INFO.torch_threads}")
-    print(f"[LSTM TRAIN] ⚡ AMP: {use_amp}, Parallel: {use_parallel}")
-    print(f"[LSTM TRAIN] ENTRÉE - X.shape: {X.shape}, y.shape: {y.shape}, batch_first: {batch_first}")
-    
-    # Sanity checks et reshape
+    # Sanity checks
     if batch_first:
         if X.ndim == 2:
-            print(f"[LSTM TRAIN] Reshape X de {X.shape} vers (B, T, 1)")
             X = X.unsqueeze(-1)
         elif X.ndim == 1:
             X = X.unsqueeze(0).unsqueeze(-1)
-        
-        assert X.ndim == 3, f"X doit être (B, T, in_dim) avec batch_first=True, got shape {X.shape}"
+        assert X.ndim == 3, "X doit être (B, T, in_dim) avec batch_first=True"
         B, T, in_dim = X.shape
-        print(f"[LSTM TRAIN] Après reshape - B={B}, T={T}, in_dim={in_dim}")
     else:
         if X.ndim == 2:
             X = X.unsqueeze(-1)
         elif X.ndim == 1:
             X = X.unsqueeze(0).unsqueeze(-1)
-        assert X.ndim == 3, f"X doit être (T, B, in_dim) avec batch_first=False, got shape {X.shape}"
+        assert X.ndim == 3, "X doit être (T, B, in_dim) avec batch_first=False"
         T, B, in_dim = X.shape
-        print(f"[LSTM TRAIN] Après reshape - T={T}, B={B}, in_dim={in_dim}")
 
     # Détermination de out_dim
     if y.ndim == 3:
@@ -139,23 +151,28 @@ def train_LSTM(
             out_dim = y.shape[2]
         seq_to_seq = True
     elif y.ndim == 2:
-        print(f"DEBUG ASSERT - batch_first={batch_first}, X.shape={X.shape}, y.shape={y.shape}")
         assert y.shape[0] == (X.shape[0] if batch_first else X.shape[1])
         out_dim = y.shape[1]
         seq_to_seq = False
     else:
         raise ValueError("y doit être de rang 2 (seq->one) ou 3 (seq->seq).")
 
-    # ========== DATALOADER OPTIMISÉ ==========
-    loader = get_optimal_dataloader(
-        X, y,
+    # DataLoader OPTIMISÉ pour M3 Pro
+    # Note: num_workers > 0 profite des 12 cœurs CPU du M3 Pro
+    # Pin memory n'est supporté que sur CUDA, pas sur MPS
+    use_pin_memory = pin_memory and device == "cuda"
+    
+    loader = DataLoader(
+        TensorDataset(X, y),
         batch_size=batch_size,
         shuffle=True,
-        drop_last=False,
-        device=device
+        num_workers=num_workers,
+        pin_memory=use_pin_memory,
+        persistent_workers=persistent_workers and num_workers > 0,
+        prefetch_factor=prefetch_factor if num_workers > 0 else None,
     )
 
-    # ========== MODÈLE ==========
+    # Modèle
     model = _build_lstm_safely(
         in_dim=in_dim,
         out_dim=out_dim,
@@ -163,47 +180,41 @@ def train_LSTM(
         nb_couches=nb_couches,
         bidirectional=bidirectional,
         batch_first=batch_first,
-    )
+    ).to(device)
     
-    # ========== PARALLÉLISATION ==========
-    # Note: LSTM avec DataParallel peut avoir des problèmes avec les hidden states
-    # On utilise quand même pour le forward pass
-    if use_parallel and use_amp and device.type == "cuda":
-        trainer = AMPTrainer(model, device)
-        model = trainer.model
-    elif use_parallel:
-        trainer = ParallelTrainer(model, device)
-        model = trainer.model
-    else:
-        model = model.to(device)
-        trainer = None
+    if verbose:
+        total_params = sum(p.numel() for p in model.parameters())
+        print(f"🧠 Modèle: {total_params:,} paramètres")
 
+    # Loss / Optim
     criterion = make_loss({"name": loss_name})
     optimizer = make_optimizer(
         model,
         {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay}
     )
     
-    scaler = None
-    if use_amp and device.type == "cuda":
-        scaler = torch.cuda.amp.GradScaler()
-
-    # ========== BOUCLE D'ENTRAÎNEMENT ==========
+    # Note: AMP n'est pas encore stable sur MPS (PyTorch 2.x)
+    # On désactive pour l'instant
+    use_amp = False
+    if use_amp and verbose:
+        print("⚡ Activation de l'AMP (Automatic Mixed Precision)")
+    
+    # Boucle d'entraînement
     last_avg = None
     for epoch in range(1, epochs + 1):
-        epoch_start = time.time()
         model.train()
         total, n = 0.0, 0
 
         for xb, yb in loader:
-            xb = xb.to(device, non_blocking=True)
-            yb = yb.to(device, non_blocking=True)
+            xb, yb = xb.to(device, non_blocking=True), yb.to(device, non_blocking=True)
             
-            optimizer.zero_grad(set_to_none=True)
+            optimizer.zero_grad(set_to_none=True)  # Plus efficace que zero_grad()
             
-            if use_amp and scaler is not None:
-                with torch.cuda.amp.autocast():
+            # Forward pass (avec AMP si disponible)
+            if use_amp:
+                with torch.autocast(device_type='cpu'):  # MPS utilise cpu comme device_type
                     pred = model(xb)
+                    
                     if seq_to_seq:
                         loss = criterion(pred, yb)
                     else:
@@ -216,11 +227,9 @@ def train_LSTM(
                             else:
                                 yb_rep = yb.unsqueeze(0).expand(pred.shape[0], -1, -1)
                             loss = criterion(pred, yb_rep)
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
             else:
                 pred = model(xb)
+                
                 if seq_to_seq:
                     loss = criterion(pred, yb)
                 else:
@@ -233,32 +242,26 @@ def train_LSTM(
                         else:
                             yb_rep = yb.unsqueeze(0).expand(pred.shape[0], -1, -1)
                         loss = criterion(pred, yb_rep)
-                loss.backward()
-                optimizer.step()
+
+            loss.backward()
+            
+            # Gradient clipping (optionnel mais recommandé pour LSTM)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
+            optimizer.step()
 
             bs = xb.size(0) if batch_first else xb.size(1)
             total += loss.item() * bs
             n += bs
 
         last_avg = total / max(1, n)
-        epoch_duration = time.time() - epoch_start
-        samples_per_sec = n / epoch_duration if epoch_duration > 0 else 0
 
-        yield {
-            "type": "epoch",
-            "epochs": epoch,
-            "avg_loss": float(last_avg),
-            "epoch_s": 1/epoch_duration if epoch_duration > 0 else 0,
-            "samples_per_sec": samples_per_sec,
-            "device": str(device)
-        }
+        k = 1
+        if epoch % k == 0:
+            yield {"epochs": epoch, "avg_loss": float(last_avg)}
 
-        print(f"[LSTM {epoch:03d}/{epochs}] loss={last_avg:.6f} ({epoch_duration:.2f}s, {samples_per_sec:.0f} samples/s)")
+        if verbose:
+            print(f"[LSTM {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
     yield {"done": True, "final_loss": float(last_avg)}
-    
-    if trainer and hasattr(trainer, 'get_model'):
-        return trainer.get_model()
-    elif isinstance(model, nn.DataParallel):
-        return model.module
-    return model
+    return model, last_avg

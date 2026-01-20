@@ -1,29 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const URL = 'http://138.231.149.81:8002'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
       '/datasets': {
-        target: 'http://192.168.1.190:8000',
+        target: URL,
         changeOrigin: true,
       },
       '/train_full': {
-        target: 'http://192.168.1.190:8000',
+        target: URL,
         changeOrigin: true,
       },
       '/stop_training': {
-        target: 'http://192.168.1.190:8000',
+        target: URL,
         changeOrigin: true,
       },
       '/model': {
-        target: 'http://192.168.1.190:8000',
+        target: URL,
         changeOrigin: true,
       },
       '/predict': {
-        target: 'http://192.168.1.190:8000',
+        target: URL,
         changeOrigin: true,
       },
     }

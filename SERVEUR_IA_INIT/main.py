@@ -13,14 +13,6 @@ import json
 import torch
 import numpy as np
 
-# ====================================
-# CONFIGURATION HARDWARE OPTIMISÉE
-# ====================================
-from .hardware_config import (
-    DEVICE, NUM_WORKERS, HARDWARE_INFO,
-    get_device_info, benchmark_device
-)
-
 # Train Modele
 from .trains.training_MLP import train_MLP
 from .trains.training_CNN import train_CNN
@@ -136,10 +128,7 @@ class TrainingPipeline:
 
         self.cfg = payload
         self.payload_model = payload_model
-        # Utiliser le device optimisé global (configuré dans hardware_config)
-        self.device = DEVICE
-        print(f"[TrainingPipeline] 🚀 Device utilisé: {self.device}")
-        print(f"[TrainingPipeline] 📊 Config: {HARDWARE_INFO.num_cores} cœurs, {NUM_WORKERS} workers")
+        self.device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
 
         # Variables d'état
         self.series = time_series_data
@@ -1730,59 +1719,3 @@ def delete_model(name: str):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ====================================
-# ROUTES HARDWARE & DIAGNOSTIC
-# ====================================
-@app.get("/hardware/info")
-def hardware_info():
-    """Retourne les informations sur le hardware détecté et la configuration"""
-    return get_device_info()
-
-
-@app.get("/hardware/benchmark")
-def hardware_benchmark():
-    """Lance un benchmark rapide du device et retourne les résultats"""
-    try:
-        results = benchmark_device(size=1500, iterations=30)
-        return {
-            "status": "ok",
-            "benchmark": results,
-            "hardware": get_device_info()
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/hardware/status")
-def hardware_status():
-    """Retourne un résumé du statut hardware pour le frontend"""
-    info = get_device_info()
-    
-    # Déterminer le niveau de performance
-    if info["device_type"] == "cuda":
-        perf_level = "high"
-        perf_icon = "🚀"
-        perf_text = f"GPU CUDA ({info['gpu_name']})"
-    elif info["device_type"] == "mps":
-        perf_level = "high"
-        perf_icon = "🍎"
-        perf_text = "Apple Silicon MPS"
-    else:
-        perf_level = "medium"
-        perf_icon = "💻"
-        perf_text = f"CPU ({info['num_cores']} cœurs)"
-    
-    return {
-        "device": info["device"],
-        "device_type": info["device_type"],
-        "performance_level": perf_level,
-        "performance_icon": perf_icon,
-        "performance_text": perf_text,
-        "num_cores": info["num_cores"],
-        "num_workers": info["num_workers"],
-        "torch_threads": info["torch_threads"],
-        "gpu_name": info.get("gpu_name"),
-        "gpu_memory_gb": info.get("gpu_memory_gb"),
-    }

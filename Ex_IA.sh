@@ -8,4 +8,4 @@ export KMP_DUPLICATE_LIB_OK=TRUEDD
 export OMP_NUM_THREADS=1
 
 # Lancement du serveur Uvicorn
-python -m uvicorn SERVEUR_IA.test_main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn SERVEUR_IA.main:app --host 0.0.0.0 --port 8002 --reload
