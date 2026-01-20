@@ -1,4 +1,4 @@
-import json
+import json### à  tester avec main3.py  (serveur DATA) en local 
 import requests
 import base64
 from pathlib import Path
