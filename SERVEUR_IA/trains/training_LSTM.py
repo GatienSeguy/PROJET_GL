@@ -1,31 +1,32 @@
 # trains/training_LSTM.py
-"""
-Module d'entraînement LSTM optimisé avec parallélisation multi-cœurs/GPU.
-Utilise multiprocessing pour maximiser l'utilisation CPU.
-"""
 import inspect
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import time
-
 from ..models.optim import make_loss, make_optimizer
-from ..models.model_LSTM import LSTM
-from ..hardware_config import (
-    DEVICE, NUM_WORKERS, HARDWARE_INFO,
-    get_optimal_dataloader, ParallelTrainer, AMPTrainer
-)
+from ..models.model_LSTM import LSTM 
+import time
+import math
 
 
 def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
     """
-    Crée un LSTM en détectant la signature réelle et en mappant les alias.
+    Crée un LSTM en détectant la signature réelle et en mappant les alias :
+
+    - in_dim           -> input_dim | in_features
+    - out_dim          -> output_dim | out_features
+    - hidden_size       <- hidden_size | width
+    - nb_couches       <- n_layers | nb_couches | depth | layers | num_layers (attention: ici c'est le nb de LSTM empilés)
+    - bidirectional    <- bi | bidir
+    - batch_first      <- batchfirst
+
+    Tout autre kw présent dans la signature officielle est copié tel quel.
     """
     sig = inspect.signature(LSTM.__init__)
     params = set(sig.parameters.keys())
 
     resolved = {}
 
+    # --- in/out dims ---
     for cand in ("in_dim", "input_dim", "in_features"):
         if cand in params:
             resolved[cand] = in_dim
@@ -41,6 +42,7 @@ def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
                 resolved[name] = value
                 return
 
+    # --- mapping des alias ---
     batch_first_val = kwargs.get("batch_first", True)
     if not isinstance(batch_first_val, bool):
         batch_first_val = True if str(batch_first_val).lower() == "true" else False
@@ -48,11 +50,13 @@ def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
     if "batch_first" in kwargs and not isinstance(kwargs["batch_first"], bool):
         del kwargs["batch_first"]
     put(batch_first_val, "batch_first", "batchfirst")
+    
 
     put(kwargs.get("nb_couches", 2), "num_layers", "n_layers", "nb_couches", "depth", "layers")
     put(kwargs.get("hidden_size", 128), "hidden_size", "width", "hidden_dim")
     put(kwargs.get("bidirectional", False), "bidirectional", "bi", "bidir")
 
+   
     for k, v in kwargs.items():
         if k in params:
             resolved[k] = v
@@ -60,15 +64,18 @@ def _build_lstm_safely(in_dim: int, out_dim: int, **kwargs):
     return LSTM(**resolved)
 
 
+
+
+
 def train_LSTM(
     X: torch.Tensor,
     y: torch.Tensor,
     *,
     # --- ARCHI ---
-    hidden_size: int = 128,
-    nb_couches: int = 2,
-    bidirectional: bool = False,
-    batch_first: bool = True,
+    hidden_size: int = 128,          # hidden_size, width
+    nb_couches: int = 2,            #  n_layers, nb_couches, depth, layers, num_layers
+    bidirectional: bool = False,    #  bi, bidir
+    batch_first: bool = True,       #   batchfirst
 
     # --- LOSS / OPTIM ---
     loss_name: str = "mse",
@@ -79,39 +86,30 @@ def train_LSTM(
     # --- TRAIN ---
     batch_size: int = 64,
     epochs: int = 10,
-    device: torch.device = None,
+    device: str = "mps",
 
     # --- COMPORTEMENT SORTIE ---
+    # Si y est 2D (B, out_dim) et X 3D (B, T, in_dim), on utilise la dernière sortie temporelle.
+    # Si y est 3D (B, T, out_dim), on entraîne en seq->seq.
     take_last_if_needed: bool = True,
-    
-    # --- PARALLÉLISATION ---
-    use_amp: bool = None,
-    use_parallel: bool = True,
 ):
     """
-    Entraîne un LSTM avec parallélisation optimale.
-    
-    Optimisations:
-    - DataLoader multi-workers avec pin_memory
-    - Mixed Precision (AMP) sur CUDA
-    - Multi-GPU avec DataParallel
-    - Transferts non-bloquants
-    - cuDNN optimisé pour LSTM
+    Entraîne un modèle LSTM sur des tenseurs déjà supervisés.
+
+    Attendus :
+    - X: (B, T, in_dim) si batch_first=True (défaut)
+    - y: (B, T, out_dim) pour seq->seq
+         (B, out_dim)     pour seq->one (on prend la dernière étape temporelle de la sortie)
+
+    Retourne (model, last_avg) et yield un dict toutes les k époques comme train_MLP.
     """
-    if device is None:
-        device = DEVICE
-    
-    if use_amp is None:
-        use_amp = (device.type == "cuda")
-    
-    print(f"[LSTM TRAIN] 🚀 Device: {device}")
-    print(f"[LSTM TRAIN] 📊 Workers: {NUM_WORKERS}, Threads: {HARDWARE_INFO.torch_threads}")
-    print(f"[LSTM TRAIN] ⚡ AMP: {use_amp}, Parallel: {use_parallel}")
+
     print(f"[LSTM TRAIN] ENTRÉE - X.shape: {X.shape}, y.shape: {y.shape}, batch_first: {batch_first}")
     
-    # Sanity checks et reshape
+    # Sanity checks rapides
     if batch_first:
         if X.ndim == 2:
+            # (B, T) -> (B, T, 1) pour série univariée
             print(f"[LSTM TRAIN] Reshape X de {X.shape} vers (B, T, 1)")
             X = X.unsqueeze(-1)
         elif X.ndim == 1:
@@ -129,33 +127,34 @@ def train_LSTM(
         T, B, in_dim = X.shape
         print(f"[LSTM TRAIN] Après reshape - T={T}, B={B}, in_dim={in_dim}")
 
-    # Détermination de out_dim
+    # Détermination de out_dim selon la forme de y
     if y.ndim == 3:
+        # seq->seq
         if batch_first:
-            assert y.shape[0] == X.shape[0] and y.shape[1] == X.shape[1]
+            assert y.shape[0] == X.shape[0] and y.shape[1] == X.shape[1], \
+                "Incohérence B/T entre X et y (seq->seq)."
             out_dim = y.shape[2]
         else:
-            assert y.shape[1] == X.shape[1] and y.shape[0] == X.shape[0]
+            assert y.shape[1] == X.shape[1] and y.shape[0] == X.shape[0], \
+                "Incohérence T/B entre X et y (seq->seq)."
             out_dim = y.shape[2]
         seq_to_seq = True
     elif y.ndim == 2:
+        # seq->one
         print(f"DEBUG ASSERT - batch_first={batch_first}, X.shape={X.shape}, y.shape={y.shape}")
-        assert y.shape[0] == (X.shape[0] if batch_first else X.shape[1])
+        print(f"Comparaison: y.shape[0]={y.shape[0]} vs X.shape[0 if batch_first else 1]={X.shape[0] if batch_first else X.shape[1]}")
+        
+        assert y.shape[0] == (X.shape[0] if batch_first else X.shape[1]), \
+            "Incohérence B entre X et y (seq->one)."
         out_dim = y.shape[1]
         seq_to_seq = False
     else:
         raise ValueError("y doit être de rang 2 (seq->one) ou 3 (seq->seq).")
 
-    # ========== DATALOADER OPTIMISÉ ==========
-    loader = get_optimal_dataloader(
-        X, y,
-        batch_size=batch_size,
-        shuffle=True,
-        drop_last=False,
-        device=device
-    )
+    # DataLoader
+    loader = DataLoader(TensorDataset(X, y), batch_size=batch_size, shuffle=True)
 
-    # ========== MODÈLE ==========
+    # Modèle
     model = _build_lstm_safely(
         in_dim=in_dim,
         out_dim=out_dim,
@@ -163,102 +162,66 @@ def train_LSTM(
         nb_couches=nb_couches,
         bidirectional=bidirectional,
         batch_first=batch_first,
-    )
-    
-    # ========== PARALLÉLISATION ==========
-    # Note: LSTM avec DataParallel peut avoir des problèmes avec les hidden states
-    # On utilise quand même pour le forward pass
-    if use_parallel and use_amp and device.type == "cuda":
-        trainer = AMPTrainer(model, device)
-        model = trainer.model
-    elif use_parallel:
-        trainer = ParallelTrainer(model, device)
-        model = trainer.model
-    else:
-        model = model.to(device)
-        trainer = None
+    ).to(device)
 
+    # Loss / Optim
     criterion = make_loss({"name": loss_name})
     optimizer = make_optimizer(
         model,
         {"name": optimizer_name, "lr": learning_rate, "weight_decay": weight_decay}
     )
-    
-    scaler = None
-    if use_amp and device.type == "cuda":
-        scaler = torch.cuda.amp.GradScaler()
 
-    # ========== BOUCLE D'ENTRAÎNEMENT ==========
-    last_avg = None
+    # Boucle d'entraînement
+    last_avg = 0.0
     for epoch in range(1, epochs + 1):
         epoch_start = time.time()
         model.train()
         total, n = 0.0, 0
 
         for xb, yb in loader:
-            xb = xb.to(device, non_blocking=True)
-            yb = yb.to(device, non_blocking=True)
-            
+            xb, yb = xb.to(device), yb.to(device)
             optimizer.zero_grad(set_to_none=True)
-            
-            if use_amp and scaler is not None:
-                with torch.cuda.amp.autocast():
-                    pred = model(xb)
-                    if seq_to_seq:
-                        loss = criterion(pred, yb)
-                    else:
-                        if take_last_if_needed:
-                            last = pred[:, -1, :] if batch_first else pred[-1, :, :]
-                            loss = criterion(last, yb)
-                        else:
-                            if batch_first:
-                                yb_rep = yb.unsqueeze(1).expand(-1, pred.shape[1], -1)
-                            else:
-                                yb_rep = yb.unsqueeze(0).expand(pred.shape[0], -1, -1)
-                            loss = criterion(pred, yb_rep)
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
+            pred = model(xb)  # (B, T, out_dim) si batch_first
+
+            if seq_to_seq:
+                # yb: (B, T, out_dim) → on compare sur tous les pas de temps
+                loss = criterion(pred, yb)
             else:
-                pred = model(xb)
-                if seq_to_seq:
-                    loss = criterion(pred, yb)
+                # seq->one : yb: (B, out_dim)
+                if take_last_if_needed:
+                    # on prend la dernière sortie temporelle
+                    last = pred[:, -1, :] if batch_first else pred[-1, :, :]
+                    loss = criterion(last, yb)
                 else:
-                    if take_last_if_needed:
-                        last = pred[:, -1, :] if batch_first else pred[-1, :, :]
-                        loss = criterion(last, yb)
+                    # fallback (peu utilisé) : moyenne des pertes sur T vs y répété
+                    if batch_first:
+                        # répéter yb sur T pour matcher (B, T, out_dim)
+                        yb_rep = yb.unsqueeze(1).expand(-1, pred.shape[1], -1)
                     else:
-                        if batch_first:
-                            yb_rep = yb.unsqueeze(1).expand(-1, pred.shape[1], -1)
-                        else:
-                            yb_rep = yb.unsqueeze(0).expand(pred.shape[0], -1, -1)
-                        loss = criterion(pred, yb_rep)
-                loss.backward()
-                optimizer.step()
+                        yb_rep = yb.unsqueeze(0).expand(pred.shape[0], -1, -1)
+                    loss = criterion(pred, yb_rep)
+
+            loss.backward()
+            optimizer.step()
 
             bs = xb.size(0) if batch_first else xb.size(1)
-            total += loss.item() * bs
+            loss_val = loss.item()
+            if math.isfinite(loss_val):
+                total += loss_val * bs
             n += bs
 
         last_avg = total / max(1, n)
         epoch_duration = time.time() - epoch_start
-        samples_per_sec = n / epoch_duration if epoch_duration > 0 else 0
 
-        yield {
-            "type": "epoch",
-            "epochs": epoch,
-            "avg_loss": float(last_avg),
-            "epoch_s": 1/epoch_duration if epoch_duration > 0 else 0,
-            "samples_per_sec": samples_per_sec,
-            "device": str(device)
-        }
+        epoch_s = 1.0 / epoch_duration if epoch_duration > 0.001 else 1000.0
+        if not math.isfinite(epoch_s):
+            epoch_s = 1000.0
+        if not math.isfinite(last_avg):
+            last_avg = 0.0
 
-        print(f"[LSTM {epoch:03d}/{epochs}] loss={last_avg:.6f} ({epoch_duration:.2f}s, {samples_per_sec:.0f} samples/s)")
+        yield {"type": "epoch", "epochs": epoch, "avg_loss": last_avg, "epoch_s": epoch_s}
+        print(f"[LSTM {epoch:03d}/{epochs}] loss={last_avg:.6f}")
 
-    yield {"done": True, "final_loss": float(last_avg)}
-    
-    if trainer and hasattr(trainer, 'get_model'):
-        return trainer.get_model()
-    elif isinstance(model, nn.DataParallel):
-        return model.module
+    final_loss = last_avg if math.isfinite(last_avg) else 0.0
+    yield {"done": True, "final_loss": final_loss}
     return model
