@@ -1,7 +1,7 @@
-import json### à  tester avec main3.py  (serveur DATA) en local 
+import json### à  tester avec main_test.py  (serveur DATA) en local 
 import requests
 import base64
-from pathlib import Path
+from pathlib import Path 
 from datetime import datetime
 
 # URL du serveur
