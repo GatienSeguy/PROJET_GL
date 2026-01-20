@@ -41,7 +41,7 @@ from .classes import (
     AddDatasetPacket
     )
 
-from .test_fonctions_pour_main import (
+from .fonctions_pour_main import (
     filter_series_by_dates,
     build_supervised_tensors_with_step,
     split_train_test,

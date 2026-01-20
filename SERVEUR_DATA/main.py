@@ -1,104 +1,174 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
-import xarray as xr
-from datetime import datetime, timedelta
-from itertools import zip_longest
-from typing import Optional, Tuple, Literal, List
-
+from datetime import datetime
+from typing import Optional, List, Dict, Any
 import json
+import uvicorn
+import base64
+
+# ------------------ ---------
+# App & chemins
+# ----------------------------
 
 app = FastAPI()
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "datasets"
-
+MODEL_DIR = BASE_DIR / "models"
+CONTEXT_DIR = BASE_DIR / "contextes"
 
 # ----------------------------
-# Models
+# Modèles de requêtes
 # ----------------------------
+
+class TimeSeriesData(BaseModel):
+    """
+    Une unique série temporelle : timestamps et valeurs alignés (même longueur).
+    """
+    timestamps: List[datetime] 
+    values: List[Optional[float]]
+     
+     # Mini garde-fou : même taille
+    def model_post_init(self, __context) -> None:
+        if len(self.timestamps) != len(self.values):
+            raise ValueError("timestamps et values doivent avoir la même longueur")
+
+
+
+
 class ChoixDatasetRequest(BaseModel):
     message: str
-    name: str = None
-    # dates: Optional[List[str]] = None
-    date_debut: str = None
-    date_fin: str = None
-    pas_temporel: str = None
+
 
 class ChoixDatasetRequest2(BaseModel):
-    # message: str
-    name: str = None
-    dates: Optional[List[str]] = None
-    # date_debut: str = None
-    # date_fin: str = None
-    pas_temporel: int = None
+    name: str
+    dates: List[str]        # [date_debut, date_fin]
+    pas_temporel: int       # ENTIER : 1 => tous les points, 2 => 1 sur 2, etc.
 
+class newDatasetRequest(BaseModel):
+    name: str
+    data: TimeSeriesData
+
+class deleteDatasetRequest(BaseModel):
+    name: str
+
+class ChoixModelerequest(BaseModel):
+    message: str
+
+class newModelRequest(BaseModel):
+    name: str
+    data: str  # Base64 encoded string
+
+class DeleteModelRequest(BaseModel):
+    name: str
+    
+class PaquetComplet2(BaseModel):
+    payload: dict
+    payload_model: dict
+    payload_dataset: dict
+    payload_name_model: dict
+
+class ChoixContexteRequest(BaseModel):
+    name: str
 
 # ----------------------------
 # Utils
 # ----------------------------
 
+def parse_ts(ts_str: str) -> datetime:
+    """
+    Essaie plusieurs formats de timestamps :
+    - 'YYYY-MM-DD HH:MM:SS'
+    - 'YYYY-MM-DDTHH:MM:SS'
+    - 'YYYY-MM-DD'
+    """
+    fmts = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d",
+    ]
+    for f in fmts:
+        try:
+            return datetime.strptime(ts_str, f)
+        except ValueError:
+            continue
+    raise ValueError(f"Format de timestamp inconnu : {ts_str}")
+
+
 def extraire_infos_dataset(path_json: Path):
     """
-    Extraction des infos pour tes datasets JSON :
-    - date début : premier timestamp
-    - date fin   : dernier timestamp
-    - pas        : différence entre t[1] et t[0] (au format 'Xd Xh Xm Xs')
+    Pour un dataset JSON de la forme :
+    {
+        "timestamps": [...],
+        "values": [...]
+    }
+
+    -> renvoie :
+      - date début  : premier timestamp (string brute)
+      - date fin    : dernier timestamp (string brute)
+      - pas         : delta entre les deux premiers timestamps (affiché en format humain)
     """
-
-    with open(path_json, "r") as f:
+    with open(path_json, "r", encoding="utf-8") as f:
         data = json.load(f)
-
+    print("test1")
     timestamps = data.get("timestamps", [])
-
+    print("test2")
     if not timestamps or len(timestamps) < 2:
         raise ValueError(f"Dataset {path_json.name} invalide : timestamps insuffisants")
-
-    # Conversion en datetime
-    ts = [datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in timestamps]
-
+    print("test3")
+    ts_dt = [parse_ts(timestamps[0]),parse_ts(timestamps[1])]
+    print("test4")
     date_debut = timestamps[0]
     date_fin = timestamps[-1]
 
-    # Pas = différence entre les deux premiers timestamps
-    delta = ts[1] - ts[0]
+    delta = ts_dt[1] - ts_dt[0]
 
-    # Formatage du pas temporel
     jours = delta.days
     secondes = delta.seconds
     heures = secondes // 3600
     minutes = (secondes % 3600) // 60
     secs = secondes % 60
 
-    # Création d'un format humain
     parts = []
-    if jours != 0:
+    if jours:
         parts.append(f"{jours}j")
-    if heures != 0:
+    if heures:
         parts.append(f"{heures}h")
-    if minutes != 0:
+    if minutes:
         parts.append(f"{minutes}m")
-    if secs != 0:
+    if secs:
         parts.append(f"{secs}s")
 
     pas = " ".join(parts) if parts else "0s"
 
     return date_debut, date_fin, pas
 
-def construire_json_datasets():
+
+def construire_json_datasets() -> Dict[str, Any]:
+    """
+    Renvoie les métadonnées des datasets présents dans DATA_DIR.
+    {
+      "EURO": {
+          "nom": "EURO",
+          "dates": [date_debut, date_fin],
+          "pas_temporel": "1h"
+      },
+      ...
+    }
+    """
     if not DATA_DIR.exists():
         raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
 
-    result = {}
+    result: Dict[str, Any] = {}
 
-    # Parcours direct des fichiers JSON dans Datas2_test
     for file in DATA_DIR.iterdir():
         if not file.is_file():
             continue
-        if not file.suffix.lower() == ".json":
+        if file.suffix.lower() != ".json":
             continue
 
-        dataset_id = file.stem  # "EURO", "CACAO"
+        dataset_id = file.stem
 
         debut, fin, pas = extraire_infos_dataset(file)
 
@@ -107,195 +177,502 @@ def construire_json_datasets():
             "dates": [debut, fin],
             "pas_temporel": pas
         }
+
     return result
 
-def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: str):
-    import re
-    from datetime import datetime, timedelta
 
-    def parse_pas(pas_str: str) -> timedelta:
-        """Parse '1d', '12h', '30m', '15s' ou '1d 12h' en timedelta."""
-        if not pas_str:
-            return timedelta(days=1)
-        regex = r"(\d+)\s*([dhms])"
-        kwargs = {}
-        for amount, unit in re.findall(regex, pas_str):
-            n = int(amount)
-            if unit == "d":
-                kwargs["days"] = kwargs.get("days", 0) + n
-            elif unit == "h":
-                kwargs["hours"] = kwargs.get("hours", 0) + n
-            elif unit == "m":
-                kwargs["minutes"] = kwargs.get("minutes", 0) + n
-            elif unit == "s":
-                kwargs["seconds"] = kwargs.get("seconds", 0) + n
-        if not kwargs:
-            return timedelta(days=1)
-        return timedelta(**kwargs)
+def construire_un_dataset(name: str, date_debut: str, date_fin: str, pas: int) -> Dict[str, Any]:
+    """
+    Découpe le dataset `name` selon :
 
-    def try_parse_ts(ts_str: str):
-        """Essaye plusieurs formats de timestamp, retourne datetime."""
-        fmts = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
-        for f in fmts:
-            try:
-                return datetime.strptime(ts_str, f)
-            except Exception:
-                continue
-        # si aucun format ne passe, lever une erreur
-        raise ValueError(f"Timestamp format inconnu: {ts_str}")
+        L = [date_debut : date_fin : pas]
 
-    def value_at_nearest(ts_list, val_list, target_dt):
-        """Retourne la valeur dans val_list associée au timestamp le plus proche de target_dt.
-           ts_list et val_list doivent être de longueurs compatibles. Retourne None si aucune valeur."""
-        if not ts_list or not val_list:
-            return None
-        # calcule les différences absolues et prend l'indice du minimum
-        diffs = [abs((t - target_dt).total_seconds()) for t in ts_list]
-        idx = int(min(range(len(diffs)), key=lambda i: diffs[i]))
-        try:
-            return val_list[idx]
-        except Exception:
-            return None
+    c’est-à-dire :
+      - on prend tous les points avec
+            date_debut <= timestamp <= date_fin
+      - puis on garde 1 point tous les `pas` indices.
 
-    # --- vérifications préliminaires ---
+    `pas` est un ENTIER STRICTEMENT POSITIF.
+    """
+
     if not DATA_DIR.exists():
         raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
 
-    # parser bornes de dates (date_debut/date_fin attendus en YYYY-MM-DD)
+    # sécurisation du pas
     try:
-        d0 = datetime.strptime(date_debut, "%Y-%m-%d")
-        d1 = datetime.strptime(date_fin, "%Y-%m-%d")
-    except Exception as e:
-        raise ValueError(f"Format date_debut/date_fin invalide (attendu YYYY-MM-DD): {e}")
+        step = int(pas)
+    except Exception:
+        raise ValueError("pas_temporel doit être un entier")
+    if step <= 0:
+        raise ValueError("pas_temporel doit être strictement positif")
 
-    pas_td = parse_pas(pas)
+    # parse des bornes
+    d0 = parse_ts(date_debut)
+    d1 = parse_ts(date_fin)
+    if d1 < d0:
+        raise ValueError("date_fin doit être >= date_debut")
 
-    # protection : pas non nul
-    if pas_td.total_seconds() <= 0:
-        raise ValueError("Le pas temporel doit être strictement positif.")
-
-    # parcours des fichiers
+    # on cherche le bon fichier
     for file in DATA_DIR.iterdir():
         if not file.is_file() or file.suffix.lower() != ".json":
             continue
-        if name != file.stem:
+        if file.stem != name:
             continue
 
         with open(file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         timestamps = data.get("timestamps", [])
-        values = data.get("values", {})
+        values = data.get("values", None)
 
-        # parse timestamps du fichier en datetimes
-        try:
-            ts_dt = [try_parse_ts(t) for t in timestamps]
-        except Exception as e:
-            print(f"ERROR: impossible de parser les timestamps pour {file.name}: {e}")
-            return {"error": "Format timestamps invalide"}
-
-        if not ts_dt:
+        if not timestamps:
             return {"error": f"Dataset '{name}' sans timestamps"}
+        if values is None:
+            return {"error": f"Dataset '{name}' sans 'values'"}
 
-        # générer la grille temporelle au pas demandé (on commence à d0 00:00:00)
-        generated = []
-        cur = datetime.combine(d0.date(), datetime.min.time())
-        # si les timestamps du fichier ont heures, mieux commencer à d0 à 00:00:00, c'est cohérent
-        while cur <= datetime.combine(d1.date(), datetime.max.time()):
-            generated.append(cur)
-            cur += pas_td
+        ts_dt = [parse_ts(t) for t in timestamps]
 
-        # tronquer generated pour rester dans [first_ts, last_ts] si besoin ? On garde selon d0..d1 demandés
-        # conversion en string
-        generated_str = [dt.strftime("%Y-%m-%d %H:%M:%S") for dt in generated]
+        # indices dans l'intervalle [d0, d1]
+        idx_in_range = [
+            i for i, t in enumerate(ts_dt)
+            if d0 <= t <= d1
+        ]
 
-        # préparer filtered_values selon le format de 'values'
-        filtered_values = {}
+        if not idx_in_range:
+            return {"error": f"Aucune donnée dans l'intervalle demandé pour '{name}'"}
 
-        if isinstance(values, dict):
-            for key, vals in values.items():
-                # sécuriser vals -> list
-                if not isinstance(vals, (list, tuple)):
-                    try:
-                        vals = list(vals)
-                    except Exception:
-                        print(f"WARN: values '{key}' non itérable (type={type(vals)}); on met une série vide")
-                        filtered_values[key] = [None] * len(generated)
-                        continue
+        # L = [start : end : step]
+        start_idx = idx_in_range[0]
+        end_idx = idx_in_range[-1]
 
-                # si vals shorter/longer than timestamps, zip coupera automatiquement
-                # construire val_series à partir des generated en prenant valeur la plus proche
-                series = []
-                for target_dt in generated:
-                    v = value_at_nearest(ts_dt, vals, target_dt)
-                    series.append(v)
-                filtered_values[key] = series
+        indices_final = list(range(start_idx, end_idx + 1, step))
 
-        elif isinstance(values, list):
-            # cas où values est une liste simple (une seule série)
-            series = []
-            for target_dt in generated:
-                v = value_at_nearest(ts_dt, values, target_dt)
-                series.append(v)
-            filtered_values["values"] = series
+        # timestamps filtrés
+        filtered_ts = [timestamps[i] for i in indices_final]
 
+        # values filtrés
+        data_out: Dict[str, Any] = {"timestamps": filtered_ts}
+
+        if isinstance(values, list):
+            filtered_values = [values[i] for i in indices_final]
+            data_out["values"] = filtered_values
+
+        elif isinstance(values, dict):
+            # multi-séries
+            for k, v in values.items():
+                if not isinstance(v, list):
+                    raise ValueError(
+                        f"Pour les values dict, chaque entrée doit être une liste (clé={k})"
+                    )
+                data_out[k] = [v[i] for i in indices_final]
         else:
-            print(f"WARN: 'values' format inattendu pour {file.name} (type={type(values)}). On retourne vide.")
-            filtered_values = {}
+            return {"error": f"Format de 'values' inattendu pour '{name}' (type={type(values)})"}
 
-        # debug (optionnel)
-        print(f"DEBUG dataset={file.name}, generated timestamps={len(generated_str)}, series keys={list(filtered_values.keys())}")
-        for k, v in filtered_values.items():
-            print(f"  - {k}: {len(v)} valeurs (ex: {v[:3]})")
-
-        # utiliser le nom du fichier comme clé d'ID (stable et lisible)
-        dataset_key = file.stem
+        print(f"DEBUG dataset={name}, nb_total={len(timestamps)}, nb_filtré={len(filtered_ts)}")
 
         return {
-            dataset_key: {
+            name: {
                 "nom": name,
                 "dates": [date_debut, date_fin],
-                "pas_temporel": pas,
-                "data": {
-                    "timestamps": generated_str,
-                    "values": filtered_values["values"]
-                }
+                "pas_temporel": step,
+                "data": data_out
             }
         }
 
+    # si on a rien trouvé
     return {"error": f"Dataset '{name}' not found"}
 
+def add_new_dataset(name: str, data: TimeSeriesData) -> None:
+    """
+    Ajoute un nouveau dataset dans DATA_DIR avec le nom `name` et les données `data`.
+    `data` est un TimeSeriesData (Pydantic).
+    """
+    print("ENTRÉE")
+    if not DATA_DIR.exists():
+        raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
 
+    path_new_dataset = DATA_DIR / f"{name}.json"
+
+    if path_new_dataset.exists():
+        raise ValueError(f"Dataset '{name}' existe déjà et ne peut pas être ajouté")
+    
+    data_dict = data.model_dump(mode="json")
+    
+    with open(path_new_dataset, "w", encoding="utf-8") as f:
+        json.dump(data_dict, f, ensure_ascii=False, indent=2)
+
+    print(f"Dataset '{name}' ajouté avec succès dans {path_new_dataset}")
+
+
+def remove_dataset(name: str) -> None:
+    """
+    Supprime le dataset `name` de DATA_DIR.
+    """
+    if not DATA_DIR.exists():
+        raise RuntimeError(f"Le dossier {DATA_DIR} n’existe pas")
+
+    path_dataset = DATA_DIR / f"{name}.json"
+
+    if not path_dataset.exists():
+        raise ValueError(f"Dataset '{name}' n'existe pas et ne peut pas être supprimé")
+
+    path_dataset.unlink()
+
+    print(f"Dataset '{name}' supprimé avec succès de {path_dataset}")
+
+def construire_modeles() -> Dict[str, Any]:
+    """
+    Lit les fichiers .pth, les encode en Base64 et renvoie le contenu.
+    """
+    if not MODEL_DIR.exists():
+        raise RuntimeError(f"Le dossier {MODEL_DIR} n’existe pas")
+
+    result: Dict[str, Any] = {}
+
+    for file in MODEL_DIR.iterdir():
+        if not file.is_file():
+            continue
+        if file.suffix.lower() != ".pth":
+            continue
+
+        modele_id = file.stem
+
+        # LECTURE ET ENCODAGE DU FICHIER
+        with open(file, "rb") as f:
+            # On lit les bytes et on les encode en base64 pour le transport JSON
+            file_content = base64.b64encode(f.read()).decode('utf-8')
+            print(modele_id)
+
+        result[modele_id] = {
+            "nom": modele_id,
+            # On envoie le contenu encodé
+            "model_state_dict": file_content 
+        }
+    return result
+
+def add_new_model(name: str, data: str) -> None:
+    """
+    Ajoute un nouveau modèle .pth dans MODEL_DIR avec le nom `name` et les données `data`.
+    `data` est une chaîne Base64.
+    """
+    if not MODEL_DIR.exists():
+        raise RuntimeError(f"Le dossier {MODEL_DIR} n’existe pas")
+
+    path_new_model = MODEL_DIR / f"{name}.pth"
+
+    if path_new_model.exists():
+        raise ValueError(f"Modèle '{name}' existe déjà et ne peut pas être ajouté")
+    
+    # Décodage Base64
+    try:
+        model_bytes = base64.b64decode(data)
+    except Exception as e:
+        raise ValueError(f"Erreur de décodage Base64 pour le modèle '{name}': {e}")
+    
+    with open(path_new_model, "wb") as f:
+        f.write(model_bytes)
+
+    print(f"Modèle '{name}' ajouté avec succès dans {path_new_model}")
+
+def remove_model(name: str) -> None:
+    """
+    Supprime le modèle `name` de MODEL_DIR.
+    """
+    if not MODEL_DIR.exists():
+        raise RuntimeError(f"Le dossier {MODEL_DIR} n’existe pas")
+
+    path_model = MODEL_DIR / f"{name}.pth"
+
+    if not path_model.exists():
+        raise ValueError(f"Modèle '{name}' n'existe pas et ne peut pas être supprimé")
+
+    path_model.unlink()
+
+    print(f"Modèle '{name}' supprimé avec succès de {path_model}")
+    
+def contexte_add_cnn(**kwargs):
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    
+    path_contexte = CONTEXT_DIR / f"contexte_{kwargs['name']}_cnn.json"
+    if path_contexte.exists():
+        raise ValueError(f"Contexte '{kwargs['name']}' existe déjà et ne peut pas être ajouté")
+    with open(path_contexte, "w", encoding="utf-8") as f:
+        json.dump(kwargs, f, ensure_ascii=False, indent=2)
+    print(f"Contexte '{kwargs['name']}' ajouté avec succès dans {path_contexte}")
+
+def contexte_add_mlp(**kwargs):
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    path_contexte = CONTEXT_DIR / f"contexte_{kwargs['name']}_mlp.json"
+    if path_contexte.exists():
+        raise ValueError(f"Contexte '{kwargs['name']}' existe déjà et ne peut pas être ajouté")
+    with open(path_contexte, "w", encoding="utf-8") as f:
+        json.dump(kwargs, f, ensure_ascii=False, indent=2)
+    print(f"Contexte '{kwargs['name']}' ajouté avec succès dans {path_contexte}") 
+
+def contexte_add_lstm(**kwargs):
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    path_contexte = CONTEXT_DIR / f"contexte_{kwargs['name']}_lstm.json"
+    if path_contexte.exists():
+        raise ValueError(f"Contexte '{kwargs['name']}' existe déjà et ne peut pas être ajouté" )
+    with open(path_contexte, "w", encoding="utf-8") as f:
+        json.dump(kwargs, f, ensure_ascii=False, indent=2)
+    print(f"Contexte '{kwargs['name']}' ajouté avec succès dans {path_contexte}")
+
+def transmettre_contexte(name: str) -> None:
+    if not CONTEXT_DIR.exists():
+        raise RuntimeError(f"Le dossier {CONTEXT_DIR} n’existe pas")
+    
+    found = False
+    for file in CONTEXT_DIR.iterdir():
+        if not file.is_file():
+            continue
+        if file.stem == f"contexte_{name}_cnn" or file.stem == f"contexte_{name}_mlp" or file.stem == f"contexte_{name}_lstm":
+            found = True
+            with open(file, "r", encoding="utf-8") as f:
+                contexte_data = json.load(f)
+            print(f"Contexte '{name}' récupéré avec succès depuis {file}")
+            return contexte_data
+    if not found:
+        raise ValueError(f"Contexte '{name}' n'existe pas et ne peut pas être récupéré")
 # ----------------------------
-# Endpoint
+# Endpoints
 # ----------------------------
+
 @app.post("/datasets/info_all")
 async def info_all(req: ChoixDatasetRequest):
     if req.message != "choix dataset":
         raise HTTPException(status_code=400, detail="Message inconnu")
+
     try:
         json_final = construire_json_datasets()
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     return json_final
 
+
 @app.post("/datasets/data_solo")
-async def info_all(payload: ChoixDatasetRequest2):
-    print("DATA SERVER received fetch_dataset for:", payload.name) 
-    json_final = construire_un_dataset(
-        name=payload.name,
-        date_debut=payload.dates[0],
-        date_fin=payload.dates[1],
-        pas=payload.pas_temporel
-    )
-    print(f"\n")
-    print("On est bien")
-    print(f"\n")
+async def data_solo(payload: ChoixDatasetRequest2):
+    print("DATA SERVER received fetch_dataset for:", payload.name)
+
+    try:
+        json_final = construire_un_dataset(
+            name=payload.name,
+            date_debut=payload.dates[0],
+            date_fin=payload.dates[1],
+            pas=payload.pas_temporel
+        )
+    except ValueError as e:
+        # erreurs de format (dates, pas, etc.)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+
     if "error" in json_final:
         print("t'as fait nawak")
         raise HTTPException(status_code=404, detail=json_final["error"])
+
     return json_final
 
+
+@app.post("/datasets/data_add")
+async def data_addd(payload: newDatasetRequest):
+    print("DATA SERVER received fetch_dataset for:", payload.name)
+
+    try:
+        add_new_dataset(
+            name=payload.name,
+            data=payload.data
+        )
+    except ValueError as e:
+        # erreurs de format (dates, pas, etc.)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+    return "dataset ajouté avec succès"
+
+
+
+@app.post("/datasets/data_supression")
+async def data_suppression(payload: deleteDatasetRequest):
+    print("DATA SERVER received delete_dataset for:", payload.name)
+
+    try:
+        remove_dataset(
+            name=payload.name
+        )
+    except ValueError as e:
+        # erreurs de format (dates, pas, etc.)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+
+    return "dataset supprimé avec succès"
+
+@app.post("/models/model_all")
+async def model_all(req: ChoixModelerequest):
+    # Modification de la condition pour accepter "choix_models"
+    if req.message != "choix_models":
+        raise HTTPException(status_code=400, detail="Message inconnu. Attendu: 'choix_models'")
+    
+    try:
+          modeles = construire_modeles()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return modeles
+
+@app.post("/models/model_add")
+async def model_add(payload: newModelRequest):
+    print("DATA SERVER received fetch_dataset for:", payload.name)
+
+    try:
+        add_new_model(
+            name=payload.name,
+            data=payload.data
+        )
+    except ValueError as e:
+    
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+    return "modele .pth ajouté avec succès"
+@app.post("/models/model_delete")
+async def model_delete(payload: DeleteModelRequest):
+    print("DATA SERVER received delete_model for:", payload.name)
+
+    try:
+        remove_model(
+            name=payload.name
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+
+    return "modèle supprimé avec succès"
+
+@app.post("/contexte/add_solo")
+async def contexte_add_solo(paquet: PaquetComplet2):
+    print("DATA SERVER received contexte_add_solo")
+
+    try:
+        # Récupération des zones
+        p = paquet.payload
+        m = paquet.payload_model
+        d = paquet.payload_dataset
+        n = paquet.payload_name_model   # <-- le nom vient d’ici
+
+        # Nom du contexte
+        name = n.get("name")
+        if not name:
+            raise ValueError("payload_name_model.name est manquant")
+
+        modele = p["Parametres_choix_reseau_neurones"]["modele"]
+
+        # Construction du contexte générique
+        base_kwargs = {
+            "name": name,
+            "Parametres_temporels": p.get("Parametres_temporels"),
+            "Parametres_choix_reseau_neurones": modele,
+            "Parametres_choix_loss_fct": p.get("Parametres_choix_loss_fct"),
+            "Parametres_optimisateur": p.get("Parametres_optimisateur"),
+            "Parametres_entrainement": p.get("Parametres_entrainement"),
+            "Parametres_visualisation_suivi": p.get("Parametres_visualisation_suivi"),
+        }
+
+        archi = m.get("Parametres_archi_reseau")
+
+        if modele == "CNN":
+            contexte_add_cnn(**base_kwargs, Parametres_archi_reseau_CNN=archi)
+
+        elif modele == "LSTM":
+            contexte_add_lstm(**base_kwargs, Parametres_archi_reseau_LSTM=archi)
+
+        elif modele == "MLP":
+            contexte_add_mlp(**base_kwargs, Parametres_archi_reseau_MLP=archi)
+
+        else:
+            raise ValueError(f"Modèle réseau inconnu : {modele}")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\nOn est bien\n")
+    return {"status": "ok", "message": "Contexte ajouté avec succès"}
+
+@app.post("/contexte/obtenir_solo")
+async def contexte_obtenir_solo(payload: ChoixContexteRequest):
+    print("DATA SERVER received contexte_get_solo")
+
+    try:
+        json_contexte  = transmettre_contexte(payload.name)
+    except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e))
+        print("\nOn est bien\n")
+    return json_contexte
+
+
+class TimeSeriesDataDT(BaseModel):
+    timestamps: List[datetime]            
+    values: List[Optional[float]]
+
+class TimeSeriesDataStr(BaseModel):
+    timestamps: List[str]            # garde en str côté DATA (simple)
+    values: List[Optional[float]]
+
+class AddDatasetPacket(BaseModel):
+    payload_name: str
+    payload_dataset_add: TimeSeriesDataStr
+
+DATASETS = {}
+
+
+
+
+@app.post("/datasets/add_dataset")
+def add_dataset(packet: AddDatasetPacket):
+    name = packet.payload_name
+    if name.lower().endswith(".json"):
+        name = name[:-5]
+
+    try:
+        data_dt = TimeSeriesDataDT(
+            timestamps=[parse_ts(t) for t in packet.payload_dataset_add.timestamps],
+            values=packet.payload_dataset_add.values,
+        )
+        add_new_dataset(name=name, data=data_dt)  
+        print("SORTIE")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"ok": True, "stored": f"{name}.json"}
+
+
+
+
+
+
+@app.get("/")
+def root():
+    return {"message": "Serveur DATA actif !"}
+
+if __name__ == "__main__":
+    uvicorn.run("main2:app", host="0.0.0.0", port=8001, reload=True)
 
