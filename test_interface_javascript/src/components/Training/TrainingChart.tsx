@@ -21,7 +21,7 @@ export const TrainingChart: React.FC = () => {
     <div className="h-full flex flex-col p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-2xl font-bold text-white flex items-center">
-          📊 Évolution de la Loss
+          Évolution de la Loss
         </h3>
         <label className="flex items-center space-x-2 text-sm">
           <input
