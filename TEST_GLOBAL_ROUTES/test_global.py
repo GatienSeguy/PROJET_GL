@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 # URL du serveur
-URL = "http://127.0.0.1:8001"
+URL = "http://127.0.0.0:8001"
 
 BASE_DIR = Path(__file__).resolve().parent
 CODE_DIR = BASE_DIR.parent
@@ -79,6 +79,28 @@ def send_dataset_double(file_path: Path, dataset_name: str):
 
     print("\nTest terminé, le code continue normalement.")
 
+def test_info_all_bad_message():
+    """
+    Envoie un message invalide à /datasets/info_all
+    ➜ doit renvoyer 400
+    ➜ le test ne doit PAS crasher
+    """
+    payload = {
+        "message": "nawak_total"
+    }
+
+    response = requests.post(f"{URL}/datasets/info_all", json=payload)
+
+    print("Status code:", response.status_code)
+    print("Response:", response.text)
+
+    if response.status_code != 400:
+        raise RuntimeError(
+            f"❌ ERREUR : attendu 400, reçu {response.status_code}"
+        )
+
+    print("✅ Mauvais message correctement rejeté (400)")
+    print("➡️ Le code continue normalement\n")
 
 
 def dataset_all():
@@ -537,11 +559,14 @@ def get_contexte(context_name: str):
 #test pas 
 
 send_dataset_double(BASE_DIR / "Dataset_test_global.json", "sofiane_est_un_dieu")
-
+a = input("Appuyez sur Entrée pour continuer... (test de la route /datasets/info_all)")
+dataset_all()
+test_info_all_bad_message()
 a = input("Appuyez sur Entrée pour continuer... (test du crop des données)")
 
+
 for i in range(1,6):
-    dataset_all()
+   
 
     # Exemple d'appel   
     test_data_solo(
