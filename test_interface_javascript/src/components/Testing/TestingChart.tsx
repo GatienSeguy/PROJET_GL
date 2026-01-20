@@ -214,7 +214,7 @@ export const TestingChart: React.FC = () => {
   return (
     <div className="h-full flex flex-col p-4 space-y-3 select-none">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">📊 Résultats de Test</h3>
+        <h3 className="text-lg font-semibold text-white">Résultats de Test</h3>
       </div>
 
       {/* Statistiques */}

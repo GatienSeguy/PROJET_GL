@@ -9,7 +9,7 @@ import type {
 // Toutes les requêtes /datasets, /model, /predict, /train_full sont proxifiées vers le serveur FastAPI
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-console.log('🌐 API_URL configurée:', API_URL || '(proxy Vite)');
+console.log(' API_URL configurée:', API_URL || '(proxy Vite)');
 
 // Fonction helper pour faire des requêtes POST
 async function simplePost(url: string, data: any) {
@@ -34,7 +34,7 @@ async function simplePost(url: string, data: any) {
 // ====================================
 export const datasetAPI = {
   async getAllDatasets(): Promise<DatasetInfo> {
-    console.log('🌐 Appel getAllDatasets');
+    console.log(' Appel getAllDatasets');
     return simplePost('/datasets/info_all', {
       message: 'choix dataset',
     });
@@ -45,9 +45,9 @@ export const datasetAPI = {
     dates: [string, string];
     pas_temporel: number;
   }): Promise<{ status: string; data: TimeSeriesData }> {
-    console.log('🌐 API fetchDataset - Payload envoyé:', JSON.stringify(payload, null, 2));
+    console.log(' API fetchDataset - Payload envoyé:', JSON.stringify(payload, null, 2));
     const result = await simplePost('/datasets/fetch_dataset', payload);
-    console.log('🌐 API fetchDataset - Réponse reçue');
+    console.log(' API fetchDataset - Réponse reçue');
     return result;
   },
 
@@ -74,7 +74,7 @@ export const trainingAPI = {
     onError: (error: any) => void,
     onComplete: () => void
   ): Promise<void> {
-    console.log('🌐 Tentative de connexion à:', `${API_URL}/train_full`);
+    console.log(' Tentative de connexion à:', `${API_URL}/train_full`);
 
     try {
       const response = await fetch(`${API_URL}/train_full`, {
@@ -171,7 +171,7 @@ export const trainingAPI = {
 // ====================================
 export const modelAPI = {
   listModels: async (): Promise<{ models: any[] }> => {
-    console.log('🌐 [modelAPI] listModels');
+    console.log(' [modelAPI] listModels');
     const response = await fetch(`${API_URL}/model/list`);
     if (!response.ok) {
       const text = await response.text();
@@ -181,7 +181,7 @@ export const modelAPI = {
   },
 
   loadModel: async (name: string): Promise<any> => {
-    console.log('🌐 [modelAPI] loadModel:', name);
+    console.log(' [modelAPI] loadModel:', name);
     const response = await fetch(`${API_URL}/model/load`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -195,7 +195,7 @@ export const modelAPI = {
   },
 
   saveModel: async (name: string): Promise<any> => {
-    console.log('🌐 [modelAPI] saveModel:', name);
+    console.log(' [modelAPI] saveModel:', name);
     const response = await fetch(`${API_URL}/model/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -209,7 +209,7 @@ export const modelAPI = {
   },
 
   deleteModel: async (name: string): Promise<any> => {
-    console.log('🌐 [modelAPI] deleteModel:', name);
+    console.log(' [modelAPI] deleteModel:', name);
     const response = await fetch(`${API_URL}/model/delete/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     });
@@ -236,7 +236,7 @@ export const predictionAPI = {
     horizon: number,
     confidenceLevel: number = 0.95
   ): Promise<PredictionResult> => {
-    console.log('🌐 [predictionAPI] predict horizon:', horizon);
+    console.log(' [predictionAPI] predict horizon:', horizon);
 
     return new Promise((resolve, reject) => {
       const predictions: number[] = [];
