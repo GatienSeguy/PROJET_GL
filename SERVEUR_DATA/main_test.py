@@ -628,4 +628,4 @@ def root():
     return {"message": "Serveur DATA actif !"}
 
 if __name__ == "__main__":
-    uvicorn.run("main3:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main_test:app", host="0.0.0.0", port=8001, reload=True)
