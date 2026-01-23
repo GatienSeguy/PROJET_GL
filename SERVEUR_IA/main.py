@@ -54,7 +54,7 @@ from .fonctions_pour_main import (
 import os
 import requests
 
-DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://192.168.1.190:8001")
+DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://127.0.0.0:8001")
 # DATA_SERVER_URL = os.getenv("DATA_SERVER_URL", "http://138.231.152.52:8001")
 
 app = FastAPI()

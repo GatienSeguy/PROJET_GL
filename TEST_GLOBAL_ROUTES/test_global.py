@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 # URL du serveur
-URL = "http://127.0.0.0:8001"
+URL = "http://127.0.0.1:8001"
 
 BASE_DIR = Path(__file__).resolve().parent
 CODE_DIR = BASE_DIR.parent
@@ -598,7 +598,8 @@ with open(json_file, "r", encoding="utf-8") as f:
     PAQUET = json.load(f)
 
 
-#send_contexte(PAQUET)
-#get_contexte("model_maximebg")
+send_contexte(PAQUET)
+print("ça marche contexte enregistré")
+send_contexte(PAQUET)
 
 #SERVEUR IA
