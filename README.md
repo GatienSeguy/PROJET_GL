@@ -1,7 +1,5 @@
 # PROJET_GL - Application de Prediction de Series Temporelles
 
-![Schema du projet](assets/schema.jpeg)
-
 ## Presentation du Projet
 
 PROJET_GL est une application de machine learning dediee a la prediction de series temporelles. Le projet est structure autour d'une architecture client-serveur composee de trois elements principaux :
