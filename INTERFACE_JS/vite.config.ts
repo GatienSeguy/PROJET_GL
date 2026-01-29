@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-const URL = 'http://138.231.149.81:8002'
-
+// const URL = 'http://92.168.1.190:8000'
+const URL = 'http://192.168.1.94:8000'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
