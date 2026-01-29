@@ -86,6 +86,7 @@ Situees dans le dossier `INTERFACE/`, ces interfaces utilisent CustomTkinter pou
 
 Ces interfaces sont conservees pour la compatibilite et les cas d'usage locaux, mais l'interface JavaScript est recommandee pour une utilisation en production.
 
+Pour plus d'information veuillez lire le cahier des charges qui reprend en détail l'entièreté (ou presque) du projet : [CAHIER DES CHARGES](assets/CDC_FINAL/Cahier_des_charges_MLApp_V2_0 (1).pdf)
 ---
 
 ## Structure du Projet
